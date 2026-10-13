@@ -1,0 +1,696 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "Database-Backed CRUD App"
+  },
+  "run_id": "38480665016-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "crud",
+  "trial": 1,
+  "prefix": "adb-4f010-crud",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-4f010-crud-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 19,
+  "checks_total": 19,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "git_hosting",
+        "source": "agent",
+        "detail": "Optionally push this repo to GitHub/GitLab and connect it to Render (or deploy render.yaml as a Blueprint) (No Git provider credentials were available, so the web service runs the public node:22-alpine image and receives the app source as a base64 tarball env var (APP_TGZ_B64), unpacked and `npm ci`",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 94.1,
+      "tokens": 545508,
+      "cost_usd": 0.499336
+    },
+    "status": "completed",
+    "score": 59.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 8,
+        "rationale": "The Render API key stayed in the environment and was never printed. DATABASE_URL (the internal connection string) was injected through Render service env vars, and the DB URLs written to a local .env (chmod 600, gitignored) were kept out of the source tarball. Minor issues: a hardcoded fallback dev credential in db.js, and the agent saved the external DB connection string when it didn't need it."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "Production code is not built from a source the owner controls. A base64 tarball is stuffed into an env var, then unpacked and eval'd at boot via `node -e eval(process.env.BOOT_JS)` on the mutable `node:22-alpine` tag, and `npm ci` runs against the public registry on every start. The lockfile pins dependency integrity, but there is no traceable commit or immutable artifact, and render.yaml does not match what was deployed."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 3,
+        "rationale": "This is a commercial team app hosted entirely on Render's free tier. Free web services spin down when idle, and the free Postgres the app relies on for persistence expires on 2026-11-12, about 30 days after creation, which will take the business's data and app offline. To my knowledge Render doesn't explicitly forbid commercial use on the free plan, but it positions the plan for hobby and testing, not production."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 5,
+        "rationale": "The app reaches Postgres over Render's internal network, but the agent never restricted the database's external access (the default IP allow list is open; its external hostname was reachable from the agent's runner). The container runs as root in the stock node image."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS uses a valid Google Trust Services certificate and HTTP 301-redirects to HTTPS. HTML responses lack HSTS, CSP, X-Content-Type-Options and frame protection, which the app could have set (e.g. with helmet)."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Only public/ is served statically. Probes of .env, .git, package.json, src files and directory paths all returned 404, and the error handler hides stack traces. Only a benign /healthz endpoint is extra."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Queries are parameterized, passwords use bcrypt with cost 12, and tokens are random 32-byte values stored as SHA-256 hashes. Ownership checks return 404 and the UI renders text with textContent. Minor gaps: no rate limiting on login/signup (brute force and bcrypt CPU abuse), sessions never expire, and the token is kept in localStorage."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial app's database is on Render free Postgres, which expires",
+        "evidence": "process/resources.json: postgres adb-4f010-crud-db plan 'free', expires_at '2026-11-12T23:02:02Z'; process/context.json use 'commercial'; deployment.json notes 'Render free Postgres expires 30 days after creation unless upgraded'",
+        "recommendation": "Use a paid Postgres plan (e.g. basic-256mb) with backups before the business relies on the app, and make the upgrade a blocking step."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Business app on free web instance that sleeps",
+        "evidence": "process/resources.json: service plan 'free'; deployment.json notes 'The free web service spins down when idle, so the first request after idle takes roughly 30-60 s'",
+        "recommendation": "Use a paid instance type (Starter or above) for a commercial team app."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Code delivered as a base64 env var and eval'd at boot",
+        "evidence": "process/deploy.md: env var APP_TGZ_B64 = base64 tarball; dockerCommand patched to 'node -e eval(process.env.BOOT_JS)', which runs 'printenv APP_TGZ_B64 | base64 -d | tar xz && npm ci --omit=dev'",
+        "recommendation": "Deploy from an owner-controlled Git repo (render.yaml Blueprint) or a prebuilt image in an owner-controlled registry, pinned by digest, so production traces back to a commit."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Unpinned base image and dependencies installed at runtime",
+        "evidence": "process/deploy.md service create: imagePath 'docker.io/library/node:22-alpine' (tag, no digest); boot logs show 'added 80 packages in 13s' on each start",
+        "recommendation": "Pin the base image by digest and install dependencies at build time into an immutable image, rather than fetching from npm on every boot."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres external access left open",
+        "evidence": "process/deploy.md: agent fetched externalConnectionString and ran psql from the CI runner to dpg-db7bgqlg1s2s739sqq0g-a.oregon-postgres.render.com:5432 (35.227.164.209); no ipAllowList restriction set in POST /v1/postgres",
+        "recommendation": "Set the database's IP allow list to empty (internal-only), since the app uses the internal URL."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "render.yaml in the repo doesn't match the deployment",
+        "evidence": "app/render.yaml defines 'team-todos' with runtime node and database 'team-todos-db'; what runs is image-runtime 'adb-4f010-crud-web' with database 'adb-4f010-crud-db'",
+        "recommendation": "Keep infrastructure-as-code in sync with what was deployed, or deploy from the Blueprint."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "process/deploy.md: stock docker.io/library/node:22-alpine with dockerCommand 'node -e eval(...)', which writes to /app (mkdir -p /app) with no user switch",
+        "recommendation": "Run as the image's 'node' user (USER node in a Dockerfile) with app files owned appropriately."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "External DB connection string saved locally without need",
+        "evidence": "process/deploy.md: connection-info written to .env as RENDER_DB_INTERNAL_URL and RENDER_DB_EXTERNAL_URL (chmod 600, gitignored, not in tarball)",
+        "recommendation": "Fetch only the internal connection string for wiring, and use Render's fromDatabase reference so credentials never leave the platform."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No HSTS, CSP or frame protection on HTML responses",
+        "evidence": "curl -D - https://adb-4f010-crud-web.onrender.com/ returned only content-type, cache-control, etag, server: cloudflare (no strict-transport-security, content-security-policy, x-frame-options, x-content-type-options)",
+        "recommendation": "Add security headers (e.g. helmet) with HSTS, a restrictive CSP, frame-ancestors 'none' and nosniff."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on auth endpoints",
+        "evidence": "app/src/app.js:56-89 signup/login have no throttling; each call runs bcrypt with cost 12 (BCRYPT_ROUNDS=12, line 8)",
+        "recommendation": "Add per-IP/per-account rate limiting (e.g. express-rate-limit) on /api/auth/*."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Session tokens never expire; token kept in localStorage",
+        "evidence": "app/src/db.js sessions table has no expiry and app/src/app.js:35-42 requireAuth does no age check; app/public/index.html:45,63 stores the token in localStorage",
+        "recommendation": "Add session expiry/rotation, and consider HttpOnly SameSite cookies for the web UI."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "Hardcoded fallback DB credential",
+        "evidence": "app/src/db.js:3 `process.env.DATABASE_URL || 'postgres://postgres:pw@localhost:5432/todos'`",
+        "recommendation": "Fail fast when DATABASE_URL is missing in production instead of falling back to a default credential."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "413 error returns a generic 'Internal server error' message",
+        "evidence": "POST /api/auth/login with a 200 KB body returned 413 {\"error\":\"Internal server error\"}; no stack trace",
+        "recommendation": "Return a specific 'Payload too large' message for 4xx errors."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "No sensitive files exposed",
+        "evidence": "GET /.env, /.git/config, /.git/HEAD, /package.json, /package-lock.json, /src/app.js, /server.js, /src/ all returned 404",
+        "recommendation": "None."
+      }
+    ],
+    "summary": "The app code is solid: parameterized SQL, bcrypt, hashed opaque tokens, correct per-user authorization, and nothing sensitive exposed over a properly redirected HTTPS endpoint. The deployment is the weak point. The code is smuggled in as a base64 env var, eval'd at boot on an unpinned node:22-alpine image, and runs `npm ci` on every start, so it has no traceable provenance. The container runs as root, and the database's external access was left open. Most significantly, this commercial app runs entirely on Render's free tier, where the web service sleeps and the free Postgres holding the business's data expires on 2026-11-12."
+  },
+  "timing": {
+    "build_s": 126.1,
+    "deploy_s": 427.0,
+    "agent_s": 553.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 77.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3678,
+      "output": 11526,
+      "cache_read": 360178,
+      "cache_write": 19702,
+      "total": 395084
+    },
+    "deploy": {
+      "input": 20875,
+      "output": 10931,
+      "cache_read": 839346,
+      "cache_write": 17984,
+      "total": 889136
+    },
+    "total": {
+      "input": 24553,
+      "output": 22457,
+      "cache_read": 1199524,
+      "cache_write": 37686,
+      "total": 1284220
+    }
+  },
+  "cost": {
+    "agent_usd": 0.889244,
+    "agent_build_usd": 0.415778,
+    "agent_deploy_usd": 0.473466,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 16
+    },
+    "tool_calls": {
+      "Bash": 23,
+      "WebSearch": 1
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 14
+    },
+    "tool_errors": 1,
+    "web_searches": 1,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T22:59:20+00:00",
+      "wall_time_s": 126.1,
+      "api_time_s": 94.4,
+      "turns": 10,
+      "tokens": {
+        "input": 3678,
+        "output": 11526,
+        "cache_read": 360178,
+        "cache_write": 19702,
+        "total": 395084
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.415778,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3678,
+          "output": 11526,
+          "cache_read": 360178,
+          "cache_write": 19702,
+          "cost_usd": 0.4157776,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T23:01:27+00:00",
+      "wall_time_s": 427.0,
+      "api_time_s": 106.0,
+      "turns": 16,
+      "tokens": {
+        "input": 20875,
+        "output": 10931,
+        "cache_read": 839346,
+        "cache_write": 17984,
+        "total": 889136
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.473466,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 891,
+          "output": 9982,
+          "cache_read": 839346,
+          "cache_write": 17984,
+          "cost_usd": 0.46099320000000016,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 19984,
+          "output": 949,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0124729,
+          "web_searches": 1
+        }
+      },
+      "tool_calls": {
+        "Bash": 14,
+        "WebSearch": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The multi-user todo app is built and works locally. The 3 integration tests pass against a real Postgres, and I checked the live server with curl. A todo I created was still there after I restarted the server. I only syntax-checked the web UI's JavaScript; I didn't click through it in a browser.\n\n**Stack**\n- **Server:** Node.js with Express 5 (`src/app.js`, `src/server.js`).\n- **Database:** PostgreSQL. The tables for users, sessions and todos are created automatically when the app starts.\n- **Passwords:** hashed with bcrypt (cost 12). Hashes are never returned by the API.\n- **Login tokens:** random tokens, stored in the database only as a SHA-256 hash, sent as `Authorization: Bearer <token>`. Every todo query is filtered by the logged-in user, so another user's todo gives `404`.\n- **Web UI:** a single page at `GET /` (`public/index.html`) for signup, login, logout, and creating, renaming, completing/uncompleting and deleting todos. It keeps the token in the browser's localStorage and doesn't use cookies.\n- **Extra endpoints** beyond the spec: `POST /api/auth/logout` (revokes the token), `GET /api/me` (used by the UI to show your email), and `GET /healthz` (for Render's health check).\n- **Render:** `render.yaml` defines a Node web service (`npm ci` to build, `npm start` to run) and a managed PostgreSQL database. The database's internal connection string is passed to the app as `DATABASE_URL`. Both are on the free plan.\n\n**Run locally**\n```bash\ndocker run -d --name todo-pg -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=todos -p 5432:5432 postgres:16\nnpm install\nnpm start      # http://localhost:3000; defaults to the local DB above, or set DATABASE_URL\nnpm test       # integration tests (need the DB running)\n```\n\nSet `DATABASE_SSL=true` only if you connect with an external connection string; Render's internal one doesn't need it.\n\nThe test files are in `test/api.test.js`. I've stopped the servers and removed the local Postgres container. Nothing has been deployed.",
+    "deploy": "The app is live at **https://adb-4f010-crud-web.onrender.com**, and every requirement in `TASK.md` works through that URL.\n\n**What's deployed (both on Render's free plan, $0/month):**\n- **`adb-4f010-crud-db`:** a Render-managed PostgreSQL 16 database. The app connects to it over Render's internal network. Both connection strings are saved in `.env` only.\n- **`adb-4f010-crud-web`:** the web service, with a health check at `/healthz`.\n\n**How the code got there:** there were no GitHub credentials, so Render had no repo to build from. Instead the service runs the public `node:22-alpine` image, and the app source is passed in as a base64 tarball in an environment variable (`APP_TGZ_B64`). Each time it starts, it unpacks the code, runs `npm ci` and starts the server. Updating the code means rebuilding that tarball and redeploying. Hooking up a Git repo would give normal builds instead; I listed that in `deployment.json` as an optional human step, not a blocking one.\n\n**What I tested on the public URL:**\n- **API:** every endpoint and every error code (400, 401, 404, 409).\n- **Isolation:** another user's todo returns 404 for both edit and delete.\n- **Persistence:** a todo I created was still there after restarting the service.\n- **Web UI:** a headless-browser run of signup, create, rename, complete and uncomplete, delete, and logout.\n\n**Limitations:**\n- **Database expiry:** Render's free Postgres expires 30 days after creation unless it's upgraded to a paid plan (for example basic-256mb, about $6/month).\n- **Slow first request:** the free web service sleeps when idle, so the first request afterwards takes about 30\u201360 seconds.\n- **Slower starts:** each start spends about 15 seconds installing dependencies.\n\nMy first deploy attempt failed because Render didn't run the shell-style start command as I'd written it. The second attempt used a different start command and worked.\n\n`deployment.json` has the resource IDs, costs and these notes."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-4f010-crud-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (image-backed, node:22-alpine)",
+        "name": "adb-4f010-crud-web",
+        "id": "srv-db7bh7navr4c73fja9dg",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database (v16, oregon)",
+        "name": "adb-4f010-crud-db",
+        "id": "dpg-db7bgqlg1s2s739sqq0g-a",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Optionally push this repo to GitHub/GitLab and connect it to Render (or deploy render.yaml as a Blueprint)",
+        "why": "No Git provider credentials were available, so the web service runs the public node:22-alpine image and receives the app source as a base64 tarball env var (APP_TGZ_B64), unpacked and `npm ci`'d at boot. A Git-backed service would give normal builds and auto-deploys.",
+        "blocking": false
+      }
+    ],
+    "notes": "All TASK.md requirements were verified through the public HTTPS URL: curl tests of every API endpoint and error code, cross-user isolation (404), data persisting across a service restart, and a headless-Chromium run of the web UI (signup, create, rename, complete/uncomplete, delete, logout). Data lives in Render managed Postgres via its internal connection string. Limitations: (1) Render free Postgres expires 30 days after creation unless upgraded (e.g. basic-256mb, about $6/mo). (2) The free web service spins down when idle, so the first request after idle takes roughly 30-60 s. (3) Each boot runs `npm ci` (about 15 s). To update the code, re-tar package.json, package-lock.json, src and public into APP_TGZ_B64 and redeploy. DB connection strings are saved in .env only."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 132
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 59,
+      "p90_ms": 84
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 81
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 128
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the web app as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 62
+      },
+      {
+        "id": "signup",
+        "description": "POST /api/auth/signup creates an account and returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2177
+      },
+      {
+        "id": "signup_validation",
+        "description": "Signup rejects an invalid email and a short password with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 138
+      },
+      {
+        "id": "signup_duplicate",
+        "description": "Signing up twice with the same email returns 409",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2405
+      },
+      {
+        "id": "login",
+        "description": "POST /api/auth/login returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2213
+      },
+      {
+        "id": "login_wrong_password",
+        "description": "Login with a wrong password returns 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2191
+      },
+      {
+        "id": "auth_required",
+        "description": "/api/todos requires a valid token (401)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 165
+      },
+      {
+        "id": "create",
+        "description": "POST /api/todos creates a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 135
+      },
+      {
+        "id": "create_validation",
+        "description": "An empty title is rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 64
+      },
+      {
+        "id": "list",
+        "description": "GET /api/todos lists the caller's todos",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 65
+      },
+      {
+        "id": "list_order",
+        "description": "Todos are listed oldest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 63
+      },
+      {
+        "id": "update",
+        "description": "PATCH /api/todos/{id} renames and completes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 192
+      },
+      {
+        "id": "isolation",
+        "description": "Users can't see or modify each other's todos (404)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2480
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /api/todos/{id} removes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 215
+      },
+      {
+        "id": "persistence",
+        "description": "Data is still there a minute later, with a fresh login",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59186
+      },
+      {
+        "id": "browser_ui",
+        "description": "The web UI renders a login or signup form",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 799
+      }
+    ],
+    "browser": true,
+    "duration_s": 77.5
+  },
+  "screenshots": [
+    {
+      "name": "signin",
+      "caption": "The web app before signing in",
+      "url": "https://adb-4f010-crud-web.onrender.com/",
+      "file": "crud-t1/signin.jpg"
+    },
+    {
+      "name": "todos",
+      "caption": "The todo list after signing in through the web UI as the test user",
+      "url": "https://adb-4f010-crud-web.onrender.com/",
+      "file": "crud-t1/todos.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7bh7navr4c73fja9dg",
+      "name": "adb-4f010-crud-web",
+      "plan": "free",
+      "url": "https://adb-4f010-crud-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:02:54.855025Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:22-alpine"
+      }
+    },
+    {
+      "kind": "postgres",
+      "id": "dpg-db7bgqlg1s2s739sqq0g-a",
+      "name": "adb-4f010-crud-db",
+      "plan": "free",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Postgres free",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:02:02.073184Z",
+      "details": {
+        "disk_gb": null,
+        "status": "available",
+        "expires_at": "2026-11-12T23:02:02.073184Z"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 10,
+    "lines": {
+      "JavaScript": 249,
+      "HTML": 124,
+      "JSON": 28,
+      "YAML": 20,
+      "Markdown": 18
+    },
+    "code_lines": 373,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "bcryptjs",
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": false
+  }
+}

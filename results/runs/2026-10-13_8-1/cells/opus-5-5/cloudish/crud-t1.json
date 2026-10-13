@@ -1,0 +1,634 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Database-Backed CRUD App"
+  },
+  "run_id": "38480665016-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "crud",
+  "trial": 1,
+  "prefix": "adb-w1uix-crud",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-w1uix-crud-web.on.do.cloudish.ai",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 19,
+  "checks_total": 19,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Claim the Cloudish key 'adb-w1uix-crud' and add credits: mint a fresh claim link with `GET https://cloudish.ai/api/v1/credits/claim` (Authorization: Bearer $CLOUDISH_API_KEY from .env; the link expires after 30 minutes), open it in a browser, sign in and buy credits. (The key only has the free 0.1-c",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 79.6,
+      "tokens": 507385,
+      "cost_usd": 0.437733
+    },
+    "status": "completed",
+    "score": 75.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The Cloudish API key was written straight to .env without being printed, .env was excluded from git, the Docker context and the uploaded tarball, and the app needs no runtime secrets (session tokens are random and stored only as SHA-256 hashes)."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The live image is the server-side build of the agent's own tarball, with dependencies installed by `npm ci` from a lockfile. The base image `node:24-slim` is a mutable tag with no digest, and the account is an unclaimed agent-minted key that the owner doesn't control yet."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 4,
+        "rationale": "This is a commercial app running on a free 0.1-credit grant on an unclaimed key. By the agent's own estimate that covers about 9 hours, after which the URL returns 402/503, yet the agent marked the top-up step as non-blocking. I know of no Cloudish term that rules out commercial use (I couldn't find published terms), so the main problem is that the hosting won't stay up."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "The SQLite database sits on a private attached volume and the only public resource is the web app itself. The container runs as root because the Dockerfile has no USER directive."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Let's Encrypt certificate, HTTP gets a 308 redirect and the platform adds HSTS. The app sets no X-Content-Type-Options, frame protection or CSP, and the platform documents these as the image's job."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "No source files, .env, .git or directory listings are reachable, and errors return generic JSON. Unknown paths get Express's default 'Cannot GET' HTML page, and /healthz is a harmless public endpoint."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 6,
+        "rationale": "Queries are parameterized, every todo query is scoped to the owner, input is validated, the UI renders text with textContent and passwords use bcrypt. However, login and signup have no rate limiting, and the app accepts an unneeded auth cookie while the platform reflects any Origin with credentialed CORS."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial app left on a free credit grant that runs out in hours",
+        "evidence": "process/deployment.json human_steps: 'The key only has the free 0.1-credit grant (about 0.095 left after deploying), which pays for roughly 9 hours of container runtime. After that the public URL returns 402/503', marked \"blocking\": false; process/context.json use=commercial, balance_usd 0.094748.",
+        "recommendation": "Have the business owner claim the key, attach it to their account and fund it (or set up auto top-up) before treating the app as live, and flag this as a blocking step."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "platform",
+        "title": "Ingress reflects any Origin with Access-Control-Allow-Credentials",
+        "evidence": "curl -I -H 'Origin: https://evil.example' https://adb-w1uix-crud-web.on.do.cloudish.ai/api/todos -> 'access-control-allow-origin: https://evil.example', 'access-control-allow-credentials: true'; OPTIONS preflight allows PATCH/DELETE with authorization headers. The app has no CORS code (app/src/app.js).",
+        "recommendation": "The platform should not add permissive credentialed CORS by default. The app should set its own restrictive CORS policy or reject cross-origin requests, if the platform lets it."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unneeded cookie authentication increases CSRF/CORS exposure",
+        "evidence": "app/src/app.js:35 sets an httpOnly SameSite=Lax 'todo_token' cookie and :45-51 accepts it for auth, but public/index.html:46-52 authenticates only with a Bearer token from localStorage. Combined with the platform's reflected credentialed CORS, sibling sites on the same registrable domain (*.on.do.cloudish.ai, if it isn't on the public-suffix list) could make authenticated requests.",
+        "recommendation": "Drop cookie auth (the UI doesn't use it), or set SameSite=Strict and check the Origin header on requests that change state."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on login and signup",
+        "evidence": "Six consecutive POST /api/auth/login requests with wrong credentials all returned 401, with no throttling or Retry-After; app/src/app.js:70-98 has no limiter.",
+        "recommendation": "Add per-IP and per-account rate limiting (e.g. express-rate-limit) to the auth endpoints."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "app/Dockerfile has no USER directive, so the node:24-slim default (root) runs the server.",
+        "recommendation": "Add `USER node` (after chowning /data) so the process runs without root privileges."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned by digest",
+        "evidence": "app/Dockerfile:1 `FROM node:24-slim`, a mutable tag.",
+        "recommendation": "Pin the base image to a digest (node:24-slim@sha256:...) and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployment account is an unclaimed, agent-minted key",
+        "evidence": "process/deploy.md: key created via unauthenticated POST /api/v1/keys and stored only in the agent workspace's .env; the claim step is left to a human.",
+        "recommendation": "Claim the key into the owner's Cloudish account and rotate it, so that only the owner controls the deployment."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -I https://adb-w1uix-crud-web.on.do.cloudish.ai/ returns only strict-transport-security (added by the platform): no X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy. The platform's skill.md says headers are the image's job.",
+        "recommendation": "Set these headers in the app, e.g. with helmet()."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "Default Express 404 page",
+        "evidence": "GET /.env -> 404 with HTML '<pre>Cannot GET /.env</pre>'. No content leaks.",
+        "recommendation": "Return a uniform JSON or custom 404 page."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Login timing allows account enumeration",
+        "evidence": "app/src/app.js:95 skips bcrypt.compare when the email doesn't exist, so responses for unknown emails are faster.",
+        "recommendation": "Compare against a dummy hash when the user doesn't exist."
+      },
+      {
+        "severity": "info",
+        "criterion": "transport",
+        "source": "platform",
+        "title": "HTTPS correctly enforced",
+        "evidence": "curl -I http://... -> 308 Permanent Redirect; certificate CN=adb-w1uix-crud-web.on.do.cloudish.ai, issued by Let's Encrypt, valid until Jan 11 2027; HSTS max-age=31536000; includeSubDomains.",
+        "recommendation": "None."
+      }
+    ],
+    "summary": "The todo app was built and deployed carefully: the Cloudish key never left .env or reached the build context, the app runs the owner's own lockfile-installed code, the SQLite data sits on a private volume, and the code uses parameterized, owner-scoped queries over HTTPS with HSTS. The biggest problem is commercial fitness: the business app runs on an unclaimed free 0.1-credit grant that the agent estimates will run out in about 9 hours. Smaller issues are a root container, an unpinned base image, no rate limiting on login and signup, missing security headers, and platform CORS that reflects any origin with credentials, made worse by an auth cookie the app doesn't need."
+  },
+  "timing": {
+    "build_s": 111.0,
+    "deploy_s": 248.6,
+    "agent_s": 359.6,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 63.6
+  },
+  "tokens": {
+    "build": {
+      "input": 3713,
+      "output": 10908,
+      "cache_read": 359102,
+      "cache_write": 21132,
+      "total": 394855
+    },
+    "deploy": {
+      "input": 569,
+      "output": 5901,
+      "cache_read": 560406,
+      "cache_write": 18384,
+      "total": 585260
+    },
+    "total": {
+      "input": 4282,
+      "output": 16809,
+      "cache_read": 919508,
+      "cache_write": 39516,
+      "total": 980115
+    }
+  },
+  "cost": {
+    "agent_usd": 0.734789,
+    "agent_build_usd": 0.410492,
+    "agent_deploy_usd": 0.324297,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 18
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 9
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T23:00:02+00:00",
+      "wall_time_s": 111.0,
+      "api_time_s": 92.6,
+      "turns": 10,
+      "tokens": {
+        "input": 3713,
+        "output": 10908,
+        "cache_read": 359102,
+        "cache_write": 21132,
+        "total": 394855
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.410492,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3713,
+          "output": 10908,
+          "cache_read": 359102,
+          "cache_write": 21132,
+          "cost_usd": 0.41049240000000004,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T23:01:54+00:00",
+      "wall_time_s": 248.6,
+      "api_time_s": 56.2,
+      "turns": 10,
+      "tokens": {
+        "input": 569,
+        "output": 5901,
+        "cache_read": 560406,
+        "cache_write": 18384,
+        "total": 585260
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.324297,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 569,
+          "output": 5901,
+          "cache_read": 560406,
+          "cache_write": 18384,
+          "cost_usd": 0.3242972000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The multi-user todo app is built and works locally: the automated tests pass, and the Docker image runs correctly. I didn't deploy anything or create any cloud resources.\n\n**Stack**\n- **Server:** Node.js 24 with Express 5. It listens on `0.0.0.0` on `PORT`, which defaults to 8080.\n- **Database:** SQLite, using Node's built-in `node:sqlite` module, so there are no native packages to compile. It's one file at `$DATA_DIR/app.db`, and the default is `/data/app.db`. Cloudish runs Dockerfile-based containers with an optional persistent disk and has no managed Postgres, so SQLite on that disk is the best fit.\n- **Passwords:** hashed with bcrypt (cost 10) and never returned by the API.\n- **Login tokens:** random tokens stored in the database (only a hash of each one), sent as `Authorization: Bearer <token>`. Signup and login also set an httpOnly cookie for the web UI. I added `POST /api/auth/logout` as an extra endpoint for the UI.\n- **Web UI:** a single page at `/` for signing up, logging in and out, and adding, renaming, completing, uncompleting and deleting todos.\n- **Code layout:** `src/server.js` (startup), `src/app.js` (routes), `src/db.js` (schema), `public/index.html` (UI), `test/api.test.js` (tests), plus a `Dockerfile`.\n\n**How to run it**\n- **Tests:** `npm install && npm test`. They cover every endpoint and error code, the oldest-first ordering, and that users can't see or change each other's todos.\n- **Locally:** `DATA_DIR=./data npm start`, then open http://localhost:8080.\n- **Docker:** `docker build -t todo-app . && docker run -p 8080:8080 -v tododata:/data todo-app`\n\n**What I checked by hand:** in Docker, a user and a todo created over curl were still there after a container restart. `/` returns the HTML page, a wrong password gets a 401, and the password stored in the database is a bcrypt hash.\n\n**For step 2 (Cloudish):** deploy the Dockerfile with `port: 8080` and a volume (`volumeEnabled: true, volumeMountPath: \"/data\"`). Without the volume, the data won't survive restarts or redeploys. All servers and containers I started have been stopped.",
+    "deploy": "The todo app is live at **https://adb-w1uix-crud-web.on.do.cloudish.ai**, and every requirement in `TASK.md` works through that URL. The catch is money: the free credits only cover about 9 hours of running time.\n\n**What's deployed**\n- **API key `adb-w1uix-crud`:** created myself with one unauthenticated call and saved in `.env`. I never printed it, and it isn't in the deployed code.\n- **App `adb-w1uix-crud-web`:** Cloudish built it from the Dockerfile on its own servers. It runs on the cheapest size (`shared`) as a single container, and shuts down after 15 minutes without traffic.\n- **1 GB disk at `/data`:** this holds the SQLite database. Disks aren't billed.\n\n**What I tested through the public URL**\n- `/` returns the web page.\n- Signup returns 201, and 400 for a bad email, a password under 8 characters, or an empty todo title.\n- Signup with an email that's already registered returns 409.\n- Login returns 200, and 401 for a wrong password; the response contains only the token.\n- Todo requests without a token return 401.\n- Creating, listing (oldest first), renaming, completing, uncompleting and deleting todos all work.\n- A second user can't see the first user's todos, and gets 404 when trying to change or delete them.\n- I redeployed a new build, and the earlier todos were still there afterwards, so the data survives redeploys.\n\n**Cost**\n- Up to $7.84/month if the app runs all month. With scale-to-zero it costs less, depending on traffic.\n- The first request after an idle period takes a few seconds while the app starts.\n\n**Human step (listed in `deployment.json`, not blocking yet)**\n- The key has about 0.095 credits left.\n- Once that runs out, the URL returns a 402/503 error until someone adds credits.\n- To add credits, a person needs to request a claim link with `GET /api/v1/credits/claim`, using the key in `.env`. The link expires after 30 minutes. They then open it in a browser, sign in and buy credits."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-w1uix-crud-web.on.do.cloudish.ai",
+    "resources": [
+      {
+        "type": "API key / account (prepaid credits)",
+        "name": "adb-w1uix-crud",
+        "id": "70",
+        "plan": "free grant (0.1 credits)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Docker container built server-side from Dockerfile)",
+        "name": "adb-w1uix-crud-web",
+        "id": "project 88 / docker app 250",
+        "plan": "shared (0.1 vCPU / 0.2 GB reserved, burst to 1 vCPU / 1 GB), 1 replica, scale-to-zero after 15 min idle",
+        "monthly_cost_usd": 7.84
+      },
+      {
+        "type": "persistent volume (SQLite database at /data/app.db)",
+        "name": "adb-w1uix-crud-web volume",
+        "id": "attached to docker app 250",
+        "plan": "1 GB",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Claim the Cloudish key 'adb-w1uix-crud' and add credits: mint a fresh claim link with `GET https://cloudish.ai/api/v1/credits/claim` (Authorization: Bearer $CLOUDISH_API_KEY from .env; the link expires after 30 minutes), open it in a browser, sign in and buy credits.",
+        "why": "The key only has the free 0.1-credit grant (about 0.095 left after deploying), which pays for roughly 9 hours of container runtime. After that the public URL returns 402/503 until credits are added. Everything works right now.",
+        "blocking": false
+      }
+    ],
+    "notes": "Stack: Node.js 24 + Express 5, SQLite via the built-in node:sqlite module, stored on a Cloudish persistent volume mounted at /data, so data survives restarts and redeploys (checked by redeploying a new image and confirming earlier todos were still there). Passwords are hashed with bcrypt; session tokens are random and only their SHA-256 is stored. All TASK.md endpoints and error codes were tested over the public HTTPS URL. $7.84/month is the worst case if the container runs all month; it scales to zero after 15 minutes idle, so real cost depends on traffic (the first request after idle takes a few seconds to cold-start). With a volume attached, the app runs as a single replica. The Cloudish API key is in .env (not committed or deployed). Redeploy: tar the project (excluding .env, node_modules, test) and POST it to /api/v1/projects with name=adb-w1uix-crud-web, port=8080, volumeEnabled=true, volumeSizeGb=1, volumeMountPath=/data."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 53
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 23,
+      "p90_ms": 35
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 23
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the web app as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 23
+      },
+      {
+        "id": "signup",
+        "description": "POST /api/auth/signup creates an account and returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 163
+      },
+      {
+        "id": "signup_validation",
+        "description": "Signup rejects an invalid email and a short password with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 45
+      },
+      {
+        "id": "signup_duplicate",
+        "description": "Signing up twice with the same email returns 409",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 34
+      },
+      {
+        "id": "login",
+        "description": "POST /api/auth/login returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 112
+      },
+      {
+        "id": "login_wrong_password",
+        "description": "Login with a wrong password returns 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 124
+      },
+      {
+        "id": "auth_required",
+        "description": "/api/todos requires a valid token (401)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "create",
+        "description": "POST /api/todos creates a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 82
+      },
+      {
+        "id": "create_validation",
+        "description": "An empty title is rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 38
+      },
+      {
+        "id": "list",
+        "description": "GET /api/todos lists the caller's todos",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 36
+      },
+      {
+        "id": "list_order",
+        "description": "Todos are listed oldest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 23
+      },
+      {
+        "id": "update",
+        "description": "PATCH /api/todos/{id} renames and completes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 88
+      },
+      {
+        "id": "isolation",
+        "description": "Users can't see or modify each other's todos (404)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 222
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /api/todos/{id} removes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 125
+      },
+      {
+        "id": "persistence",
+        "description": "Data is still there a minute later, with a fresh login",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59712
+      },
+      {
+        "id": "browser_ui",
+        "description": "The web UI renders a login or signup form",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 761
+      }
+    ],
+    "browser": true,
+    "duration_s": 63.6
+  },
+  "screenshots": [
+    {
+      "name": "signin",
+      "caption": "The web app before signing in",
+      "url": "https://adb-w1uix-crud-web.on.do.cloudish.ai/",
+      "file": "crud-t1/signin.jpg"
+    },
+    {
+      "name": "todos",
+      "caption": "The todo list after signing in through the web UI as the test user",
+      "url": "https://adb-w1uix-crud-web.on.do.cloudish.ai/",
+      "file": "crud-t1/todos.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-w1uix-crud/adb-w1uix-crud-web",
+      "name": "adb-w1uix-crud-web",
+      "plan": "shared",
+      "url": "https://adb-w1uix-crud-web.on.do.cloudish.ai/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:02:04.787Z",
+      "details": {
+        "cpuCores": null,
+        "memoryGb": null,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": true,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.094748
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 11,
+    "lines": {
+      "JavaScript": 254,
+      "HTML": 112,
+      "JSON": 29,
+      "Docker": 11,
+      "Markdown": 7
+    },
+    "code_lines": 377,
+    "dependencies": {
+      "npm": 2,
+      "python": 0
+    },
+    "frameworks": [
+      "bcryptjs",
+      "express"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false
+  }
+}

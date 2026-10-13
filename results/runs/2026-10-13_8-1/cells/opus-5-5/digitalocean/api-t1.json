@@ -1,0 +1,632 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38480665016-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-r8zod-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "partial",
+  "failure_stage": "verify",
+  "url": "https://adb-r8zod-api-dwfel.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 0.95,
+  "checks_passed": 19,
+  "checks_total": 20,
+  "required_failed": [
+    "isolation"
+  ],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": false
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 53.7,
+      "tokens": 282135,
+      "cost_usd": 0.319092
+    },
+    "status": "completed",
+    "score": 84.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS is stored as an encrypted App Platform SECRET env var, and DB credentials and the CA come from platform bindings. Keys were never echoed, written to source or baked into the image. The temporary spec holding them was written under umask 077 and then deleted. The only nit is a 30-day registry login left on the build host."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The image was built from the reviewed source with npm ci and a lockfile, and pushed to the owner's own DOCR registry. The base image (node:22-alpine) and the deployed image tag (v1) are mutable and not pinned by digest, and the doctl binary was downloaded without checksum verification."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 9,
+        "rationale": "This is a personal side project on a paid Basic App Platform service with a paid dev Postgres database. As far as I know, DigitalOcean's terms don't restrict personal use and nothing here sleeps or expires. The dev database has no backups or HA, which is acceptable for this use."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 8,
+        "rationale": "The container runs as the non-root node user, the database is an App Platform-managed attached database used over CA-verified TLS, and only the HTTP service is public. Dev databases can't be restricted with trusted sources, so the DB endpoint is likely reachable from the internet, guarded only by its credentials (I'm not certain of DigitalOcean's current dev-DB network model)."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS uses a valid Google Trust Services certificate and HTTP returns 301 to HTTPS. Responses carry no HSTS, X-Content-Type-Options, frame protection or CSP, and the app could have set these itself."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Only the specified endpoints respond. Probes for .env, .git, package.json, source and admin/debug paths return a JSON 404, errors are generic JSON without stack traces, and x-powered-by is disabled."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Queries are parameterized, input is type- and length-checked, notes are scoped by a hashed key owner (other keys get 404), the docs HTML is escaped and per-key rate limiting works. Failed-auth attempts aren't rate limited, and the limiter is in memory only."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image and deployed image tag not pinned by digest",
+        "evidence": "app/Dockerfile:1 `FROM node:22-alpine`; app/.do/app.yaml image `tag: v1` (mutable tag in DOCR)",
+        "recommendation": "Pin the base image to node:22-alpine@sha256:<digest>, and deploy by an immutable tag or digest per build (e.g. the git SHA)."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deploy CLI downloaded without integrity verification",
+        "evidence": "process/deploy.md:4 `curl -sL https://github.com/digitalocean/doctl/releases/download/v1.146.0/doctl-1.146.0-linux-amd64.tar.gz | tar xz && sudo mv doctl /usr/local/bin/`",
+        "recommendation": "Verify the release checksum (doctl-1.146.0-checksums.sha256) before installing, or use a package manager or pinned action."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Image built and pushed from a local workstation rather than from a tracked source",
+        "evidence": "process/deploy.md:24 `docker build ... && docker push registry.digitalocean.com/adb-r8zod-api/adb-r8zod-api-api:v1`; there's no repository or CI linkage in the app spec",
+        "recommendation": "Build from a version-controlled repo (App Platform git source or CI) so the running image can be traced to a commit."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "platform",
+        "title": "Dev database can't be restricted to trusted sources",
+        "evidence": "process/resources.json: databases `adb-r8zod-api-db` engine PG as an App Platform dev database (app/.do/app.yaml `production: false`)",
+        "recommendation": "For stronger isolation, use a managed database cluster with trusted sources limited to the app (or VPC). This is acceptable for a personal project."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers (HSTS, nosniff, frame protection, CSP)",
+        "evidence": "curl -sD - https://adb-r8zod-api-dwfel.ondigitalocean.app/health and curl -sI /docs: headers contain only content-type, etag, cache-control and Cloudflare headers; no strict-transport-security, x-content-type-options, x-frame-options or content-security-policy",
+        "recommendation": "Add helmet (or set the headers manually) in src/app.js, including HSTS and a restrictive CSP for /docs."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unauthenticated / invalid-key requests are not rate limited",
+        "evidence": "app/src/app.js:89-93 returns 401 before limiter.check(key) runs, so invalid-key guesses are unlimited",
+        "recommendation": "Apply a per-IP limit to failed authentication attempts (keys should also be long and random)."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "In-memory rate limiter resets on restart and won't scale across instances",
+        "evidence": "app/src/rateLimit.js:4 `const hits = new Map()`; acknowledged in process/deployment.json notes",
+        "recommendation": "Back the limiter with a shared store (Redis or Postgres) if the service is scaled out."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Registry login credentials left on the build host for 30 days",
+        "evidence": "process/deploy.md:24 `doctl registry login` -> 'Notice: Login valid for 30 days'",
+        "recommendation": "Use `doctl registry login --expiry-seconds 600` or log out after pushing."
+      }
+    ],
+    "summary": "The Notes API was built and deployed carefully. API keys live in an encrypted App Platform SECRET, nothing leaked into logs, files or the image, the container runs as non-root, the database uses CA-verified TLS, and the live app exposes only the specified endpoints with clean JSON errors over valid HTTPS. The weaknesses are minor: the base image and deployed tag aren't pinned by digest, the image was built and pushed from a local machine, there are no security headers, failed-auth attempts aren't rate limited, and the dev database can't be restricted to trusted sources."
+  },
+  "timing": {
+    "build_s": 163.5,
+    "deploy_s": 486.8,
+    "agent_s": 650.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 72.7
+  },
+  "tokens": {
+    "build": {
+      "input": 3827,
+      "output": 16056,
+      "cache_read": 466734,
+      "cache_write": 24697,
+      "total": 511314
+    },
+    "deploy": {
+      "input": 460,
+      "output": 4807,
+      "cache_read": 388822,
+      "cache_write": 35832,
+      "total": 429921
+    },
+    "total": {
+      "input": 4287,
+      "output": 20863,
+      "cache_read": 855556,
+      "cache_write": 60529,
+      "total": 941235
+    }
+  },
+  "cost": {
+    "agent_usd": 0.908164,
+    "agent_build_usd": 0.55326,
+    "agent_deploy_usd": 0.354904,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 12.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 12
+  },
+  "activity": {
+    "turns": {
+      "build": 12,
+      "deploy": 8
+    },
+    "tool_calls": {
+      "Bash": 18
+    },
+    "shell_commands": {
+      "build": 11,
+      "deploy": 7
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T23:16:31+00:00",
+      "wall_time_s": 163.5,
+      "api_time_s": 134.4,
+      "turns": 12,
+      "tokens": {
+        "input": 3827,
+        "output": 16056,
+        "cache_read": 466734,
+        "cache_write": 24697,
+        "total": 511314
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.55326,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3827,
+          "output": 16056,
+          "cache_read": 466734,
+          "cache_write": 24697,
+          "cost_usd": 0.5532598000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T23:19:15+00:00",
+      "wall_time_s": 486.8,
+      "api_time_s": 51.5,
+      "turns": 8,
+      "tokens": {
+        "input": 460,
+        "output": 4807,
+        "cache_read": 388822,
+        "cache_write": 35832,
+        "total": 429921
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.354904,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 460,
+          "output": 4807,
+          "cache_read": 388822,
+          "cache_write": 35832,
+          "cost_usd": 0.3549044000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 7
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I built the Notes API and it works locally. The 5 automated tests pass, and I checked every endpoint with curl against the Docker image. The notes were still there after restarting the container, wrong or other keys got 401/404, and request 61 within a minute got a 429 while a second key still went through.\n\n**Stack:** Node.js with Express 5 and a PostgreSQL database (on DigitalOcean that will be a managed Postgres database). It ships as a Docker image that DigitalOcean App Platform can build and run.\n\n- `src/app.js` has the routes, the key check, the per-key rate limit and input validation.\n- `src/db.js` handles the database connection, including the encrypted connection DigitalOcean's databases require. The notes table is created automatically on startup.\n- `src/openapi.js` holds the OpenAPI document and the self-contained HTML page served at `/docs`.\n- `test/api.test.js` contains the automated tests.\n- `.do/app.yaml` is a draft deployment config for step 2: the API service, a managed Postgres 16 database wired in through `${db.DATABASE_URL}` and `${db.CA_CERT}`, and a health check on `/health`. Before deploying, it still needs the GitHub repo filled in and real values for `API_KEYS`.\n\n**Choices I made where the spec was open:**\n- `content` is required on create (an empty string is allowed); `tags` defaults to `[]`.\n- A `PATCH` with no recognised fields gets a 400.\n- Keys are stored in the database only as hashes, never in plain text.\n- The rate limit is kept in the server's memory. That is exact with one instance; with several, each would enforce its own limit.\n\n**To run it:**\n```bash\ndocker run -d --name notes-pg -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=notes -p 5432:5432 postgres:16-alpine\nnpm ci\nDATABASE_URL=postgres://postgres:pg@localhost:5432/notes API_KEYS=key-one,key-two npm start   # port 8080 (or $PORT)\nnpm test\n```\nOr with Docker: `docker build -t notes-api .`, then run it with `DATABASE_URL` and `API_KEYS` set.\n\nI've stopped and removed all the containers I started.",
+    "deploy": "The Notes API is live at **https://adb-r8zod-api-dwfel.ondigitalocean.app**, and I tested every requirement in `TASK.md` through that URL.\n\n**What's running (about $12/month):**\n- **Container registry** `adb-r8zod-api`, on the free starter tier. It holds the app's Docker image.\n- **App** `adb-r8zod-api` on DigitalOcean App Platform, running one instance of the smallest paid size ($5/month). HTTPS comes on the default `ondigitalocean.app` address.\n- **Database** `adb-r8zod-api-db`, an App Platform PostgreSQL 16 \"dev database\" ($7/month). This was cheaper than a standalone managed Postgres database (about $15/month).\n- **API keys:** `API_KEYS` is set to exactly the keys in `BENCH_API_KEYS`, stored as an encrypted secret. The key values aren't in any file; the temporary config file that held them during deployment has been deleted.\n\n**Results through the public URL:**\n- `/health`, `/openapi.json` and `/docs` each return 200.\n- A missing or unknown key gets 401.\n- Create, read, update, delete and the `tag` filter all work, and an empty title gets 400.\n- Another key's note gets 404.\n- A note was still there after I forced a full rebuild and redeploy.\n- A burst of 62 requests from one key started getting 429s after the limit, with a `Retry-After` header.\n\n**Limitation:** the rate-limit counts are held in the server's memory. That's exact with the single instance, but the counts reset whenever the app restarts or redeploys, and running several instances would make it a limit per instance.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty. I didn't create any new credentials, so `.env` is empty. I also updated `.do/app.yaml` to deploy from the registry image instead of a GitHub repo; to ship a code change, push a new image tag and update it in that file."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-r8zod-api-dwfel.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app (web service, Docker image)",
+        "name": "adb-r8zod-api / service adb-r8zod-api-api",
+        "id": "8a789613-c40b-450e-8f92-87050f396990",
+        "plan": "apps-s-1vcpu-0.5gb (Basic, 1 instance)",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "PostgreSQL 16 database (App Platform dev database)",
+        "name": "adb-r8zod-api-db",
+        "id": "attached to app 8a789613-c40b-450e-8f92-87050f396990",
+        "plan": "dev database (512 MiB RAM, 1 GiB storage)",
+        "monthly_cost_usd": 7
+      },
+      {
+        "type": "Container registry",
+        "name": "adb-r8zod-api",
+        "id": "registry.digitalocean.com/adb-r8zod-api",
+        "plan": "starter (free)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 12,
+    "human_steps": [],
+    "notes": "Image registry.digitalocean.com/adb-r8zod-api/adb-r8zod-api-api:v1 is built from the local Dockerfile and deployed via App Platform (spec in .do/app.yaml; API_KEYS is injected as an encrypted SECRET env var set to BENCH_API_KEYS at deploy time). Notes persist in Postgres and survived a forced redeploy. The rate limit (60 req/min per key, sliding window) is kept in process memory: exact with the single instance; it resets when the instance restarts or redeploys, and scaling to several instances would make it per instance. To redeploy code: rebuild/push a new tag and update the image tag in the app spec."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 147
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 119,
+      "p90_ms": 137
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 126
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 129
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 117
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 125
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 98
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 130
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 112
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 510
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 200
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 293
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 340
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 106
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 104
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "failed",
+        "detail": "GET /v1/notes/426b46a1-73ce-4d8e-b632-8ec85e31e180 returned 429, expected 404 or 403: {\"error\":\"Rate limit exceeded; retry in 23 seconds\"}",
+        "duration_ms": 125
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 466
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 58616
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 7141
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 119
+      }
+    ],
+    "browser": true,
+    "duration_s": 72.7
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-r8zod-api-dwfel.ondigitalocean.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "8a789613-c40b-450e-8f92-87050f396990",
+      "name": "adb-r8zod-api",
+      "plan": "adb-r8zod-api-api: apps-s-1vcpu-0.5gb x 1, adb-r8zod-api-db: dev database",
+      "url": "https://adb-r8zod-api-dwfel.ondigitalocean.app",
+      "monthly_usd": 12.0,
+      "pricing": "adb-r8zod-api-api: apps-s-1vcpu-0.5gb x 1; adb-r8zod-api-db: dev database",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:20:08Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-r8zod-api",
+      "name": "adb-r8zod-api",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:19:36Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 564,
+      "JSON": 32,
+      "YAML": 31,
+      "Markdown": 23,
+      "Docker": 10
+    },
+    "code_lines": 574,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      ".do/app.yaml"
+    ],
+    "git_repo": false
+  }
+}

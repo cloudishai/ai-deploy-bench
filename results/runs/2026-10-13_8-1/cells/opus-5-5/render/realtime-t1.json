@@ -1,0 +1,593 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "38480665016-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-p9gs9-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-p9gs9-realtime-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 13,
+  "checks_total": 13,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 68.2,
+      "tokens": 369017,
+      "cost_usd": 0.352621
+    },
+    "status": "completed",
+    "score": 67.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "The Render API key and database credentials never appear in the transcripts, source, or the uploaded bundle. DATABASE_URL is a Render service environment variable, and the bundle (built with git archive from an explicit file list) leaves out .env. Minor points: the connection string was set as a literal env var rather than a fromDatabase link, and the external connection string sits in a local .env file."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "The live service's recorded source is a third-party public repo (render-examples/express-hello-world, unpinned branch main). The real code arrives as an opaque base64 tarball in a Render secret file and is unpacked by a custom build command. What runs can't be traced to any owner-controlled repo or commit. Dependencies are locked with package-lock.json and npm ci, but the Node version is pinned only to the major version."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "Render's free tier is fine for a personal hobby-club app. However, the free Postgres the app depends on expires on 2026-11-12. After that, store.init() will fail at startup and the service will stop working. Spin-down after 15 minutes idle also drops live WebSocket sessions. Both limits were disclosed but not addressed."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 6,
+        "rationale": "The service runs on Render's managed native runtime and the app reads only what it needs. The Postgres database was created through the API without an ipAllowList. Render's default is to accept external connections from any IP (password-protected), even though the app only needs the internal URL."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP returns 301 to HTTPS. The app sets no HSTS, X-Content-Type-Options, frame protection, or CSP, even though it writes its own response headers and could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Requests for .env, .git/config, source files, the secret bundle and other paths return the app's JSON 404. Errors are generic, with no stack traces. Only /healthz is extra, and it returns {\"ok\":true}."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 6,
+        "rationale": "Input validation is solid: text, user and room lengths are checked, the body is capped at 16 KB, WebSocket payloads at 64 KB, SQL is parameterized, and the UI renders with textContent, so there is no XSS. However, the public endpoints have no rate limiting or connection caps. The per-room cache never evicts, and the WebSocket upgrade doesn't check the Origin header."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Production built from a third-party example repo with code injected through a secret file",
+        "evidence": "process/deploy.md service creation: \"repo\":\"https://github.com/render-examples/express-hello-world\",\"branch\":\"main\" with buildCommand 'base64 -d /etc/secrets/app.b64 > /tmp/app.tgz; find . -mindepth 1 -maxdepth 1 ! -name app.b64 -exec rm -rf {} +; tar xzf /tmp/app.tgz; npm ci --omit=dev'; process/resources.json source = render-examples/express-hello-world",
+        "recommendation": "Push the app to an owner-controlled Git repo, or deploy a digest-pinned image from an owner-controlled registry, and have Render build from that pinned commit. Don't route code through secret files under someone else's repo."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Free Postgres expires in 30 days and the app fails to start without it",
+        "evidence": "process/resources.json expires_at 2026-11-12T23:32:51Z; app/store.js lines 13-32: init() runs CREATE TABLE against DATABASE_URL and server.js main() exits on error",
+        "recommendation": "Use a paid Postgres plan (Basic) or a persistent alternative. At minimum, fall back to memory or degrade gracefully when the database is gone."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres likely reachable from the internet",
+        "evidence": "process/deploy.md: POST /v1/postgres body has no ipAllowList. Render's default allows external connections from 0.0.0.0/0. The app uses only internalConnectionString.",
+        "recommendation": "Set the database ipAllowList to an empty list (internal-only), or restrict it to the specific admin IPs needed."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Free web service spins down when idle",
+        "evidence": "process/deployment.json notes: 'sleeps after about 15 minutes idle ... open WebSockets are dropped'",
+        "recommendation": "Use the Starter plan if the club needs the chat to be always available."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "GET https://adb-p9gs9-realtime-web.onrender.com/?room=general returns only content-type, cache-control, and the platform's rndr-id/server/cf headers. There is no strict-transport-security, x-content-type-options, x-frame-options/frame-ancestors, or content-security-policy (server.js lines 80-84, 113).",
+        "recommendation": "Add HSTS, X-Content-Type-Options: nosniff, a CSP with frame-ancestors 'none', and Referrer-Policy in sendJson and the index response."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Runtime version only loosely pinned",
+        "evidence": "process/deploy.md envVars NODE_VERSION=\"22\"; app/package.json engines node >=20",
+        "recommendation": "Pin an exact Node version (for example 22.x.y) through NODE_VERSION or .node-version."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting or connection caps on public endpoints",
+        "evidence": "app/server.js lines 136-149 (POST messages), 151-172 (SSE) and 191-200 (WS upgrade) have no per-client limits. app/store.js line 18: the cache Map gets one entry for every room name requested and never evicts.",
+        "recommendation": "Add per-IP rate limits on posting and connections, cap concurrent SSE/WS connections, and bound or LRU-evict the room cache."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "WebSocket upgrade doesn't check the Origin header",
+        "evidence": "app/server.js lines 191-200: handleUpgrade is called without looking at req.headers.origin",
+        "recommendation": "Accept upgrades only from the app's own origin."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "DB connection string copied as a literal env var; TLS verification disabled",
+        "evidence": "process/deploy.md: envVars DATABASE_URL value = ci[\"internalConnectionString\"]; app/store.js line 19: ssl { rejectUnauthorized: false }",
+        "recommendation": "Use fromDatabase or an env group link so credentials rotate with the database, and verify TLS when connecting externally."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "No sensitive files or debug endpoints exposed",
+        "evidence": "GET /.env, /.git/config, /package.json, /server.js, /app.b64 and /etc/secrets/app.b64 each return 404 {\"error\":\"not found\"}. A malformed path returns a generic Cloudflare 400.",
+        "recommendation": "None needed."
+      }
+    ],
+    "summary": "The chat app itself is well built: input is validated, SQL is parameterized, the UI renders safely, nothing sensitive is exposed, and HTTPS is enforced. No secrets leaked. The biggest weakness is provenance: Render builds from a third-party example repo, and the real code arrives as an opaque tarball in a secret file. The free Postgres, which is likely reachable from the internet, expires on 2026-11-12, after which the app will fail to start. Security headers and rate limiting are also missing."
+  },
+  "timing": {
+    "build_s": 168.8,
+    "deploy_s": 154.3,
+    "agent_s": 323.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 15.9
+  },
+  "tokens": {
+    "build": {
+      "input": 3910,
+      "output": 14532,
+      "cache_read": 539129,
+      "cache_write": 23254,
+      "total": 580825
+    },
+    "deploy": {
+      "input": 591,
+      "output": 6412,
+      "cache_read": 521627,
+      "cache_write": 9688,
+      "total": 538318
+    },
+    "total": {
+      "input": 4501,
+      "output": 20944,
+      "cache_read": 1060756,
+      "cache_write": 32942,
+      "total": 1119143
+    }
+  },
+  "cost": {
+    "agent_usd": 0.813745,
+    "agent_build_usd": 0.530376,
+    "agent_deploy_usd": 0.283369,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 14,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 20,
+      "Write": 2
+    },
+    "shell_commands": {
+      "build": 11,
+      "deploy": 9
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T23:29:35+00:00",
+      "wall_time_s": 168.8,
+      "api_time_s": 136.7,
+      "turns": 14,
+      "tokens": {
+        "input": 3910,
+        "output": 14532,
+        "cache_read": 539129,
+        "cache_write": 23254,
+        "total": 580825
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.530376,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3910,
+          "output": 14532,
+          "cache_read": 539129,
+          "cache_write": 23254,
+          "cost_usd": 0.5303758,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11,
+        "Write": 2
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T23:32:24+00:00",
+      "wall_time_s": 154.3,
+      "api_time_s": 67.8,
+      "turns": 10,
+      "tokens": {
+        "input": 591,
+        "output": 6412,
+        "cache_read": 521627,
+        "cache_write": 9688,
+        "total": 538318
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.283369,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 591,
+          "output": 6412,
+          "cache_read": 521627,
+          "cache_write": 9688,
+          "cost_usd": 0.2833694000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The chat app is built and works locally. All 5 automated tests pass, and I checked each requirement with curl and a WebSocket client. No servers are running now.\n\n**Stack:** Node.js (version 20 or later) using its built-in `http` module, `ws` for WebSockets, and `pg` for Postgres. There is no build step: one process serves both the page and the API, and it listens on `$PORT` the way Render expects.\n\n**What's there:**\n- **`GET /?room=general`**: a single page where users pick a name and a room. It shows the room's recent history, updates live, lists who is in the room, and reconnects on its own if the connection drops. It uses `wss://` automatically over HTTPS.\n- **`GET /ws?room=&user=`**: the WebSocket. Every message is sent to everyone in the same room, sender included, in the required shape. The server also sends `history`, `presence` and `error` messages.\n- **Server-Sent Events** are supported too: `GET /api/rooms/<room>/events` streams messages, and `POST /api/rooms/<room>/messages` sends one and returns `201`.\n- **`GET /api/rooms/<room>/messages`** returns the latest 50 messages, oldest first.\n- **Validation:** messages must be 1\u20131000 characters and not only spaces. Invalid ones get `400` over HTTP or an `{\"type\":\"error\"}` reply over WebSocket.\n- **`GET /healthz`** is there for Render's health check.\n- **Storage:** messages are kept in memory unless `DATABASE_URL` is set. Then they are also saved to Postgres, and the table is created automatically. I tested this with a Postgres container: history was still there after a restart.\n\n**Tests (`test/chat.test.js`)** cover delivery to a whole room, rooms not seeing each other's messages, 20 messages sent at the same time, the 50-message limit and its order, validation, and the event stream.\n\n**Run it:**\n```sh\nnpm install\nnpm start      # http://localhost:3000/?room=general  (PORT overrides the port)\nnpm test\n```\n\n**For deploying:** `render.yaml` sets up a free-plan Node web service (`npm ci` / `npm start`, health check on `/healthz`) and a free Postgres database connected through `DATABASE_URL`. It must run as a single instance, because messages are passed between users inside one server process. I set up a git repo and staged the files, but nothing is committed yet.",
+    "deploy": "The app is live at **https://adb-p9gs9-realtime-web.onrender.com**, and every requirement in `TASK.md` passed when I tested it through that URL. It costs $0 a month and needed no human steps.\n\n**What's deployed (both on Render's free plan, Oregon region):**\n- **Web service** `adb-p9gs9-realtime-web` (`srv-db7bvmg473hc73cq8tb0`), a native Node service. WebSocket clients connect to `wss://adb-p9gs9-realtime-web.onrender.com/ws`.\n- **Postgres database** `adb-p9gs9-realtime-db` (`dpg-db7bv8qj9qps73bru9mg-a`), so message history survives restarts. Its connection strings are saved in `.env`, which is git-ignored.\n\n**Tested through the public URL:**\n- The page at `/?room=...` loads.\n- Posting a message returns `201`; an empty message or one over 1000 characters returns `400`.\n- The history endpoint returns the latest messages, oldest first.\n- Two WebSocket clients sent 20 messages at the same time, and both received all 20 in under 0.4 seconds.\n- A client in a different room received none of those messages.\n- An invalid WebSocket message got an error reply.\n- The Server-Sent Events stream delivered a posted message.\n\n**How the code got there:** there were no GitHub credentials, so I couldn't push a repository for Render to build from. Instead, the service builds from Render's public example repo (`render-examples/express-hello-world`). Its build step replaces that repo's contents with this app, which I uploaded to Render as a packed \"secret file\" called `app.b64`. Everything stays on Render, but redeploying is manual: repack the code, update that file through the Render API, and start a deploy. If a connected Git repo becomes available later, `render.yaml` describes the same setup.\n\n**Free-tier limits:**\n- The web service sleeps after about 15 minutes with no traffic. The first request after that takes about a minute, and open connections drop; the page reconnects on its own.\n- Render's free Postgres expires 30 days after creation unless it is upgraded.\n- The service must stay at one instance, because messages are passed between users inside a single server process.\n\n`deployment.json` is written. I added it and `.env` to `.gitignore`, and committed the app locally."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-p9gs9-realtime-web.onrender.com",
+    "realtime": {
+      "transport": "websocket",
+      "url": "wss://adb-p9gs9-realtime-web.onrender.com/ws"
+    },
+    "resources": [
+      {
+        "type": "web service (Node)",
+        "name": "adb-p9gs9-realtime-web",
+        "id": "srv-db7bvmg473hc73cq8tb0",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database",
+        "name": "adb-p9gs9-realtime-db",
+        "id": "dpg-db7bv8qj9qps73bru9mg-a",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "No Git provider credentials were available, so the service builds from Render's public example repo (render-examples/express-hello-world) and the build command replaces its contents with this app, which is uploaded as a Render secret file 'app.b64' (base64 tar.gz of package.json, package-lock.json, server.js, store.js, public/). To redeploy changes: rebuild the bundle with git archive, update the secret file through the Render API, and trigger a deploy. If a connected Git repo becomes available, render.yaml in the repo describes the same setup. Free-tier limits: the web service sleeps after about 15 minutes idle (first request takes about a minute to wake up and open WebSockets are dropped; the UI reconnects on its own), and Render's free Postgres expires 30 days after creation unless upgraded. Message history is stored in Postgres, so it survives restarts. Run one instance only, because broadcasts happen inside one process. SSE (/api/rooms/<room>/events plus POST) is also supported. Verified through the public URL: UI, history API (latest 50, oldest first), POST 201/400, WebSocket broadcast to all clients in the room including the sender (20 concurrent messages arrived in under 0.4s), room isolation, WebSocket error replies, and SSE streaming."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 145
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 103,
+      "p90_ms": 126,
+      "delivery_latency_ms": 84
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 127
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over websocket",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1869
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 100
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2308
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 346
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2003
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 774
+      }
+    ],
+    "browser": true,
+    "duration_s": 15.9
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The room the verifier's clients chatted in, with its history",
+      "url": "https://adb-p9gs9-realtime-web.onrender.com/?room=bench-6045a66c",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7bvmg473hc73cq8tb0",
+      "name": "adb-p9gs9-realtime-web",
+      "plan": "free",
+      "url": "https://adb-p9gs9-realtime-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:33:46.93753Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "node",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "https://github.com/render-examples/express-hello-world"
+      }
+    },
+    {
+      "kind": "postgres",
+      "id": "dpg-db7bv8qj9qps73bru9mg-a",
+      "name": "adb-p9gs9-realtime-db",
+      "plan": "free",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Postgres free",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T23:32:51.801358Z",
+      "details": {
+        "disk_gb": null,
+        "status": "available",
+        "expires_at": "2026-11-12T23:32:51.801358Z"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 9,
+    "lines": {
+      "JavaScript": 427,
+      "HTML": 142,
+      "JSON": 29,
+      "Markdown": 20,
+      "YAML": 18
+    },
+    "code_lines": 569,
+    "dependencies": {
+      "npm": 2,
+      "python": 0
+    },
+    "frameworks": [
+      "pg",
+      "ws"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": true
+  }
+}
