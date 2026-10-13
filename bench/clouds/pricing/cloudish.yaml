@@ -1,0 +1,53 @@
+as_of: '2026-10-12'
+sources:
+- https://cloudish.ai/instances.md
+- https://cloudish.ai/api/v1/pricing
+note: 'Fallback only: the adapter reads live prices from GET /api/v1/pricing.'
+pricing:
+  credit:
+    usd: 1
+  compute:
+    rateCpuCorePerSecond: 6.268e-06
+    rateMemGbPerSecond: 2.344e-06
+    rateFlatPerSecond: 1.389e-06
+    profitMargin: 0.2
+    rateDomainPerDay: 0.01
+  defaults:
+    docker:
+      cpuCores: 0.5
+      memoryGb: 1
+    build:
+      cpuCores: 3
+      memoryGb: 5
+  instances:
+  - name: shared
+    cpuCores: 0.1
+    memoryGb: 0.2
+    limits:
+      cpuCores: 1
+      memoryGb: 1
+    creditsPerHour: 0.010733472
+  - name: small
+    cpuCores: 0.5
+    memoryGb: 1
+    limits:
+      cpuCores: 0.5
+      memoryGb: 1
+    creditsPerHour: 0.029665439999999998
+  - name: medium
+    cpuCores: 1
+    memoryGb: 2
+    limits:
+      cpuCores: 1
+      memoryGb: 2
+    creditsPerHour: 0.0533304
+  - name: large
+    cpuCores: 2
+    memoryGb: 4
+    limits:
+      cpuCores: 2
+      memoryGb: 4
+    creditsPerHour: 0.10066032
+  freeGrant: 0.1
+  freeGrantPerMinuteCap: 0.7
+

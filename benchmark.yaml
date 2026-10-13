@@ -1,0 +1,83 @@
+# Machine-readable definition of the benchmark matrix: cloud x model x app (x trial).
+# docs/clouds.md, docs/models.md and docs/apps.md are the human-readable lists;
+# tests/test_config.py fails if they drift apart.
+
+agent:
+  name: Claude Code
+  # Pinned so every cell runs the same agent build. Bump deliberately and note it in the results.
+  version: "2.1.296"
+
+defaults:
+  build_timeout_minutes: 60
+  deploy_timeout_minutes: 60
+  # Hard spend cap per phase, enforced by Claude Code (--max-budget-usd).
+  max_budget_usd_per_phase: 30
+  # How long the verifier waits for the deployed app to answer before running checks.
+  ready_timeout_minutes: 10
+  # Cells per cloud that may run at once. 1 keeps timings clean and avoids clashes over
+  # account-wide limits (one free database per workspace, one container registry, build queues).
+  max_parallel_per_cloud: 1
+
+models:
+  - id: opus-5-5
+    name: Opus 5.5
+    model: claude-opus-5-5
+    # null runs Claude Code's default effort for the model (medium for Opus 5.5).
+    effort: null
+
+# USD per million tokens, used only to estimate cost when a phase ends without Claude Code's own
+# cost report (timeouts, crashes). Source: https://platform.claude.com/docs/en/about-claude/pricing
+model_prices:
+  claude-fable-5-1: {input: 10.00, cache_write: 12.50, cache_read: 0.25, output: 50.00}
+  claude-opus-5-5: {input: 4.00, cache_write: 5.00, cache_read: 0.20, output: 20.00}
+  claude-sonnet-5-5: {input: 2.00, cache_write: 2.50, cache_read: 0.10, output: 10.00}
+  claude-haiku-5-5: {input: 0.10, cache_write: 0.125, cache_read: 0.01, output: 0.50}
+
+clouds:
+  - id: cloudish
+    name: Cloudish
+    url: https://cloudish.ai
+    credentials:
+      - env: CLOUDISH_API_KEY
+        description: Cloudish API key
+  - id: digitalocean
+    name: DigitalOcean
+    url: https://www.digitalocean.com
+    credentials:
+      - env: DIGITALOCEAN_ACCESS_TOKEN
+        description: DigitalOcean personal access token with read and write scopes
+  - id: render
+    name: Render
+    url: https://render.com
+    credentials:
+      - env: RENDER_API_KEY
+        description: Render API key
+      - env: RENDER_OWNER_ID
+        description: ID of the Render workspace to deploy to
+        optional: true
+  - id: vercel
+    name: Vercel
+    url: https://vercel.com
+    credentials:
+      - env: VERCEL_TOKEN
+        description: Vercel access token
+      - env: VERCEL_TEAM_ID
+        description: ID of the Vercel team to deploy to
+        optional: true
+
+apps:
+  - id: static
+    name: Static Content Site
+    short: Static site
+  - id: crud
+    name: Database-Backed CRUD App
+    short: CRUD app
+  - id: api
+    name: API / Backend Service
+    short: API
+  - id: dataviz
+    name: Data / Visualization App
+    short: Dashboard
+  - id: realtime
+    name: Real-Time Collaborative App
+    short: Realtime chat

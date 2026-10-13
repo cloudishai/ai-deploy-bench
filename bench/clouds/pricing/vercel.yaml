@@ -1,0 +1,15 @@
+as_of: "2026-10-12"
+sources:
+  - https://vercel.com/pricing
+  - https://vercel.com/docs/plans/pro-plan
+  - https://vercel.com/docs/vercel-blob/usage-and-pricing
+note: >
+  Projects have no fixed fee: functions, bandwidth and requests are billed by usage, and light
+  benchmark traffic stays inside the plan's included allowance. The team plan fee (Hobby $0,
+  Pro $20/month per deploying seat) is account-level and not attributed to an app.
+project: 0
+blob_store: 0
+global_config: 0
+team_plans:
+  hobby: 0
+  pro: 20

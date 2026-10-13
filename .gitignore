@@ -1,0 +1,12 @@
+# Secrets for scripts/set-secrets.sh
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local harness runs
+plan.json
+artifacts/

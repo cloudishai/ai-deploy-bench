@@ -1,0 +1,84 @@
+as_of: "2026-10-12"
+sources:
+  - https://render.com/pricing
+  - https://render.com/docs/compute-plans
+  - https://render.com/changelog/new-compute-plans-and-new-ids-for-existing-plans
+note: >
+  USD per month per instance. Plan IDs changed on 2026-08-26 (starter -> 0.5c-512mb, ...); the API
+  accepts both, so both are listed. Workspace plans (Hobby $0, Pro $25/month flat) are account-level
+  and not attributed to an app.
+
+# Web services, private services and background workers.
+services:
+  free: 0
+  starter: 7
+  0.5c-512mb: 7
+  standard: 25
+  1c-2g: 25
+  pro: 85
+  2c-4g: 85
+  2c-8g: 135
+  2c-16g: 200
+  pro_plus: 175
+  4c-8g: 175
+  pro_max: 225
+  4c-16g: 225
+  4c-32g: 350
+  8c-16g: 300
+  pro_ultra: 450
+  8c-32g: 450
+  8c-64g: 1000
+  12c-24g: 450
+  12c-48g: 800
+  12c-96g: 1500
+
+# Cron jobs bill per minute of runtime with a $1/month minimum per job.
+cron_job_minimum: 1
+static_site: 0
+disk_per_gb: 0.25
+
+postgres:
+  free: 0
+  basic_256mb: 6
+  0.1c-256mb: 6
+  basic_1gb: 19
+  0.5c-1g: 19
+  1c-2g: 40
+  pro_4gb: 55
+  1c-4g: 55
+  basic_4gb: 75
+  2c-4g: 75
+  pro_8gb: 100
+  2c-8g: 100
+  accelerated_16gb: 160
+  2c-16g: 160
+  pro_16gb: 200
+  4c-16g: 200
+  accelerated_32gb: 350
+  4c-32g: 350
+  pro_32gb: 400
+  8c-32g: 400
+  # Instance types from before October 2024 include storage.
+  starter: 7
+  standard: 20
+  pro: 95
+  pro_plus: 185
+postgres_storage_included: [free, starter, standard, pro, pro_plus]
+postgres_storage_per_gb: 0.30
+
+key_value:
+  free: 0
+  starter: 10
+  256mb: 10
+  standard: 20
+  1g: 20
+  3g: 60
+  pro: 100
+  5g: 100
+  pro_plus: 200
+  10g: 200
+  pro_max: 350
+  20g: 350
+  pro_ultra: 600
+  40g: 600
+  50g: 750

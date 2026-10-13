@@ -1,0 +1,4 @@
+httpx>=0.28,<1
+websockets>=15
+pyyaml>=6.0
+playwright>=1.55

@@ -1,0 +1,195 @@
+name: Cloud
+
+# One cloud's share of a benchmark run, called by benchmark.yml. Every cell (model x app x trial)
+# gets a fresh runner and its own Claude Code session. Secrets are scoped per step: the build step
+# only has the model API key, so the agent cannot deploy before the deploy step.
+on:
+  workflow_call:
+    inputs:
+      cloud:
+        type: string
+        required: true
+      cells:
+        description: JSON array of {model, app, trial}
+        type: string
+        required: true
+      max_parallel:
+        type: number
+        default: 1
+      run_id:
+        type: string
+        required: true
+      keep_deployments:
+        type: boolean
+        default: false
+      smoke_test:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  cell:
+    name: ${{ matrix.app }} · ${{ matrix.model }} · trial ${{ matrix.trial }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ inputs.max_parallel }}
+      matrix:
+        include: ${{ fromJSON(inputs.cells) }}
+    # BENCH_* variables belong to the harness and are stripped from the agent's environment.
+    env:
+      BENCH_CLOUD: ${{ inputs.cloud }}
+      BENCH_MODEL: ${{ matrix.model }}
+      BENCH_APP: ${{ matrix.app }}
+      BENCH_TRIAL: ${{ matrix.trial }}
+      BENCH_RUN_ID: ${{ inputs.run_id }}
+      DISABLE_AUTOUPDATER: "1"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # The harness gets its own virtualenv so the agent's pip installs can't break it.
+      - name: Install harness
+        run: |
+          python -m venv "$RUNNER_TEMP/bench-venv"
+          "$RUNNER_TEMP/bench-venv/bin/pip" install --quiet -r requirements.txt
+          echo "BENCH_PY=$RUNNER_TEMP/bench-venv/bin/python" >> "$GITHUB_ENV"
+          echo "BENCH_CELL_DIR=$RUNNER_TEMP/cell" >> "$GITHUB_ENV"
+
+      # The harness calls the agent by absolute path, so nothing added to PATH can stand in for it.
+      - name: Install Claude Code
+        if: ${{ !inputs.smoke_test }}
+        run: |
+          version=$("$BENCH_PY" -c "from bench import config; print(config.load().agent['version'])")
+          curl -fsSL https://claude.ai/install.sh | bash -s "$version"
+          "$HOME/.local/bin/claude" --version
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "BENCH_CLAUDE_BIN=$HOME/.local/bin/claude" >> "$GITHUB_ENV"
+
+      - name: Use the stub agent (smoke test)
+        if: ${{ inputs.smoke_test }}
+        run: echo "BENCH_CLAUDE_BIN=$GITHUB_WORKSPACE/bench/stub_agent.py" >> "$GITHUB_ENV"
+
+      # Installed before the agent runs so the verifier can start right after deploy.
+      - name: Install browser for verification
+        run: '"$BENCH_PY" -m playwright install --with-deps chromium'
+
+      - name: Configure git for the agent
+        run: |
+          git config --global user.name "Benchmark Agent"
+          git config --global user.email "benchmark-agent@users.noreply.github.com"
+          git config --global init.defaultBranch main
+
+      - name: Prepare cell
+        id: prepare
+        run: >
+          "$BENCH_PY" -m bench cell prepare --dir "$BENCH_CELL_DIR" --workspace-root "$RUNNER_TEMP"
+          --run-id "$BENCH_RUN_ID" --cloud "$BENCH_CLOUD" --model "$BENCH_MODEL" --app "$BENCH_APP" --trial "$BENCH_TRIAL"
+
+      # exec: the harness must receive the runner's cancel signal to stop Claude Code.
+      - name: Build (agent, without cloud credentials)
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        timeout-minutes: 75
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: 'exec "$BENCH_PY" -m bench cell build --dir "$BENCH_CELL_DIR"'
+
+      - name: Deploy (agent, with cloud credentials)
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        timeout-minutes: 85
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
+          RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
+          VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
+          GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
+          GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
+        run: 'exec "$BENCH_PY" -m bench cell deploy --dir "$BENCH_CELL_DIR"'
+
+      - name: Inventory and price cloud resources
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        env:
+          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
+          RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
+          VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
+          GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
+          GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
+        run: '"$BENCH_PY" -m bench cell inventory --dir "$BENCH_CELL_DIR"'
+
+      - name: Verify the deployed app
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        timeout-minutes: 30
+        run: '"$BENCH_PY" -m bench cell verify --dir "$BENCH_CELL_DIR"'
+
+      # always(): resources must be deleted even when the run is cancelled or a step crashed.
+      - name: Tear down cloud resources
+        if: ${{ always() && steps.prepare.outcome == 'success' }}
+        timeout-minutes: 20
+        env:
+          KEEP: ${{ inputs.keep_deployments }}
+          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
+          RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
+          VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
+          GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
+          GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
+        run: |
+          if [ "$KEEP" = "true" ]; then keep=--keep; else keep=; fi
+          "$BENCH_PY" -m bench cell teardown --dir "$BENCH_CELL_DIR" $keep
+
+      # Finalize and redact receive the secrets only to mask them in the uploaded files.
+      - name: Finalize results
+        if: ${{ always() && steps.prepare.outcome == 'success' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
+          VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
+        run: '"$BENCH_PY" -m bench cell finalize --dir "$BENCH_CELL_DIR"'
+
+      - name: Redact secrets
+        id: redact
+        if: always()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
+          VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
+        run: |
+          mkdir -p "$BENCH_CELL_DIR"
+          "$BENCH_PY" -m bench redact --dir "$BENCH_CELL_DIR"
+
+      # Only redacted files leave the runner.
+      - name: Upload cell results
+        if: ${{ always() && steps.redact.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: cell-${{ inputs.cloud }}-${{ matrix.model }}-${{ matrix.app }}-t${{ matrix.trial }}
+          path: ${{ runner.temp }}/cell
+          retention-days: 30
+          if-no-files-found: warn

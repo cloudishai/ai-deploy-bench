@@ -1,0 +1,37 @@
+name: CI
+
+# Tests the harness itself: verifiers against reference apps, the agent runner against recorded
+# streams, cloud adapters against mocked APIs, and the workflows with actionlint.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["results/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt -r requirements-dev.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q
+
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color

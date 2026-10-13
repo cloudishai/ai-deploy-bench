@@ -1,0 +1,128 @@
+"""End to end: every cell step with a fake `claude`, a real local app, then run aggregation."""
+
+import json
+import sys
+import textwrap
+from pathlib import Path
+
+import pytest
+
+from bench import aggregate, cell
+from tests.reference_apps import Server, static_app
+
+FIXTURES = Path(__file__).parent / "fixtures" / "stream"
+SECRET = "sk-ant-test-0123456789abcdef"
+
+
+@pytest.fixture
+def fake_claude(tmp_path, monkeypatch):
+    script = tmp_path / "fake-claude"
+    script.write_text(textwrap.dedent(f"""\
+        #!{sys.executable}
+        import json, os, sys
+        sys.stdin.read()
+        deploy = "--resume" in sys.argv
+        if deploy:
+            json.dump({{"url": os.environ["FAKE_DEPLOY_URL"], "resources": [], "estimated_monthly_cost_usd": 0}},
+                      open("deployment.json", "w"))
+        stream = {str(FIXTURES)!r} + ("/phase2.jsonl" if deploy else "/phase1.jsonl")
+        for line in open(stream):
+            print(line.rstrip(), flush=True)
+        # An agent that echoes a secret: it must be redacted before anything is uploaded.
+        print(json.dumps({{"type": "system", "subtype": "note", "leak": os.environ.get("ANTHROPIC_API_KEY", "")}}), flush=True)
+        """))
+    script.chmod(0o755)
+    monkeypatch.setenv("BENCH_CLAUDE_BIN", str(script))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", SECRET)
+    for name in ("CLOUDISH_API_KEY", "GH_TOKEN", "GH_OWNER", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+    return script
+
+
+def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
+    with Server(static_app()) as url:
+        monkeypatch.setenv("FAKE_DEPLOY_URL", url)
+        cell_dir = tmp_path / "cell"
+        current = cell.prepare(cell_dir, tmp_path / "work", "123-1", "cloudish", "opus-5-5", "static", 1)
+        assert current.workspace.name == current.prefix
+        assert (current.workspace / "TASK.md").exists()
+
+        build = cell.build(current)
+        assert build.status == "completed" and build.started
+        deploy = cell.deploy(current)
+        assert deploy.resumed and deploy.status == "completed"
+        assert "adb-" in (cell_dir / "prompts" / "deploy.md").read_text()
+
+        inventory = cell.inventory(current)
+        assert inventory["cloud"]["skipped"] == "credentials not available"
+        verification = cell.verify(current, use_browser=False)
+        assert verification["url"] == url and verification["url_source"] == "deployment.json"
+        cell.teardown(current)
+        record = cell.finalize(current)
+
+    # Everything passes except HTTPS, which a local server can't offer.
+    assert record["status"] == "partial" and record["required_failed"] == ["https"]
+    assert record["tokens"]["build"]["total"] == 61867
+    assert record["tokens"]["deploy"]["total"] == 62328
+    assert record["cost"]["agent_usd"] == pytest.approx(0.005202, abs=1e-6)
+    assert record["timing"]["ready_after_deploy_s"] == 0.0  # answering as soon as the agent finished
+    for path in cell_dir.rglob("*"):
+        if path.is_file() and path.suffix in (".json", ".jsonl", ".md", ".log"):
+            assert SECRET not in path.read_text(), f"secret leaked into {path}"
+    assert "[REDACTED]" in (cell_dir / "build" / "transcript.jsonl").read_text()
+    assert (cell_dir / "source.tar.gz").exists()
+    assert "Shell commands during deploy" in (cell_dir / "report.md").read_text()
+    assert "## What was built" in (cell_dir / "report.md").read_text()
+
+    readme = tmp_path / "README.md"
+    readme.write_text("# Bench\n\nIntro.\n\n<!-- results:start -->\nold\n<!-- results:end -->\n\nFooter.\n")
+    plan = {"cells": [
+        {"cloud": "cloudish", "model": "opus-5-5", "app": "static", "trial": 1},
+        {"cloud": "cloudish", "model": "opus-5-5", "app": "crud", "trial": 1},
+    ]}
+    run = {"name": "2026-10-12_1-1", "date": "2026-10-12", "number": 1, "attempt": 1, "url": "https://example.com/run"}
+    summary = aggregate.aggregate(tmp_path, plan, tmp_path / "results", readme, run)
+
+    group = summary["groups"][0]
+    assert (group["cells"], group["partial"], group["failed"]) == (2, 1, 1)
+    run_dir = tmp_path / "results" / "runs" / "2026-10-12_1-1"
+    assert json.loads((run_dir / "cells/opus-5-5/cloudish/static-t1.json").read_text())["status"] == "partial"
+    assert (run_dir / "cells/opus-5-5/cloudish/static-t1.md").exists()
+    assert "❔ missing" in (run_dir / "summary.md").read_text()
+    assert "## What was built" in (run_dir / "summary.md").read_text()
+    text = readme.read_text()
+    assert text.startswith("# Bench\n\nIntro.") and text.rstrip().endswith("Footer.")
+    assert "old" not in text and "[Cloudish](https://cloudish.ai) | 0/2" in text
+    assert "2026-10-12 · #1" in (tmp_path / "results" / "README.md").read_text()
+
+
+def test_smoke_test_stub_runs_every_step(tmp_path, monkeypatch):
+    monkeypatch.setenv("BENCH_CLAUDE_BIN", str(Path(cell.__file__).with_name("stub_agent.py")))
+    for name in ("CLOUDISH_API_KEY", "GH_TOKEN", "GH_OWNER", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+    current = cell.prepare(tmp_path / "cell", tmp_path / "work", "1-1", "cloudish", "opus-5-5", "crud", 1)
+    assert cell.build(current).status == "completed"
+    deploy = cell.deploy(current)
+    assert deploy.resumed and deploy.cost_usd == 0
+    cell.inventory(current)
+    cell.verify(current, use_browser=False)
+    cell.teardown(current)
+    record = cell.finalize(current)
+    assert (record["status"], record["failure_stage"]) == ("failed", "deploy")
+    assert record["deployment_manifest"]["_error"] == "deployment.json was not written"
+    assert record["tokens"]["total"]["total"] == 0
+
+
+def test_group_totals_average_over_trials():
+    cells = [
+        {"app": "static", "status": "success", "tokens": 100, "agent_usd": 1.0, "hosting_monthly_usd": 0.0,
+         "score": 1.0, "build_s": 10, "deploy_s": 20},
+        {"app": "static", "status": "success", "tokens": 300, "agent_usd": 3.0, "hosting_monthly_usd": 0.0,
+         "score": 1.0, "build_s": 30, "deploy_s": 40},
+        {"app": "crud", "status": "failed", "tokens": 50, "agent_usd": 0.5, "hosting_monthly_usd": None,
+         "score": 0.5, "build_s": 5, "deploy_s": 5},
+    ]
+    group = aggregate.aggregate_group(cells)
+    assert group["tokens"] == 250 and group["agent_usd"] == 2.5  # mean per app, summed over apps
+    assert group["hosting_monthly_usd"] == 0.0 and group["hosting_incomplete"]
+    assert (group["success"], group["cells"]) == (2, 3)

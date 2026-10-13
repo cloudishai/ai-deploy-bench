@@ -1,0 +1,53 @@
+as_of: "2026-10-12"
+sources:
+  - https://docs.digitalocean.com/products/app-platform/details/pricing/
+  - https://www.digitalocean.com/pricing/managed-databases
+  - https://www.digitalocean.com/pricing/droplets
+  - https://docs.digitalocean.com/products/container-registry/details/pricing/
+note: >
+  USD per month. App Platform instance prices are read live from GET /v2/apps/tiers/instance_sizes;
+  the table below is the fallback. Managed database prices have no API, so they come from this table.
+
+app_platform:
+  # The first 3 static-only apps per team are free, then $3/month each.
+  static_only_app: 0
+  dev_database: 7
+  dedicated_egress_ip: 25
+  instance_sizes:
+    apps-s-1vcpu-0.5gb: 5
+    apps-s-1vcpu-1gb-fixed: 10
+    apps-s-1vcpu-1gb: 12
+    apps-s-1vcpu-2gb: 25
+    apps-s-2vcpu-4gb: 50
+    apps-d-1vcpu-0.5gb: 29
+    apps-d-1vcpu-1gb: 34
+    apps-d-1vcpu-2gb: 39
+    apps-d-1vcpu-4gb: 49
+    apps-d-2vcpu-4gb: 78
+    apps-d-2vcpu-8gb: 98
+    apps-d-4vcpu-8gb: 156
+    apps-d-4vcpu-16gb: 196
+    apps-d-8vcpu-32gb: 392
+    basic-xxs: 5
+    basic-xs: 10
+    basic-s: 20
+    basic-m: 40
+    professional-xs: 12
+    professional-s: 25
+    professional-m: 50
+    professional-1l: 75
+    professional-l: 150
+    professional-xl: 300
+
+# Managed databases, per node, including the minimum storage.
+databases:
+  pg: {db-s-1vcpu-1gb: 15.15, db-s-1vcpu-2gb: 30.45, db-s-2vcpu-4gb: 60.90}
+  mysql: {db-s-1vcpu-1gb: 15.15, db-s-1vcpu-2gb: 30.45, db-s-2vcpu-4gb: 60.90}
+  valkey: {db-s-1vcpu-1gb: 15.00, db-s-1vcpu-2gb: 30.00, db-s-2vcpu-4gb: 60.00}
+  redis: {db-s-1vcpu-1gb: 15.00, db-s-1vcpu-2gb: 30.00, db-s-2vcpu-4gb: 60.00}
+  mongodb: {db-s-1vcpu-1gb: 15.23}
+
+volume_per_gb: 0.10
+load_balancer_per_node: 12
+registry_tiers: {starter: 0, basic: 5, professional: 20}
+spaces_subscription: 5

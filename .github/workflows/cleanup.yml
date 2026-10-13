@@ -1,0 +1,59 @@
+name: Cleanup
+
+# Lists, and optionally deletes, benchmark resources (names starting with "adb-") that a failed
+# teardown left behind. Shares the benchmark's concurrency group so it never runs during a run.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Cloud to sweep
+        type: choice
+        options: [all, cloudish, digitalocean, render, vercel, github]
+        default: all
+      delete:
+        description: Delete what is found (otherwise only list it)
+        type: boolean
+        default: false
+      older_than_hours:
+        description: Only resources older than this
+        default: "6"
+
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'all' && '["cloudish","digitalocean","render","vercel","github"]' || format('["{0}"]', inputs.target)) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt
+      - name: Sweep
+        env:
+          TARGET: ${{ matrix.target }}
+          DELETE: ${{ inputs.delete }}
+          HOURS: ${{ inputs.older_than_hours }}
+          CLOUDISH_API_KEY: ${{ matrix.target == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ matrix.target == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
+          RENDER_API_KEY: ${{ matrix.target == 'render' && secrets.RENDER_API_KEY || '' }}
+          RENDER_OWNER_ID: ${{ matrix.target == 'render' && vars.RENDER_OWNER_ID || '' }}
+          VERCEL_TOKEN: ${{ matrix.target == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          VERCEL_TEAM_ID: ${{ matrix.target == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
+          GH_TOKEN: ${{ matrix.target == 'github' && secrets.BENCH_GITHUB_TOKEN || '' }}
+          GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
+        run: |
+          if [ "$DELETE" = "true" ]; then delete=--delete; else delete=; fi
+          python -m bench janitor --cloud "$TARGET" --older-than-hours "$HOURS" $delete

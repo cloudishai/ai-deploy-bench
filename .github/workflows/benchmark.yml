@@ -1,0 +1,151 @@
+name: Benchmark
+
+# Runs the benchmark matrix: one reusable-workflow call per cloud, each fanning out into one job
+# (and one fresh Claude Code session) per model x app x trial. A final job collects every cell's
+# result, commits it under results/ and refreshes the summary in README.md.
+on:
+  workflow_dispatch:
+    inputs:
+      clouds:
+        description: Cloud ids, comma-separated, or "all" (see benchmark.yaml)
+        default: all
+      apps:
+        description: App ids, comma-separated, or "all"
+        default: all
+      models:
+        description: Model ids, comma-separated, or "all"
+        default: all
+      trials:
+        description: Trials per cell
+        default: "1"
+      max_parallel:
+        description: Cells per cloud running at once (empty uses benchmark.yaml)
+        default: ""
+      keep_deployments:
+        description: Leave deployments running after verification (you clean them up)
+        type: boolean
+        default: false
+      commit_results:
+        description: Commit results/ and README.md
+        type: boolean
+        default: true
+      smoke_test:
+        description: Use a stub instead of Claude Code (no model spend) to check secrets and plumbing
+        type: boolean
+        default: false
+  # Every run spends model and cloud credits; uncomment to run weekly with the defaults above.
+  # schedule:
+  #   - cron: "17 6 * * 1"
+
+# Runs share the cloud accounts, so never overlap them (cleanup.yml uses the same group).
+concurrency:
+  group: benchmark
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      clouds: ${{ steps.plan.outputs.clouds }}
+      run_name: ${{ steps.meta.outputs.run_name }}
+      date: ${{ steps.meta.outputs.date }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt
+      - id: meta
+        env:
+          SMOKE: ${{ inputs.smoke_test }}
+        run: |
+          date=$(date -u +%Y-%m-%d)
+          echo "date=$date" >> "$GITHUB_OUTPUT"
+          suffix=$([ "$SMOKE" = "true" ] && echo "-smoke" || true)
+          echo "run_name=${date}_${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}${suffix}" >> "$GITHUB_OUTPUT"
+      - id: plan
+        env:
+          CLOUDS: ${{ inputs.clouds || 'all' }}
+          APPS: ${{ inputs.apps || 'all' }}
+          MODELS: ${{ inputs.models || 'all' }}
+          TRIALS: ${{ inputs.trials || '1' }}
+          MAX_PARALLEL: ${{ inputs.max_parallel }}
+        run: >
+          python -m bench plan --clouds "$CLOUDS" --apps "$APPS" --models "$MODELS" --trials "$TRIALS"
+          ${MAX_PARALLEL:+--max-parallel "$MAX_PARALLEL"} --out plan.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plan
+          path: plan.json
+
+  cloud:
+    needs: plan
+    name: ${{ matrix.cloud }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.clouds) }}
+    uses: ./.github/workflows/cloud.yml
+    with:
+      cloud: ${{ matrix.cloud }}
+      cells: ${{ toJSON(matrix.cells) }}
+      max_parallel: ${{ matrix.max_parallel }}
+      run_id: ${{ github.run_id }}-${{ github.run_attempt }}
+      keep_deployments: ${{ inputs.keep_deployments || false }}
+      smoke_test: ${{ inputs.smoke_test || false }}
+    secrets: inherit
+
+  # Runs when cells failed (they're reported), but not when the run was cancelled.
+  collect:
+    needs: [plan, cloud]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RUN_NAME: ${{ needs.plan.outputs.run_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt
+      - uses: actions/download-artifact@v8
+        with:
+          name: plan
+      - uses: actions/download-artifact@v8
+        continue-on-error: true  # no cell may have produced an artifact; they're then reported missing
+        with:
+          pattern: cell-*
+          path: artifacts
+      - name: Aggregate results
+        env:
+          DATE: ${{ needs.plan.outputs.date }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: >
+          python -m bench aggregate --artifacts artifacts --plan plan.json --results results --readme README.md
+          --run-name "$RUN_NAME" --date "$DATE" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
+          --run-url "$RUN_URL"
+      - run: cat "results/runs/$RUN_NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Commit results
+        if: ${{ !inputs.smoke_test && (inputs.commit_results || github.event_name == 'schedule') }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results README.md
+          git commit --quiet -m "Benchmark results for run $RUN_NAME" || { echo "nothing to commit"; exit 0; }
+          for attempt in 1 2 3 4 5; do
+            if git pull --quiet --rebase origin "$GITHUB_REF_NAME" && git push --quiet origin "HEAD:$GITHUB_REF_NAME"; then
+              exit 0
+            fi
+            sleep $((attempt * 10))
+          done
+          echo "::error::could not push results; they are still attached to this run as artifacts"
+          exit 1
