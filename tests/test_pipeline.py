@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from bench import aggregate, cell
+from bench import aggregate, cell, config
 from tests.reference_apps import Server, static_app
 
 FIXTURES = Path(__file__).parent / "fixtures" / "stream"
@@ -90,10 +90,21 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     assert (run_dir / "cells/opus-5-5/cloudish/static-t1.md").exists()
     assert "❔ missing" in (run_dir / "summary.md").read_text()
     assert "## What was built" in (run_dir / "summary.md").read_text()
+    # A partial run is committed and indexed, but leaves the README's comparison alone.
+    assert summary["run"]["scope"] == "apps: static, crud · clouds: cloudish · models: all"
+    assert "old" in readme.read_text()
+    index = (tmp_path / "results" / "README.md").read_text()
+    assert "2026-10-12 · #1" in index and "apps: static, crud · clouds: cloudish" in index
+
+    cfg = config.load()
+    full = {"cells": [{"cloud": c.id, "model": m.id, "app": a.id, "trial": 1}
+                      for m in cfg.models for c in cfg.clouds for a in cfg.apps]}
+    run = {**run, "name": "2026-10-12_2-1", "number": 2}
+    assert aggregate.aggregate(tmp_path, full, tmp_path / "results", readme, run)["run"]["scope"] == "full"
     text = readme.read_text()
     assert text.startswith("# Bench\n\nIntro.") and text.rstrip().endswith("Footer.")
-    assert "old" not in text and "[Cloudish](https://cloudish.ai) | 0/2" in text
-    assert "2026-10-12 · #1" in (tmp_path / "results" / "README.md").read_text()
+    assert "old" not in text and "Latest full run: [2026-10-12 · #2]" in text
+    assert "[Cloudish](https://cloudish.ai) | 0/5" in text
 
 
 def test_smoke_test_stub_runs_every_step(tmp_path, monkeypatch):

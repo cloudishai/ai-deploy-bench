@@ -210,6 +210,7 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
         f"- Date: {run['date']}",
         f"- Agent: {cfg.agent.get('name', 'Claude Code')} {', '.join(run['agent_versions']) or cfg.agent.get('version', '')}",
         f"- Models: {', '.join(cfg.model(m).name for m in run['models'])}",
+        f"- Scope: {run.get('scope', 'full')}",
         f"- Trials per cell: {run['trials']}",
     ]
     if run.get("url"):
@@ -273,15 +274,17 @@ def render_index(runs: list[dict[str, Any]], cfg: config.Config) -> str:
         "One folder per benchmark run under [`runs/`](runs), newest first. Each has a `summary.md`, a "
         "machine-readable `summary.json`, and per-cell `result.json` + report under `cells/`.",
         "",
-        "| Run | Models | Clouds | Success | Checks passed | Agent cost |",
+        "Only full runs (every cloud, app and model) update the summary in the repository's README.",
+        "",
+        "| Run | Scope | Models | Success | Checks passed | Agent cost |",
         "|---|---|---|---|---|---|",
     ]
     for summary in runs:
         run, cells = summary["run"], summary["cells"]
         agent_usd, _ = total(c["agent_usd"] for c in cells)
         lines.append(
-            f"| [{run_title(run)}](runs/{run['name']}/summary.md) | {', '.join(run['models'])} | "
-            f"{', '.join(sorted({c['cloud'] for c in cells}))} | {sum(c['status'] == 'success' for c in cells)}/{len(cells)} | "
+            f"| [{run_title(run)}](runs/{run['name']}/summary.md) | {run.get('scope', 'full')} | {', '.join(run['models'])} | "
+            f"{sum(c['status'] == 'success' for c in cells)}/{len(cells)} | "
             f"{fmt.pct(mean(c['score'] for c in cells))} | {fmt.usd(agent_usd)} |"
         )
     return "\n".join(lines) + "\n"
@@ -291,7 +294,7 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
     run = summary["run"]
     base = f"results/runs/{run['name']}/"
     lines = [
-        f"Latest run: [{run_title(run)}]({base}summary.md) · "
+        f"Latest full run: [{run_title(run)}]({base}summary.md) · "
         f"{cfg.agent.get('name', 'Claude Code')} {', '.join(run['agent_versions']) or cfg.agent.get('version', '')} · "
         f"{', '.join(cfg.model(m).name for m in run['models'])}",
         "",
@@ -313,6 +316,18 @@ def update_readme(readme: Path, section: str) -> None:
     else:
         text = text.rstrip() + "\n\n## Latest results\n\n" + block + "\n"
     readme.write_text(text)
+
+
+def scope(planned: list[dict[str, Any]], cfg: config.Config) -> str:
+    """'full' when the run covers every model x cloud x app in benchmark.yaml, else what it covered."""
+    covered = {(c["model"], c["cloud"], c["app"]) for c in planned}
+    if covered >= {(m.id, c.id, a.id) for m in cfg.models for c in cfg.clouds for a in cfg.apps}:
+        return "full"
+    parts = []
+    for label, key, items in (("apps", "app", cfg.apps), ("clouds", "cloud", cfg.clouds), ("models", "model", cfg.models)):
+        chosen = [i.id for i in items if any(c[key] == i.id for c in planned)]
+        parts.append(f"{label}: " + ("all" if len(chosen) == len(items) else ", ".join(chosen)))
+    return " · ".join(parts)
 
 
 # -- entry point -------------------------------------------------------------------------------
@@ -339,7 +354,7 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
             target.with_suffix(".md").write_text(report.read_text())
         cells.append(compact(record))
     run = {**run, "models": sorted({c["model"] for c in planned}, key=[m.id for m in cfg.models].index),
-           "trials": max((int(c["trial"]) for c in planned), default=1)}
+           "trials": max((int(c["trial"]) for c in planned), default=1), "scope": scope(planned, cfg)}
     summary = summarize(run, cells, cfg)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
@@ -352,5 +367,7 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
             continue
     runs.sort(key=run_order, reverse=True)
     (results_dir / "README.md").write_text(render_index(runs, cfg))
-    update_readme(readme, render_readme_section(summary, cfg, len(runs)))
+    # A partial run (a test of a few cells) must not replace the full comparison in the README.
+    if run["scope"] == "full":
+        update_readme(readme, render_readme_section(summary, cfg, len(runs)))
     return summary
