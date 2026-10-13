@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38446498934-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-96myp-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "default"
+  },
+  "status": "failed",
+  "failure_stage": "build",
+  "url": null,
+  "url_source": null,
+  "score": 0.0,
+  "checks_passed": 0,
+  "checks_total": 0,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": false
+  },
+  "timing": {
+    "build_s": 1.9,
+    "deploy_s": 1.5,
+    "agent_s": 3.4,
+    "ready_after_deploy_s": null,
+    "verify_s": 0.0
+  },
+  "tokens": {
+    "build": {
+      "input": 0,
+      "output": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "total": 0
+    },
+    "deploy": {
+      "input": 0,
+      "output": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "total": 0
+    },
+    "total": {
+      "input": 0,
+      "output": 0,
+      "cache_read": 0,
+      "cache_write": 0,
+      "total": 0
+    }
+  },
+  "cost": {
+    "agent_usd": 0.0,
+    "agent_build_usd": 0.0,
+    "agent_deploy_usd": 0.0,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": null,
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": null
+  },
+  "activity": {
+    "turns": {
+      "build": 1,
+      "deploy": 1
+    },
+    "tool_calls": {},
+    "shell_commands": {
+      "build": 0,
+      "deploy": 0
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "error",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T18:25:43+00:00",
+      "wall_time_s": 1.9,
+      "api_time_s": 0.0,
+      "turns": 1,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total": 0
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.0,
+      "cost_source": "claude-code",
+      "model_usage": {},
+      "tool_calls": {},
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "api_error",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "error",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T18:25:46+00:00",
+      "wall_time_s": 1.5,
+      "api_time_s": 0.0,
+      "turns": 1,
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write": 0,
+        "total": 0
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.0,
+      "cost_source": "claude-code",
+      "model_usage": {},
+      "tool_calls": {},
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "api_error",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "API Error: 400 The requested features are not available for HIPAA-configured organizations: advisor_tool, context_management.",
+    "deploy": "API Error: 400 The requested features are not available for HIPAA-configured organizations: advisor_tool, context_management."
+  },
+  "deployment_manifest": {
+    "_error": "deployment.json was not written"
+  },
+  "verification": {
+    "readiness": {
+      "ready": false
+    },
+    "checks": [],
+    "error": "no deployment URL found",
+    "duration_s": 0.0
+  },
+  "resources": [],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [
+    "credentials not available"
+  ],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 0,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 0,
+    "lines": {},
+    "code_lines": 0,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [],
+    "git_repo": false
+  }
+}
