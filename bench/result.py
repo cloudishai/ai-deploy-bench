@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from bench import agent, fmt
+from bench import agent, fmt, human
 from bench.clouds.base import parse_time
 
 if TYPE_CHECKING:
@@ -67,6 +67,9 @@ def build(cell: "Cell") -> dict[str, Any]:
     deployment = cell.deployment()
     cloud_inventory = inventory.get("cloud") or {}
     status, stage = outcome(built, deployed, verification)
+    people = human.assess(cell, inventory, deployment, succeeded=status == "success")
+    if people["blocked"] and status != "success":
+        stage = "human"  # it couldn't finish without something only a person can do
 
     costs = [c for c in (built.cost_usd, deployed.cost_usd) if c is not None]
     tool_calls: dict[str, int] = {}
@@ -97,6 +100,7 @@ def build(cell: "Cell") -> dict[str, Any]:
         "checks_passed": verification.get("passed", 0),
         "checks_total": verification.get("passed", 0) + verification.get("failed", 0),
         "required_failed": verification.get("required_failed", []),
+        "human": people,
         "timing": {
             "build_s": built.wall_time_s,
             "deploy_s": deployed.wall_time_s,
@@ -184,6 +188,10 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         "",
         *architecture_lines(record.get("code") or {}),
         "",
+        "## Human steps",
+        "",
+        *human_lines(record.get("human") or {}),
+        "",
         "## Checks",
         "",
         "| Check | Required | Result | Detail |",
@@ -222,6 +230,21 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def human_lines(people: dict[str, Any]) -> list[str]:
+    """What a person had to do, or would have to do, for this deployment."""
+    if not people.get("steps"):
+        lines = ["None: the agent needed no human setup at all."]
+    else:
+        lines = [f"{people['count']} step(s), about {people['minutes']} min of a person's time"
+                 + (". **Blocked:** the deploy couldn't finish without them." if people.get("blocked") else "."), ""]
+        lines += [f"- **{s['description']}** (~{s['minutes']} min): {'; '.join(s['evidence'])[:400]}" for s in people["steps"]]
+    unneeded = people.get("blockers", []) if people.get("succeeded") else []
+    if unneeded:
+        lines += ["", "Reported but not needed, since the deployment worked without them: "
+                  + "; ".join(b["detail"][:120] for b in unneeded)]
+    return lines
+
+
 def architecture_lines(code: dict[str, Any]) -> list[str]:
     """The stack the agent chose for this cloud, from the workspace it left behind."""
     if code.get("error") or not code:
@@ -238,10 +261,12 @@ def architecture_lines(code: dict[str, Any]) -> list[str]:
 
 def render_step_summary(record: dict[str, Any]) -> str:
     t, cost = record["timing"], record["cost"]
+    people = record.get("human") or {}
     return (
         f"### {fmt.status(record['status'])} {record['app']} on {record['cloud']} ({record['model']}): {record['status']}\n\n"
-        "| Checks | Build | Deploy | Tokens | Agent cost | Hosting/month |\n|---|---|---|---|---|---|\n"
-        f"| {record['checks_passed']}/{record['checks_total']} | {fmt.duration(t['build_s'])} | {fmt.duration(t['deploy_s'])} | "
+        "| Checks | Human steps | Build | Deploy | Tokens | Agent cost | Hosting/month |\n|---|---|---|---|---|---|---|\n"
+        f"| {record['checks_passed']}/{record['checks_total']} | {fmt.human(people.get('count'), people.get('minutes'))} | "
+        f"{fmt.duration(t['build_s'])} | {fmt.duration(t['deploy_s'])} | "
         f"{fmt.tokens(record['tokens']['total']['total'])} | {fmt.usd(cost['agent_usd'])} | {fmt.usd(cost['hosting_monthly_usd'])} |\n\n"
     )
 

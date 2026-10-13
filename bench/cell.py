@@ -106,7 +106,8 @@ def agent_env(cfg: config.Config, cloud: config.Cloud | None, extra: dict[str, s
     hidden = set(HARNESS_ONLY) | cfg.credential_names() | set(GITHUB_VARS)
     env = {k: v for k, v in os.environ.items() if k not in hidden and not k.startswith(("BENCH_", "ACTIONS_"))}
     if cloud is not None:
-        allowed = [c.env for c in cloud.credentials] + (list(GITHUB_VARS) if all(os.environ.get(v) for v in GITHUB_VARS) else [])
+        allowed = [c.env for c in cloud.provided_credentials]
+        allowed += list(GITHUB_VARS) if all(os.environ.get(v) for v in GITHUB_VARS) else []
         env.update({name: os.environ[name] for name in allowed if os.environ.get(name)})
     env.update(extra or {})
     return env
@@ -285,6 +286,9 @@ def adapters(cell: Cell) -> list[tuple[str, base.Cloud]]:
 
 
 def merge_inventories(reports: list[dict[str, Any]]) -> dict[str, Any]:
+    # A credential that wasn't provided (Cloudish) only yields a "skipped" placeholder; any real
+    # inventory, made with credentials the agent saved, replaces it.
+    reports = [r for r in reports if not r.get("skipped")] or reports[:1]
     merged = dict(reports[0])
     for report in reports[1:]:
         for key in ("resources", "possible_leaks", "unpriced", "errors"):

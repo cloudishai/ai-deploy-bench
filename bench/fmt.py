@@ -34,6 +34,12 @@ def usd(amount: float | None, approximate: bool = False) -> str:
     return ("~" if approximate else "") + f"${amount:,.2f}"
 
 
+def human(count: int | None, minutes: float | None) -> str:
+    if count is None:
+        return DASH
+    return "none" if not count else f"{count} · {minutes:g} min"
+
+
 def pct(fraction: float | None) -> str:
     return DASH if fraction is None else f"{fraction:.0%}"
 
@@ -43,7 +49,7 @@ def cell(text: object) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
-STATUS_ICONS = {"success": "✅", "partial": "⚠️", "failed": "❌", "error": "💥", "missing": "❔"}
+STATUS_ICONS = {"success": "✅", "partial": "⚠️", "failed": "❌", "error": "💥", "missing": "❔", "human": "🙋"}
 
 
 def status(value: str) -> str:

@@ -28,10 +28,16 @@ def github_owner(env: Mapping[str, str]) -> str | None:
 
 
 def credential_lines(cloud: Cloud, env: Mapping[str, str]) -> str:
-    lines = [f"- `{c.env}`: {c.description}" for c in cloud.credentials if not c.optional or env.get(c.env)]
+    lines = [f"- `{c.env}`: {c.description}" for c in cloud.provided_credentials if not c.optional or env.get(c.env)]
     if owner := github_owner(env):
         lines.append(GITHUB_CREDENTIAL.format(owner=owner, cloud_name=cloud.name))
     return "\n".join(lines)
+
+
+def credentials_section(cloud: Cloud, env: Mapping[str, str]) -> str:
+    if lines := credential_lines(cloud, env):
+        return "These credentials are set as environment variables:\n\n" + lines
+    return f"No credentials are provided for {cloud.name}."
 
 
 def build_prompt(cloud: Cloud, app: App) -> str:
@@ -46,7 +52,8 @@ def deploy_prompt(cloud: Cloud, app: App, prefix: str, env: Mapping[str, str], f
         preamble=FRESH_SESSION_PREAMBLE if fresh_session else "",
         cloud_name=cloud.name,
         cloud_url=cloud.url,
-        credentials=credential_lines(cloud, env),
+        credentials=credentials_section(cloud, env),
+        github_clause=" and the GitHub account above" if github_owner(env) else "",
         prefix=prefix,
         app_notes=notes,
     )

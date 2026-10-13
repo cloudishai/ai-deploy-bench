@@ -112,7 +112,6 @@ jobs:
         timeout-minutes: 85
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
@@ -125,7 +124,6 @@ jobs:
       - name: Inventory and price cloud resources
         if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
         env:
-          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
@@ -146,7 +144,6 @@ jobs:
         timeout-minutes: 20
         env:
           KEEP: ${{ inputs.keep_deployments }}
-          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
@@ -158,12 +155,12 @@ jobs:
           if [ "$KEEP" = "true" ]; then keep=--keep; else keep=; fi
           "$BENCH_PY" -m bench cell teardown --dir "$BENCH_CELL_DIR" $keep
 
-      # Finalize and redact receive the secrets only to mask them in the uploaded files.
+      # Finalize and redact receive the secrets only to mask them in the uploaded files. Credentials
+      # the agent created itself (a Cloudish key) are read from the workspace's .env.
       - name: Finalize results
         if: ${{ always() && steps.prepare.outcome == 'success' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
@@ -175,7 +172,6 @@ jobs:
         if: always()
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLOUDISH_API_KEY: ${{ inputs.cloud == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}

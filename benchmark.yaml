@@ -33,22 +33,45 @@ model_prices:
   claude-sonnet-5-5: {input: 2.00, cache_write: 2.50, cache_read: 0.10, output: 10.00}
   claude-haiku-5-5: {input: 0.10, cache_write: 0.125, cache_read: 0.01, output: 0.50}
 
+# What a person has to do so an agent can deploy is part of what's measured (docs/methodology.md,
+# "Human steps"). Each step type has an estimated time for someone who already knows what to do.
+# The number of steps is objective; the minutes are estimates, so replace them with measured times.
+human_steps:
+  signup: {minutes: 3, description: Sign up for an account and verify the email address}
+  payment_method: {minutes: 2, description: Add a payment method to the account}
+  api_token: {minutes: 2, description: Create an API token and hand it to the agent}
+  accept_integration_terms: {minutes: 3, description: Install a Marketplace integration and accept its terms in a browser}
+  git_hosting: {minutes: 10, description: Provide a Git hosting account and token for Git- or image-based deploys}
+  add_credits: {minutes: 3, description: Claim the account and add prepaid credits}
+  other: {minutes: 5, description: Another manual action the agent reported}
+
+# `prerequisites` are the human steps no agent can do for itself before it can deploy at all.
+# Credentials marked `provided: false` are never given to agents; the harness only uses the name
+# to find, clean up after and redact credentials the agent created itself.
 clouds:
   - id: cloudish
     name: Cloudish
     url: https://cloudish.ai
+    # Agents mint their own API key with one unauthenticated call, with free starter credits.
+    prerequisites: []
     credentials:
       - env: CLOUDISH_API_KEY
         description: Cloudish API key
+        provided: false
   - id: digitalocean
     name: DigitalOcean
     url: https://www.digitalocean.com
+    # Accounts need a payment method before they can be used.
+    prerequisites: [signup, payment_method, api_token]
     credentials:
       - env: DIGITALOCEAN_ACCESS_TOKEN
         description: DigitalOcean personal access token with read and write scopes
   - id: render
     name: Render
     url: https://render.com
+    prerequisites: [signup, api_token]
+    # Steps needed only when a deployment uses paid resources.
+    when_paid: [payment_method]
     credentials:
       - env: RENDER_API_KEY
         description: Render API key
@@ -58,6 +81,8 @@ clouds:
   - id: vercel
     name: Vercel
     url: https://vercel.com
+    prerequisites: [signup, api_token]
+    when_paid: [payment_method]
     credentials:
       - env: VERCEL_TOKEN
         description: Vercel access token

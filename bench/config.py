@@ -18,6 +18,8 @@ class Credential:
     description: str
     # Optional variables (account scoping) are passed and mentioned only when they are set.
     optional: bool = False
+    # False for credentials agents must obtain themselves (Cloudish keys): never passed to them.
+    provided: bool = True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -26,6 +28,12 @@ class Cloud:
     name: str
     url: str
     credentials: tuple[Credential, ...]
+    prerequisites: tuple[str, ...] = ()
+    when_paid: tuple[str, ...] = ()
+
+    @property
+    def provided_credentials(self) -> tuple[Credential, ...]:
+        return tuple(c for c in self.credentials if c.provided)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,6 +77,7 @@ class Config:
     clouds: tuple[Cloud, ...]
     apps: tuple[App, ...]
     model_prices: dict[str, dict[str, float]]
+    human_steps: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
 
     def cloud(self, cloud_id: str) -> Cloud:
         return _by_id(self.clouds, cloud_id, "cloud")
@@ -114,9 +123,12 @@ def load(path: Path = ROOT / "benchmark.yaml") -> Config:
                 name=c["name"],
                 url=c["url"],
                 credentials=tuple(Credential(**cred) for cred in c.get("credentials", [])),
+                prerequisites=tuple(c.get("prerequisites") or ()),
+                when_paid=tuple(c.get("when_paid") or ()),
             )
             for c in raw["clouds"]
         ),
         apps=tuple(App(**a) for a in raw["apps"]),
         model_prices=raw.get("model_prices", {}),
+        human_steps=raw.get("human_steps", {}),
     )

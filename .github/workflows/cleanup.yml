@@ -2,13 +2,14 @@ name: Cleanup
 
 # Lists, and optionally deletes, benchmark resources (names starting with "adb-") that a failed
 # teardown left behind. Shares the benchmark's concurrency group so it never runs during a run.
+# Cloudish isn't swept: agents mint their own keys there, which teardown uses from each cell.
 on:
   workflow_dispatch:
     inputs:
       target:
         description: Cloud to sweep
         type: choice
-        options: [all, cloudish, digitalocean, render, vercel, github]
+        options: [all, digitalocean, render, vercel, github]
         default: all
       delete:
         description: Delete what is found (otherwise only list it)
@@ -32,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(inputs.target == 'all' && '["cloudish","digitalocean","render","vercel","github"]' || format('["{0}"]', inputs.target)) }}
+        target: ${{ fromJSON(inputs.target == 'all' && '["digitalocean","render","vercel","github"]' || format('["{0}"]', inputs.target)) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -46,7 +47,6 @@ jobs:
           TARGET: ${{ matrix.target }}
           DELETE: ${{ inputs.delete }}
           HOURS: ${{ inputs.older_than_hours }}
-          CLOUDISH_API_KEY: ${{ matrix.target == 'cloudish' && secrets.CLOUDISH_API_KEY || '' }}
           DIGITALOCEAN_ACCESS_TOKEN: ${{ matrix.target == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ matrix.target == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ matrix.target == 'render' && vars.RENDER_OWNER_ID || '' }}

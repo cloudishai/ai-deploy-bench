@@ -16,7 +16,7 @@ DigitalOcean's single container registry or Render's single free Postgres.
 |---|---|---|
 | prepare | Creates an empty workspace named after the cell's prefix and copies in `TASK.md` and fixtures. | none |
 | build | Claude Code builds the app and tests it locally ([prompt](../bench/templates/build.md)). | model key only |
-| deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's credentials, optional GitHub scratch token |
+| deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
 | inventory | Lists the cloud resources the cell created and prices them, including any created with credentials the agent saved in the workspace's `.env` files. | cloud credentials |
 | verify | Waits for the URL to answer, then runs the app's black-box checks. | none |
 | teardown | Stops any agent process a cancelled step left behind, deletes what the cell created, then lists again to report leftovers. | cloud credentials |
@@ -39,9 +39,11 @@ pinned version, the model from `benchmark.yaml` and its default effort unless on
 Each phase has a wall-clock limit (`build_timeout_minutes`, `deploy_timeout_minutes`) and a spend
 cap (`max_budget_usd_per_phase`, which Claude Code applies per invocation, so a resumed deploy gets
 its own budget). The deploy prompt requires every resource name to start with the cell's prefix
-(for example `adb-k3x9f-crud`) and forbids creating new accounts or API keys. Resources are found
-by that prefix, or because the agent declared them in `deployment.json`. Declared resources that
-existed before the cell are priced but never deleted.
+(for example `adb-k3x9f-crud`). Agents may set up whatever the cloud lets them set up themselves,
+saving any credentials they create in the workspace's `.env`, and must list anything only a person
+can do instead of working around it with another provider (see [Human steps](#human-steps)).
+Resources are found by the prefix, or because the agent declared them in `deployment.json`.
+Declared resources that existed before the cell are priced but never deleted.
 
 When a run is cancelled or a step times out, the harness stops Claude Code and everything it
 started before the step ends, so teardown never races a live agent. A cancelled run is not
@@ -51,8 +53,9 @@ committed.
 
 A cell is a **success** when its deployment answers on a public HTTPS URL and passes every
 *required* check for its app. It is **partial** when it is reachable but at least one required
-check fails, and **failed** when there is no reachable deployment (the failure stage, build or
-deploy, is recorded). Optional checks count toward the cell's **score**, which is checks passed
+check fails, and **failed** when there is no reachable deployment. The failure stage is recorded:
+`build`, `deploy`, or `human` when the agent couldn't finish without something only a person can
+do. Optional checks count toward the cell's **score**, which is checks passed
 over checks run. Checks skipped because no browser was available don't count either way.
 
 Every app shares three required checks: the app answers with 2xx within `ready_timeout_minutes`
@@ -72,6 +75,40 @@ checked strictly where the spec names one, with close equivalents accepted (for 
 The verifiers are tested against reference implementations of all five apps, and against broken
 variants to prove each check catches what it should ([`tests/`](../tests)).
 
+## Human steps
+
+The benchmark is about what it takes for an agent to deploy, so the work a person has to do is
+measured rather than done quietly in advance. Agents start each cell with only what no agent can
+get for itself, the cloud's **prerequisites**, and nothing else is set up for them: no Marketplace
+integrations, and no Git hosting unless the optional GitHub scratch account is provided.
+
+| Cloud | Prerequisites (before any agent can deploy) |
+|---|---|
+| Cloudish | none: agents mint their own API key with one unauthenticated call, with free starter credits |
+| DigitalOcean | sign up, add a payment method, create an API token |
+| Render | sign up, create an API token |
+| Vercel | sign up, create an API token |
+
+Each cell's human steps are collected from evidence by [`bench/human.py`](../bench/human.py):
+
+- **Prerequisites**, from [`benchmark.yaml`](../benchmark.yaml).
+- **Help the deployment relies on**: repositories or images in the GitHub scratch account, a
+  Marketplace store on Vercel (a person accepted its terms in a browser), or paid resources on a
+  cloud whose paid plans need a payment method (`when_paid`).
+- **Blockers**: what the agent listed under `human_steps` in `deployment.json`, and provider
+  errors in its tool output that only a person can resolve, such as Vercel's
+  `integration_terms_acceptance_required`, Render's "You must enter payment information", or
+  Cloudish's "API key is out of credits". Blockers count only when the cell didn't succeed: an
+  agent that deployed a working app evidently managed without them. A cell that failed or was
+  partial and has blockers gets the failure stage `human`.
+
+The **number of distinct steps** is the objective measure. Each step also has an estimated time
+from the `human_steps` catalog in `benchmark.yaml`, for someone who already knows what to do
+(signing up 3 min, payment method 2, API token 2, accepting integration terms 3, Git hosting 10,
+adding credits 3, anything else 5). Replace the estimates with measured times as you get them. Per
+cloud, the summary counts each distinct step once across apps, because a person does it once per
+account.
+
 ## Metrics
 
 | Metric | Definition |
@@ -81,6 +118,7 @@ variants to prove each check catches what it should ([`tests/`](../tests)).
 | Ready after deploy | Extra time between the agent finishing and the app first answering 2xx, probed by the harness right after the deploy phase. It is 0 when the app was already answering. |
 | Tokens | Input, output, cache-read and cache-write tokens across all models Claude Code called, per phase. |
 | Agent cost | Claude Code's own cost report. It is cumulative over a resumed session, so the deploy phase is the difference between the two phases' totals. It is estimated from token counts and `model_prices` only when a phase ended without a report (timeout or crash), and marked as estimated. |
+| Human setup | Distinct human steps the deployment needed or would need, with estimated minutes ([Human steps](#human-steps)). |
 | Hosting cost | The estimated monthly cost of the deployed resources (next section), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
@@ -111,9 +149,9 @@ Resources whose price can't be determined are listed as unpriced, and totals sho
 - **Model knowledge differs by provider.** Long-established CLIs are well covered by training
   data. Newer platforms such as Cloudish have to be discovered from their docs during the run.
   This is part of what the benchmark measures, and it is visible in each cell's web lookups.
-- **Account prerequisites are set up once by a human** (payment methods, Marketplace integrations
-  on Vercel, a scratch GitHub account for Git-based deploys). They are documented in
-  [setup.md](setup.md), not measured.
+- **Human time is estimated.** The steps are collected from evidence, but their minutes come from
+  a catalog; first-time setup usually takes longer than the estimates. A person's own model API
+  key is not counted, since every cloud needs it equally.
 - **Runs are not deterministic.** Use `trials` above 1 to report success rates rather than single
   outcomes.
 - **Persistence is checked over a minute.** The checks don't restart the app, so they can't prove

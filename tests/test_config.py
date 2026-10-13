@@ -48,3 +48,12 @@ def test_every_entry_is_implemented():
         assert adapter_credentials <= {c.env for c in cloud.credentials if not c.optional}, cloud.id
     for model in cfg.models:
         assert model.model in cfg.model_prices, model.id
+
+
+def test_human_steps_are_in_the_catalog():
+    cfg = config.load()
+    assert "other" in cfg.human_steps
+    for step in cfg.human_steps.values():
+        assert step["minutes"] >= 0 and step["description"]
+    for cloud in cfg.clouds:
+        assert set(cloud.prerequisites) | set(cloud.when_paid) <= cfg.human_steps.keys(), cloud.id

@@ -53,6 +53,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "code_lines": (record.get("code") or {}).get("code_lines"),
         "dependencies": sum(((record.get("code") or {}).get("dependencies") or {}).values()),
         "deploy_config": (record.get("code") or {}).get("deploy_config") or [],
+        "human_steps": [{"id": s["id"], "minutes": s["minutes"]} for s in (record.get("human") or {}).get("steps", [])],
     }
 
 
@@ -61,7 +62,8 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "score": 0.0, "checks_passed": 0, "checks_total": 0, "required_failed": [], "build_s": None,
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
             "hosting_monthly_usd": None, "shell_commands": 0, "agent_version": None, "build_tokens": None,
-            "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": []}
+            "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
+            "human_steps": []}
 
 
 def mean(values: Iterable[float | None]) -> float | None:
@@ -86,6 +88,12 @@ def per_app_total(cells: list[dict[str, Any]], field: str) -> tuple[float, bool]
     return sums, unknown
 
 
+def human_setup(cells: list[dict[str, Any]]) -> dict[str, float]:
+    """Distinct human steps across cells: a person does each one once per cloud account."""
+    steps = {s["id"]: s["minutes"] for c in cells for s in c.get("human_steps", [])}
+    return {"count": len(steps), "minutes": sum(steps.values())}
+
+
 def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
     finished = [c for c in cells if c["status"] != "missing"]
     tokens, _ = per_app_total(cells, "tokens")
@@ -96,6 +104,8 @@ def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
         "success": sum(c["status"] == "success" for c in cells),
         "partial": sum(c["status"] == "partial" for c in cells),
         "failed": sum(c["status"] in ("failed", "error", "missing") for c in cells),
+        "blocked_on_human": sum(c.get("failure_stage") == "human" for c in cells),
+        "human_steps": human_setup(finished),
         "success_rate": sum(c["status"] == "success" for c in cells) / len(cells) if cells else 0.0,
         "mean_score": mean(c["score"] for c in cells),
         "mean_build_s": mean(c["build_s"] for c in finished),
@@ -128,13 +138,15 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
         if len(models) > 1:
             lines += [f"**{model.name}**", ""]
         lines += [
-            "| Cloud | Success | Checks passed | Avg build | Avg deploy | Tokens | Agent cost | Hosting / month |",
-            "|---|---|---|---|---|---|---|---|",
+            "| Cloud | Success | Human setup | Checks passed | Avg build | Avg deploy | Tokens | Agent cost | Hosting / month |",
+            "|---|---|---|---|---|---|---|---|---|",
         ]
         for group in [g for g in summary["groups"] if g["model"] == model.id]:
             cloud = cfg.cloud(group["cloud"])
+            people = group["human_steps"]
             lines.append(
-                f"| [{cloud.name}]({cloud.url}) | {group['success']}/{group['cells']} | {fmt.pct(group['mean_score'])} | "
+                f"| [{cloud.name}]({cloud.url}) | {group['success']}/{group['cells']} | "
+                f"{fmt.human(people['count'], people['minutes'])} | {fmt.pct(group['mean_score'])} | "
                 f"{fmt.duration(group['mean_build_s'])} | {fmt.duration(group['mean_deploy_s'])} | "
                 f"{fmt.tokens(group['tokens'])} | {fmt.usd(group['agent_usd'])}{'+' if group['agent_usd_incomplete'] else ''} | "
                 f"{fmt.usd(group['hosting_monthly_usd'])}{'+' if group['hosting_incomplete'] else ''} |"
@@ -169,8 +181,10 @@ def matrix_cell(members: list[dict[str, Any]], link_prefix: str) -> str:
         wins = sum(c["status"] == "success" for c in members)
         return f"{wins}/{len(members)} ✅"
     c = members[0]
-    label = fmt.status(c["status"])
-    if c["status"] == "partial":
+    label = fmt.status("human" if c.get("failure_stage") == "human" else c["status"])
+    if c.get("failure_stage") == "human":
+        label += " needs a person"
+    elif c["status"] == "partial":
         label += f" {c['checks_passed']}/{c['checks_total']}"
     elif c["status"] in ("failed", "missing"):
         label += f" {c['failure_stage']}"
@@ -201,18 +215,19 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     if run.get("url"):
         lines.append(f"- Workflow run: {run['url']}")
     lines += ["", "## Summary", ""] + headline_table(summary, cfg)
-    lines += ["## By app", "", "✅ success · ⚠️ deployed but some required checks failed (checks passed shown) · "
-              "❌ failed (stage shown) · ❔ no result", ""] + app_matrix(summary, cfg, link_prefix="")
+    lines += ["## By app", "", MATRIX_LEGEND, ""] + app_matrix(summary, cfg, link_prefix="")
     lines += [
         "## All cells",
         "",
-        "| Model | Cloud | App | Trial | Result | Checks | Build | Deploy | Ready after | Tokens | Agent cost | Hosting / month |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Model | Cloud | App | Trial | Result | Checks | Human steps | Build | Deploy | Ready after | Tokens | Agent cost | Hosting / month |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in summary["cells"]:
         report = f"[{fmt.status(c['status'])} {c['status']}]({cell_path(c)}.md)" if c["status"] != "missing" else "❔ missing"
+        people = human_setup([c]) if c["status"] != "missing" else None
         lines.append(
             f"| {c['model']} | {c['cloud']} | {c['app']} | {c['trial']} | {report} | {c['checks_passed']}/{c['checks_total']} | "
+            f"{fmt.human(people['count'], people['minutes']) if people else fmt.DASH} | "
             f"{fmt.duration(c['build_s'])} | {fmt.duration(c['deploy_s'])} | {fmt.duration(c['ready_after_deploy_s'])} | "
             f"{fmt.tokens(c['tokens'])} | {fmt.usd(c['agent_usd'])} | {fmt.usd(c['hosting_monthly_usd'])} |"
         )
@@ -237,7 +252,12 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     return "\n".join(lines) + "\n"
 
 
+MATRIX_LEGEND = ("✅ success · ⚠️ deployed but some required checks failed (checks passed shown) · "
+                 "🙋 blocked on something only a person can do · ❌ failed (stage shown) · ❔ no result")
+
 LEGEND = (
+    "*Human setup* counts the distinct steps a person had to do, or would have to do, for the agent's deployments "
+    "to work (account setup, terms, payment, Git hosting), with estimated minutes; see the methodology. "
     "Times are wall-clock time of the agent's build and deploy phases; *ready after* is how much longer the app "
     "took to answer once the agent finished. Tokens include cache reads and writes. Agent cost is the API cost "
     "reported by Claude Code. Hosting is the estimated monthly cost of the resources left running, priced as "
@@ -276,9 +296,10 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
         f"{', '.join(cfg.model(m).name for m in run['models'])}",
         "",
     ] + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
-        "Success counts deployments that passed every required check. Times are averages per app; tokens, "
-        "agent cost and hosting are totals across the apps (averaged over trials). Hosting is priced as "
-        "always-on for a month. "
+        "Success counts deployments that passed every required check. *Human setup* is what a person had to do, "
+        "or would have to do, for the agent to deploy all the apps: distinct steps and estimated minutes. Times are "
+        "averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting "
+        "is priced as always-on for a month. "
         f"[All {runs_count} run(s)](results/README.md) · [Methodology](docs/methodology.md)",
     ]
     return "\n".join(lines)

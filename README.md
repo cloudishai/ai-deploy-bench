@@ -25,6 +25,7 @@ For every cloud × model × app (a *cell*):
 | **Time to deploy** | Wall-clock time of the agent's deploy phase, including cloud builds and rollouts, and how much longer the app took to answer afterwards |
 | **Tokens used** | Input, output and cache tokens per phase, as reported by Claude Code |
 | **Agent cost** | API cost per phase, as reported by Claude Code |
+| **Human setup** | What a person had to do, or would have to do, for the agent to deploy (sign up, payment method, API token, accepting integration terms, Git hosting), as distinct steps with estimated minutes. A deploy that can't finish without one fails at the `human` stage |
 | **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables, next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
 
@@ -75,8 +76,9 @@ test whatever stack the agent picks:
 
 ## Running the benchmark
 
-1. **Set up the accounts** as described in [docs/setup.md](docs/setup.md): dedicated cloud accounts,
-   a funded Cloudish key, and optionally a scratch GitHub account for clouds that deploy from Git.
+1. **Set up the accounts** as described in [docs/setup.md](docs/setup.md): only each cloud's
+   prerequisites (an account and an API token; Cloudish needs nothing). Everything else an agent
+   needs from a person is measured, not set up in advance.
 2. **Store the keys** as GitHub Actions secrets:
    ```sh
    cp .env.example .env    # fill in the keys; .env is gitignored
