@@ -21,7 +21,8 @@ class DigitalOcean(Cloud):
 
     def __init__(self, env) -> None:
         super().__init__(env)
-        self.api = api_for(API, env.get("DIGITALOCEAN_ACCESS_TOKEN", ""))
+        # Some DELETEs (projects) answer 415 without a JSON content type, even with no body.
+        self.api = api_for(API, env.get("DIGITALOCEAN_ACCESS_TOKEN", ""), **{"Content-Type": "application/json"})
 
     def _pages(self, path: str, key: str, **params: Any) -> Iterator[dict[str, Any]]:
         page = 1

@@ -237,3 +237,16 @@ def test_github_scratch_resources_in_the_org_and_the_tokens_user(fake):
         "api.github.com/repos/bench-bot/adb-k3x9f-crud-site",
         "api.github.com/repos/bench-org/adb-k3x9f-crud",
     ]
+
+
+def test_digitalocean_sends_a_json_content_type_on_deletes(fake):
+    seen = []
+
+    def delete_project(request):
+        seen.append(request.headers.get("content-type"))
+        return None
+
+    fake({("DELETE", "api.digitalocean.com/v2/projects/p1"): delete_project})
+    cloud = ADAPTERS["digitalocean"]({"DIGITALOCEAN_ACCESS_TOKEN": "t"})
+    outcomes = base.teardown(cloud, [Resource("project", "p1", "adb-k3x9f-crud").to_dict()], retry_delay=0)
+    assert outcomes[0]["deleted"] and seen == ["application/json"]
