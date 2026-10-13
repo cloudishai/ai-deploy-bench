@@ -38,6 +38,8 @@ class ApiVerifier(Verifier):
             response = self.get("/docs")
             expect_status(response, 200)
             expect_html(response)
+        if self.passed("docs"):
+            self.screenshot("/docs", "docs", "The API documentation at /docs")
 
         with self.check("auth_missing", "Requests without an API key get 401"):
             expect_status(self.get("/v1/notes"), 401, 403)

@@ -10,7 +10,8 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
+SCREENSHOTS = "screenshots"  # the verifier's screenshots, under the cell directory
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
     "tokens_estimated", "cost_usd", "cost_source", "model_usage", "tool_calls", "tool_errors", "compactions",
@@ -144,6 +145,7 @@ def build(cell: "Cell") -> dict[str, Any]:
             for k in ("readiness", "performance", "checks", "browser", "error", "harness_error", "duration_s")
             if k in verification
         },
+        "screenshots": kept_screenshots(cell, verification),
         "resources": [slim_resource(r) for r in cloud_inventory.get("resources", [])],
         "scratch_resources": [slim_resource(r) for r in (inventory.get("github") or {}).get("resources", [])],
         "possible_leaks": [slim_resource(r) for r in cloud_inventory.get("possible_leaks", [])],
@@ -192,6 +194,7 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         "",
         f"App answered {fmt.duration(t['ready_after_deploy_s'])} after the agent finished deploying.",
         "",
+        *screenshot_lines(record.get("screenshots") or []),
         "## What was built",
         "",
         *architecture_lines(record.get("code") or {}),
@@ -283,6 +286,33 @@ def human_lines(people: dict[str, Any]) -> list[str]:
     if unneeded:
         lines += ["", "Reported but not needed, since the deployment worked without them: "
                   + "; ".join(b["detail"][:120] for b in unneeded)]
+    return lines
+
+
+def kept_screenshots(cell: "Cell", verification: dict[str, Any]) -> list[dict[str, Any]]:
+    """The verifier's screenshots, with `file` relative to the cell directory for those still on disk;
+    redaction deletes any whose page showed a secret."""
+    shots = []
+    for shot in verification.get("screenshots") or []:
+        entry = {k: shot.get(k) for k in ("name", "caption", "url")}
+        if shot.get("file") and (cell.dir / SCREENSHOTS / shot["file"]).is_file():
+            entry["file"] = f"{SCREENSHOTS}/{shot['file']}"
+        else:
+            entry["error"] = shot.get("error") or "removed because the page showed a secret"
+        shots.append(entry)
+    return shots
+
+
+def screenshot_lines(shots: list[dict[str, Any]]) -> list[str]:
+    """A report section showing each screenshot; images are linked relative to the report."""
+    if not shots:
+        return []
+    lines = ["## Screenshots", ""]
+    for shot in shots:
+        if shot.get("file"):
+            lines += [f"**{shot['caption']}** ({shot['url']})", "", f"![{shot['caption']}]({shot['file']})", ""]
+        else:
+            lines += [f"- {shot['caption']}: not captured ({shot.get('error')})", ""]
     return lines
 
 

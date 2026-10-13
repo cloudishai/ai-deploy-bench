@@ -18,6 +18,9 @@ from urllib.parse import quote
 MASK = "[REDACTED]"
 MIN_LENGTH = 8
 SKIPPED_SUFFIXES = (".gz", ".tgz", ".zip")  # archives are built from already-redacted files
+# Pixels can't be masked, and rewriting image bytes could corrupt them; screenshots are screened by
+# the text of the page they show instead (screen_screenshots).
+IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 URL_PASSWORD = r"(\b[A-Za-z][A-Za-z0-9+.-]*://[^\s:/@'\"]+:)([^\s@/'\"]{3,})(@)"
 TOKEN_FORMATS = (
@@ -80,6 +83,22 @@ def redact_tree(root: Path, secrets: list[str]) -> int:
     encoded = [s.encode() for s in secrets]
     changed = 0
     for path in sorted(root.rglob("*")):
-        if path.is_file() and not path.is_symlink() and not path.name.endswith(SKIPPED_SUFFIXES):
+        if path.is_file() and not path.is_symlink() and not path.name.lower().endswith(SKIPPED_SUFFIXES + IMAGE_SUFFIXES):
             changed += redact_file(path, encoded)
     return changed
+
+
+def screen_screenshots(directory: Path, secrets: list[str]) -> list[str]:
+    """Deletes every screenshot whose page showed a secret, judged by the page text saved next to it
+    (`<name>.txt`), or that has no such text. Returns the deleted file names. Run it before
+    `redact_tree`, which masks the secrets in that text."""
+    removed = []
+    for image in sorted(directory.glob("*")) if directory.is_dir() else []:
+        if not image.name.lower().endswith(IMAGE_SUFFIXES):
+            continue
+        text = image.with_suffix(".txt")
+        shown = text.read_text(errors="replace") if text.is_file() else None
+        if shown is None or redact_text(shown, secrets) != shown:
+            image.unlink()
+            removed.append(image.name)
+    return removed

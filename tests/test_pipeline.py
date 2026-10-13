@@ -181,3 +181,42 @@ def test_an_agent_that_cannot_reach_the_api_is_an_error_and_not_committed(tmp_pa
 
 def test_results_index_without_runs():
     assert aggregate.render_index([], config.load()).rstrip().endswith("No runs yet.")
+
+
+def test_screenshots_reach_the_report_and_the_committed_results(tmp_path, monkeypatch):
+    for name in ("CLOUDISH_API_KEY", "GH_TOKEN", "GH_OWNER", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", SECRET)
+    current = cell.prepare(tmp_path / "cell", tmp_path / "work", "1-1", "vercel", "opus-5-5", "static", 1)
+    shots = current.dir / result.SCREENSHOTS
+    shots.mkdir()
+    for name, text in {"home": "Welcome to Northwind", "contact": f"Error: invalid key {SECRET}"}.items():
+        (shots / f"{name}.jpg").write_bytes(b"\xff\xd8" + name.encode())
+        (shots / f"{name}.txt").write_text(text)
+    url = "https://adb-x-static.vercel.app"
+    current.write("verify.json", {"url": url, "readiness": {"ready": True}, "checks": [], "screenshots": [
+        {"name": "home", "caption": "The home page", "url": url + "/", "file": "home.jpg"},
+        {"name": "contact", "caption": "The contact page", "url": url + "/contact", "file": "contact.jpg"},
+        {"name": "docs", "caption": "The docs", "url": url + "/docs", "file": None, "error": "TimeoutError: slow"},
+    ]})
+    record = cell.finalize(current)
+    # The contact page showed the API key, so its picture is gone, and only the home page is shown.
+    assert [s.get("file") for s in record["screenshots"]] == ["screenshots/home.jpg", None, None]
+    assert record["screenshots"][1]["error"] == "removed because the page showed a secret"
+    assert not (shots / "contact.jpg").exists() and SECRET not in (shots / "contact.txt").read_text()
+    report = (current.dir / "report.md").read_text()
+    assert "![The home page](screenshots/home.jpg)" in report and "contact.jpg" not in report
+    assert "- The docs: not captured (TimeoutError: slow)" in report
+
+    readme = tmp_path / "README.md"
+    readme.write_text("# Bench\n")
+    plan = {"cells": [{"cloud": "vercel", "model": "opus-5-5", "app": "static", "trial": 1}]}
+    run = {"name": "2026-10-13_10-1", "date": "2026-10-13", "number": 10, "attempt": 1, "url": ""}
+    aggregate.aggregate(tmp_path / "cell", plan, tmp_path / "results", readme, run)
+    run_dir = tmp_path / "results" / "runs" / run["name"]
+    copied = run_dir / "cells" / "opus-5-5" / "vercel"
+    assert (copied / "static-t1" / "home.jpg").read_bytes() == b"\xff\xd8home"
+    assert "![The home page](static-t1/home.jpg)" in (copied / "static-t1.md").read_text()
+    assert json.loads((copied / "static-t1.json").read_text())["screenshots"][0]["file"] == "static-t1/home.jpg"
+    gallery = (run_dir / "summary.md").read_text().split("## Screenshots", 1)[1]
+    assert '[<img src="cells/opus-5-5/vercel/static-t1/home.jpg" width="220" alt="Static site on Vercel">]' in gallery

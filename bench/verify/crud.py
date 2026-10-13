@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import contextlib
+import re
 import time
 
 from bench.verify.base import CheckFailed, Verifier, expect, expect_html, expect_json, expect_status, token
 
 PASSWORD = "correct-horse-battery-staple"
+SIGN_IN = re.compile(r"\b(log|sign) ?in\b", re.IGNORECASE)
+LOGIN_FIELDS = ", ".join(f"{selector}:visible" for selector in (
+    "input[type=email]", "input[name*=email i]", "input[id*=email i]", "input[autocomplete=username]",
+    "input[autocomplete=email]", "input[type=text]"))
+SHOWS_ANY = "(texts) => texts.some(text => document.body && document.body.innerText.includes(text))"
 
 
 def bearer(value: str) -> dict[str, str]:
@@ -116,8 +123,43 @@ class CrudVerifier(Verifier):
             self.require_browser(check)
             with self.browser.page() as (page, errors):
                 page.goto(self.base_url + "/", wait_until="networkidle")
+                self.capture(page, "signin", "The web app before signing in")
                 expect(page.locator("input[type=password]").count() > 0, "no password field on /")
                 expect(not errors, f"uncaught error: {errors[0][:200] if errors else ''}")
+        if first:
+            self._capture_signed_in(email_a, ["Buy oat milk " + run_id, "Buy milk " + run_id])
+
+    def _capture_signed_in(self, email: str, titles: list[str]) -> None:
+        """Signs in through the web UI as the test user and keeps a screenshot only if the page then
+        shows that user's todos, so a UI this can't drive never leaves a misleading picture."""
+        if not self.can_capture():
+            return
+        with contextlib.suppress(Exception), self.browser.page() as (page, _):
+            page.set_default_timeout(10_000)
+            page.goto(self.base_url + "/", wait_until="networkidle")
+            for attempt in range(2):
+                if attempt:  # the first form may have been for signing up; switch to signing in
+                    page.get_by_role("button", name=SIGN_IN).or_(page.get_by_role("link", name=SIGN_IN)).or_(
+                        page.get_by_role("tab", name=SIGN_IN)).first.click()
+                    page.wait_for_timeout(1000)
+                if not self._shows(page, titles):
+                    page.locator(LOGIN_FIELDS).first.fill(email)
+                    password = page.locator("input[type=password]:visible").first
+                    password.fill(PASSWORD)
+                    password.press("Enter")
+                if self._shows(page, titles, wait_ms=8000):
+                    self.capture(page, "todos", "The todo list after signing in through the web UI as the test user")
+                    return
+
+    @staticmethod
+    def _shows(page, texts: list[str], wait_ms: int = 0) -> bool:
+        try:
+            if not wait_ms:
+                return bool(page.evaluate(SHOWS_ANY, texts))
+            page.wait_for_function(SHOWS_ANY, arg=texts, timeout=wait_ms)
+            return True
+        except Exception:
+            return False
 
     def _signup(self, email: str) -> str:
         response = self.post("/api/auth/signup", json={"email": email, "password": PASSWORD})

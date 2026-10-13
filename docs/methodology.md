@@ -78,6 +78,23 @@ checked strictly where the spec names one, with close equivalents accepted (for 
 The verifiers are tested against reference implementations of all five apps, and against broken
 variants to prove each check catches what it should ([`tests/`](../tests)).
 
+### Screenshots
+
+While the deployment is live, the verifier also takes screenshots in its browser so people can see
+what each agent built. They don't affect any score.
+
+| App | Screenshots |
+|---|---|
+| Static site | The home page, and the contact page after the verifier submitted the form |
+| CRUD app | The app before signing in, and the todo list after signing in through the web UI as the verifier's test user. The second is kept only when the page shows that user's todos, so a UI the verifier can't drive leaves no misleading picture |
+| API | The `/docs` page |
+| Dashboard | The dashboard once its charts render, or after 30 seconds |
+| Realtime chat | The room the verifier's clients chatted in, which shows its history if the UI does |
+
+Each is a 1280×900 JPEG, shown in the cell's report and, for the first trial, in the run summary's
+gallery. Pixels can't be masked like text, so the verifier saves each page's text next to its
+screenshot, and finalize deletes any screenshot whose page showed a secret or that has no text.
+
 ## Human steps
 
 The benchmark is about what it takes for an agent to deploy, so the work a person has to do is
@@ -231,7 +248,8 @@ can read it directly. Paths inside the JSON files are relative to the folder giv
 |---|---|
 | `results/index.json` | `runs`: every run, newest first, with its name, date, scope, models, cell and success counts, and the paths of its `summary` (JSON) and `report` (markdown), relative to `results/` |
 | `results/runs/<run>/summary.json` | `run` (metadata), `groups` (one row per model × cloud) and `cells` (one compact row per cell, with the `path` of its full record and its `report`, relative to the run folder) |
-| `results/runs/<run>/cells/<model>/<cloud>/<app>-t<trial>.json` | The cell's full record: outcome, checks, timing, tokens and cost per phase, human steps, resources, code statistics and the security review (`security.criteria`, `security.findings`, `security.summary`) |
+| `results/runs/<run>/cells/<model>/<cloud>/<app>-t<trial>.json` | The cell's full record: outcome, checks, timing, tokens and cost per phase, human steps, resources, code statistics, the security review (`security.criteria`, `security.findings`, `security.summary`) and `screenshots` (`name`, `caption`, `url`, and `file` relative to the record's folder, or `error` when one wasn't captured or was removed) |
+| `results/runs/<run>/cells/<model>/<cloud>/<app>-t<trial>/<name>.jpg` | The cell's screenshots |
 
 Every file has a `schema` number, raised whenever fields are added, renamed or removed. Files from
 earlier runs keep the schema they were written with, so readers should treat fields added in later
@@ -243,6 +261,7 @@ versions as optional:
 | 2 | `results/index.json`; `schema` in `summary.json`; `path` and `report` on summary cells; `source` on security findings |
 | 3 | The review adds a `compliance` criterion and reweights the rubric (shown as *Security & compliance*), so scores aren't comparable with earlier runs. The JSON fields keep their names (`security`, `security_score`) |
 | 4 | `cost.hosting_usage` in cell records (cost, `incomplete` and `basis` for each traffic level), and `hosting_usage_usd` and `hosting_usage_incomplete` on summary cells and groups |
+| 5 | `screenshots` in cell records, and their file names on summary cells |
 
 ## Fairness and limitations
 

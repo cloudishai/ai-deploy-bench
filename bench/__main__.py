@@ -60,7 +60,8 @@ def cmd_verify(args: argparse.Namespace) -> None:
     browser = None if args.no_browser else Browser.launch()
     try:
         verifier = VERIFIERS[args.app](args.url, inputs=inputs, deployment=deployment, browser=browser,
-                                       require_https=not args.allow_http, min_persistence_delay=args.persistence_delay)
+                                       require_https=not args.allow_http, min_persistence_delay=args.persistence_delay,
+                                       screenshots_dir=Path(args.screenshots) if args.screenshots else None)
         report = verifier.run_all()
     finally:
         if browser:
@@ -126,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--no-browser", action="store_true")
     p.add_argument("--allow-http", action="store_true")
     p.add_argument("--persistence-delay", type=float, default=60.0)
+    p.add_argument("--screenshots", metavar="DIR", help="save screenshots of the app here")
     p.set_defaults(func=cmd_verify)
 
     p = sub.add_parser("aggregate", help="collect cell results into results/ and update README.md")

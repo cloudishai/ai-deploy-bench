@@ -1,4 +1,4 @@
-from bench.redact import MASK, redact_text, redact_tree, secret_values
+from bench.redact import MASK, redact_text, redact_tree, screen_screenshots, secret_values
 
 SECRET = "super-secret-value-123"
 
@@ -28,3 +28,22 @@ def test_redact_tree_handles_binary_and_large_files(tmp_path):
     assert SECRET not in (tmp_path / "transcript.jsonl").read_text()
     assert (tmp_path / "binary.bin").read_bytes() == b"\xff\xfe" + MASK.encode() + b"\x00\x01"
     assert (tmp_path / "clean.txt").read_text() == "nothing to see"
+
+
+def test_screenshots_of_pages_that_showed_a_secret_are_deleted(tmp_path):
+    for name, text in {"clean": "Welcome", "leak": f"DATABASE_URL=postgres://app:{SECRET}@db", "no-text": None}.items():
+        (tmp_path / f"{name}.jpg").write_bytes(b"\xff\xd8" + name.encode())
+        if text is not None:
+            (tmp_path / f"{name}.txt").write_text(text)
+    assert screen_screenshots(tmp_path, [SECRET]) == ["leak.jpg", "no-text.jpg"]
+    assert sorted(p.name for p in tmp_path.glob("*.jpg")) == ["clean.jpg"]
+    assert screen_screenshots(tmp_path / "missing", [SECRET]) == []
+
+
+def test_redact_tree_leaves_images_alone(tmp_path):
+    image = tmp_path / "home.jpg"
+    image.write_bytes(b"\xff\xd8" + SECRET.encode())  # bytes that happen to spell a secret
+    (tmp_path / "home.txt").write_text(SECRET)
+    redact_tree(tmp_path, [SECRET])
+    assert image.read_bytes() == b"\xff\xd8" + SECRET.encode()
+    assert (tmp_path / "home.txt").read_text() == MASK

@@ -15,6 +15,7 @@ import statistics
 import threading
 import time
 from http.cookiejar import CookieJar, DefaultCookiePolicy
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Iterator
 from urllib.parse import urlsplit
 
@@ -23,6 +24,11 @@ import httpx
 from bench.verify.htmlscan import PageScan
 
 USER_AGENT = "ai-deploy-bench-verifier/1.0"
+SCREENSHOT_QUALITY = 70  # JPEG; a 1280x900 viewport comes out around 50-150 KB
+# What a screenshot shows as text, saved next to it so redaction can drop pictures of pages that
+# displayed a secret (pixels can't be masked like text).
+PAGE_TEXT = """() => [document.title, document.body ? document.body.innerText : '',
+    ...[...document.querySelectorAll('input, textarea')].map(e => e.value)].join('\\n')"""
 
 
 def no_cookies() -> CookieJar:
@@ -123,6 +129,7 @@ class Verifier:
         min_persistence_delay: float = 60.0,
         require_https: bool = True,
         browser_required: bool = False,
+        screenshots_dir: Path | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.inputs = inputs or {}
@@ -132,6 +139,8 @@ class Verifier:
         self.min_persistence_delay = min_persistence_delay
         self.require_https = require_https
         self.browser_required = browser_required
+        self.screenshots_dir = screenshots_dir
+        self.screenshots: list[dict[str, Any]] = []
         self.deadline: float | None = None
         self.http = httpx.Client(
             base_url=self.base_url,
@@ -183,6 +192,42 @@ class Verifier:
     def _budget(self) -> None:
         if self.deadline is not None and time.monotonic() > self.deadline:
             raise CheckFailed("not run: verification time budget exhausted")
+
+    # -- screenshots -----------------------------------------------------------------------------
+
+    def can_capture(self) -> bool:
+        return (self.screenshots_dir is not None and bool(self.browser)
+                and (self.deadline is None or time.monotonic() < self.deadline))
+
+    def capture(self, page: Any, name: str, caption: str) -> None:
+        """Saves a screenshot of `page` as it is now, for the report. Best effort: it never fails a
+        check, and nothing is saved when screenshots are off."""
+        if self.screenshots_dir is None:
+            return
+        entry: dict[str, Any] = {"name": name, "caption": caption, "url": None, "file": None}
+        try:
+            entry["url"] = page.url
+            self.screenshots_dir.mkdir(parents=True, exist_ok=True)
+            # The text first: without it, redaction deletes the picture.
+            (self.screenshots_dir / f"{name}.txt").write_text(page.evaluate(PAGE_TEXT))
+            page.screenshot(path=self.screenshots_dir / f"{name}.jpg", type="jpeg", quality=SCREENSHOT_QUALITY,
+                            animations="disabled")
+            entry["file"] = f"{name}.jpg"
+        except Exception as error:
+            entry["error"] = describe(error)
+        self.screenshots.append(entry)
+
+    def screenshot(self, path: str, name: str, caption: str) -> None:
+        """Opens `path` in a fresh page and captures it once it has loaded."""
+        if not self.can_capture():
+            return
+        try:
+            with self.browser.page() as (page, _):
+                page.goto(self.base_url + path, wait_until="networkidle")
+                self.capture(page, name, caption)
+        except Exception as error:
+            self.screenshots.append({"name": name, "caption": caption, "url": self.base_url + path, "file": None,
+                                     "error": describe(error)})
 
     def get(self, path: str, **kwargs: Any) -> httpx.Response:
         self._budget()
@@ -315,7 +360,7 @@ class Verifier:
             self.checks.append(Check("verifier_error", "Verifier crashed before finishing", True, "failed", describe(error)))
         performance = self.measure_latency() if readiness["ready"] else {"samples": 0}
         self.http.close()
-        return summarize(self.checks, readiness, performance)
+        return {**summarize(self.checks, readiness, performance), "screenshots": self.screenshots}
 
 
 def _bare_host(host: str | None) -> str:

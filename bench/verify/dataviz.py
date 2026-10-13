@@ -105,6 +105,7 @@ class DatavizVerifier(Verifier):
             with self.browser.page() as (page, errors):
                 page.goto(self.base_url + "/", wait_until="networkidle")
                 charts = self._wait_for_charts(page)
+                self.capture(page, "dashboard", "The dashboard")
                 expect(charts >= 1, "no chart larger than 200x100 px appeared within 30 s")
 
         with self.check("browser_two_charts", "The dashboard shows at least two charts", required=False) as check:

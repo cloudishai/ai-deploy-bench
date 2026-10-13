@@ -119,6 +119,20 @@ class SSEClient(Client):
                 await self._stream.__aexit__(None, None, None)
 
 
+NAME_FIELDS = ", ".join(f"{selector}:visible" for selector in (
+    "input[placeholder*=name i]", "input[name*=name i]", "input[id*=name i]", "input[aria-label*=name i]",
+    "input[placeholder*=nick i]"))
+
+
+def shows(page: Any, text: str, wait_ms: int) -> bool:
+    try:
+        page.wait_for_function("(text) => document.body && document.body.innerText.includes(text)", arg=text,
+                               timeout=wait_ms)
+        return True
+    except Exception:
+        return False
+
+
 def websocket_url(base_url: str) -> str:
     parts = urlsplit(base_url)
     scheme = {"https": "wss", "http": "ws"}.get(parts.scheme, parts.scheme)
@@ -134,6 +148,7 @@ class RealtimeVerifier(Verifier):
         self.transport = str(realtime.get("transport") or "websocket").lower()
         self.ws_url = realtime.get("url") or websocket_url(self.base_url)
         self.latency_ms: float | None = None
+        self.chat: tuple[str, str] | None = None  # (room, a message sent there), once the live checks ran
 
         with self.check("ui", "GET / serves the chat UI as HTML"):
             response = self.get("/")
@@ -152,6 +167,25 @@ class RealtimeVerifier(Verifier):
                 page.goto(self.base_url + "/?room=bench-ui", wait_until="networkidle")
                 expect(page.locator("input, textarea").count() > 0, "no input for typing messages")
                 expect(not errors, f"uncaught error: {errors[0][:200] if errors else ''}")
+        if self.chat:
+            self._capture_room(*self.chat)
+
+    def _capture_room(self, room: str, text: str) -> None:
+        """Opens the room the verifier's clients chatted in, so the screenshot shows its history. A UI
+        that first asks for a display name gets one."""
+        if not self.can_capture():
+            return
+        with contextlib.suppress(Exception), self.browser.page() as (page, _):
+            page.set_default_timeout(10_000)
+            page.goto(f"{self.base_url}/?{urlencode({'room': room})}", wait_until="networkidle")
+            shown = shows(page, text, wait_ms=3000)
+            name = page.locator(NAME_FIELDS).first
+            if not shown and name.count():
+                name.fill("visitor")
+                name.press("Enter")
+                shown = shows(page, text, wait_ms=5000)
+            self.capture(page, "chat", "The room the verifier's clients chatted in, with its history" if shown
+                         else "The chat UI, opened on the room the verifier's clients chatted in")
 
     async def _live_checks(self, run_id: str) -> None:
         http = httpx.AsyncClient(base_url=self.base_url, timeout=30.0, headers={"User-Agent": USER_AGENT},
@@ -165,6 +199,7 @@ class RealtimeVerifier(Verifier):
 
         room, other_room, crowd_room = f"bench-{run_id}", f"bench-{run_id}-other", f"bench-{run_id}-crowd"
         text = f"hello from alice {run_id}"
+        self.chat = (room, text)
         alice = bob = carol = None
         try:
             with self.check("connect", f"Clients connect over {self.transport}"):

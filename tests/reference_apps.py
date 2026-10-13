@@ -105,9 +105,28 @@ def static_app(bugs: frozenset = frozenset()) -> web.Application:
 
 # -- crud ------------------------------------------------------------------------------------
 
+# Signs in and lists the user's todos, so the verifier's screenshot of the signed-in UI can be tested.
+TODO_SCRIPT = """
+document.querySelector('form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const login = await fetch('/api/auth/login', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email: form.get('email'), password: form.get('password')})});
+  if (!login.ok) return;
+  const {token} = await login.json();
+  const todos = await (await fetch('/api/todos', {headers: {Authorization: 'Bearer ' + token}})).json();
+  document.querySelector('#todos').replaceChildren(...todos.map(todo => {
+    const item = document.createElement('li');
+    item.textContent = todo.title;
+    return item;
+  }));
+});
+"""
+
 def crud_app(bugs: frozenset = frozenset()) -> web.Application:
     """`bugs` may also contain "cookie_sessions": signup and login also set a session cookie, which
-    the API accepts when there's no Authorization header (TASK.md lets the web UI use cookies)."""
+    the API accepts when there's no Authorization header (TASK.md lets the web UI use cookies).
+    "no_ui_login" leaves the web UI's form without the script that signs in."""
     users: dict[str, str] = {}
     tokens: dict[str, str] = {}
     todos: list[dict] = []
@@ -141,7 +160,9 @@ def crud_app(bugs: frozenset = frozenset()) -> web.Application:
         return {k: v for k, v in todo.items() if k != "owner"}
 
     async def ui(_):
-        return page("Todos", "<h1>Todos</h1><form><input name='email'><input type='password' name='password'></form>")
+        return page("Todos", "<h1>Todos</h1><form><input name='email'><input type='password' name='password'>"
+                    "<button type='submit'>Log in</button></form><ul id='todos'></ul>",
+                    "" if "no_ui_login" in bugs else TODO_SCRIPT)
 
     async def signup(request):
         body = await json_body(request)
@@ -361,6 +382,17 @@ def dataviz_app(bugs: frozenset = frozenset()) -> web.Application:
 
 # -- realtime --------------------------------------------------------------------------------
 
+CHAT_SCRIPT = """
+const room = new URLSearchParams(location.search).get('room') || 'general';
+fetch('/api/rooms/' + encodeURIComponent(room) + '/messages').then(r => r.json()).then(messages => {
+  document.querySelector('#history').replaceChildren(...messages.map(message => {
+    const item = document.createElement('li');
+    item.textContent = message.user + ': ' + message.text;
+    return item;
+  }));
+});
+"""
+
 def realtime_app(bugs: frozenset = frozenset()) -> web.Application:
     sockets: dict[str, set] = defaultdict(set)
     streams: dict[str, set] = defaultdict(set)
@@ -381,7 +413,7 @@ def realtime_app(bugs: frozenset = frozenset()) -> web.Application:
         return message
 
     async def ui(_):
-        return page("Chat", "<h1>Chat</h1><input id='text'><button>Send</button>")
+        return page("Chat", "<h1>Chat</h1><ul id='history'></ul><input id='text'><button>Send</button>", CHAT_SCRIPT)
 
     async def ws_handler(request):
         room, user = request.query.get("room", "general"), request.query.get("user", "anon")

@@ -51,8 +51,40 @@ def test_reference_app_passes(name, browser):
     assert failures(result) == {}
     assert result["success"]
     assert result["readiness"]["ready"]
+    assert result["screenshots"] == []  # only taken when asked for
     if browser is None:
         assert all(s in ("passed", "skipped") for s in statuses(result).values())
+
+
+SCREENSHOTS = {
+    "static": {"home": "The home page", "contact": "The contact page after the verifier submitted the form"},
+    "crud": {"signin": "The web app before signing in",
+             "todos": "The todo list after signing in through the web UI as the test user"},
+    "api": {"docs": "The API documentation at /docs"},
+    "dataviz": {"dashboard": "The dashboard"},
+    "realtime": {"chat": "The room the verifier's clients chatted in, with its history"},
+}
+
+
+@pytest.mark.parametrize("name", SCREENSHOTS)
+def test_screenshots_show_the_running_app(name, browser, tmp_path):
+    if browser is None:
+        pytest.skip("Playwright is not installed")
+    app, kwargs = REFERENCE[name]()
+    result = verify(name, app, browser, screenshots_dir=tmp_path, **kwargs)
+    assert {s["name"]: s["caption"] for s in result["screenshots"]} == SCREENSHOTS[name]
+    for shot in result["screenshots"]:
+        assert "error" not in shot and shot["url"].startswith("http://127.0.0.1:")
+        assert (tmp_path / shot["file"]).read_bytes()[:2] == b"\xff\xd8"  # a JPEG
+        assert (tmp_path / f"{shot['name']}.txt").read_text()  # the page text redaction screens
+
+
+def test_no_signed_in_screenshot_when_the_ui_cannot_sign_in(browser, tmp_path):
+    if browser is None:
+        pytest.skip("Playwright is not installed")
+    result = verify("crud", crud_app(frozenset({"no_ui_login"})), browser, screenshots_dir=tmp_path)
+    assert [s["name"] for s in result["screenshots"]] == ["signin"]
+    assert not (tmp_path / "todos.jpg").exists()
 
 
 def test_static_without_contact_api(browser):

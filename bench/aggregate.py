@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import statistics
 from pathlib import Path
 from typing import Any, Iterable
@@ -41,6 +42,25 @@ def load_results(artifacts: Path) -> dict[tuple, tuple[dict[str, Any], Path]]:
     return found
 
 
+def copy_screenshots(record: dict[str, Any], source: Path, target: Path, report: str) -> tuple[dict[str, Any], str]:
+    """Copies a cell's screenshots into a folder named like its report (`<app>-t<trial>/`) and points
+    the record and the report at the copies."""
+    shots = []
+    for shot in record.get("screenshots") or []:
+        file = shot.get("file")
+        if file and (source / file).is_file():
+            name = Path(file).name
+            target.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source / file, target / name)
+            report = report.replace(f"]({file})", f"]({target.name}/{name})")
+            shot = {**shot, "file": f"{target.name}/{name}"}
+        elif file:  # deleted by redaction after the report was written
+            report = report.replace(f"![{shot.get('caption')}]({file})", "*Screenshot removed.*")
+            shot = {**{k: v for k, v in shot.items() if k != "file"}, "error": "removed because the page showed a secret"}
+        shots.append(shot)
+    return {**record, "screenshots": shots}, report
+
+
 def compact(record: dict[str, Any]) -> dict[str, Any]:
     return {
         **{k: record.get(k) for k in SUMMARY_FIELDS},
@@ -64,6 +84,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "deploy_config": (record.get("code") or {}).get("deploy_config") or [],
         "human_steps": [{"id": s["id"], "minutes": s["minutes"]} for s in (record.get("human") or {}).get("steps", [])],
         "security_score": (record.get("security") or {}).get("score"),
+        "screenshots": [Path(shot["file"]).name for shot in record.get("screenshots") or [] if shot.get("file")],
     }
 
 
@@ -73,7 +94,7 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
             "hosting_monthly_usd": None, "hosting_usage_usd": {}, "hosting_usage_incomplete": [], "path": None,
             "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
-            "human_steps": [], "security_score": None}
+            "human_steps": [], "security_score": None, "screenshots": []}
 
 
 def mean(values: Iterable[float | None]) -> float | None:
@@ -282,8 +303,32 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
             f"{fmt.tokens(c['code_lines'])} | {c['dependencies']} | {', '.join(c['deploy_config']) or fmt.DASH} | "
             f"{fmt.tokens(c['build_tokens'])} | {fmt.tokens(c['deploy_tokens'])} |"
         )
-    lines += ["", LEGEND]
-    return "\n".join(lines) + "\n"
+    lines += ["", LEGEND, ""] + screenshot_gallery(summary, cfg)
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def screenshot_gallery(summary: dict[str, Any], cfg: config.Config) -> list[str]:
+    """The first screenshot of each app on each cloud (first trial), each linked to its cell report."""
+    cells = [c for c in summary["cells"] if c.get("screenshots") and int(c["trial"]) == 1]
+    if not cells:
+        return []
+    lines = ["## Screenshots", "", "What the verifier saw on each deployment. Each picture links to its cell's report, "
+             "which has the rest.", ""]
+    for model in [m for m in cfg.models if any(c["model"] == m.id for c in cells)]:
+        mine = {(c["cloud"], c["app"]): c for c in cells if c["model"] == model.id}
+        clouds = [x for x in cfg.clouds if any(cloud == x.id for cloud, _ in mine)]
+        if len(summary["run"]["models"]) > 1:
+            lines += [f"**{model.name}**", ""]
+        lines += ["| App | " + " | ".join(x.name for x in clouds) + " |", "|---|" + "---|" * len(clouds)]
+        for app in [a for a in cfg.apps if any(name == a.id for _, name in mine)]:
+            row = []
+            for cloud in clouds:
+                cell = mine.get((cloud.id, app.id))
+                row.append(f'[<img src="{cell_path(cell)}/{cell["screenshots"][0]}" width="220" '
+                           f'alt="{app.short or app.name} on {cloud.name}">]({cell_path(cell)}.md)' if cell else fmt.DASH)
+            lines.append(f"| {app.short or app.name} | " + " | ".join(row) + " |")
+        lines.append("")
+    return lines
 
 
 MATRIX_LEGEND = ("✅ success · ⚠️ deployed but some required checks failed (checks passed shown) · "
@@ -410,10 +455,11 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
         record, source = found[key]
         target = run_dir / cell_path(cell)
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
         report = source / "report.md"
+        record, report_text = copy_screenshots(record, source, target, report.read_text() if report.exists() else "")
+        target.with_suffix(".json").write_text(json.dumps(record, indent=2) + "\n")
         if report.exists():
-            target.with_suffix(".md").write_text(report.read_text())
+            target.with_suffix(".md").write_text(report_text)
         cells.append(compact(record))
     run = {**run, "models": sorted({c["model"] for c in planned}, key=[m.id for m in cfg.models].index),
            "trials": max((int(c["trial"]) for c in planned), default=1), "scope": scope(planned, cfg)}

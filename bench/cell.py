@@ -25,7 +25,7 @@ from typing import Any
 from bench import ROOT_PREFIX, agent, codestats, config, prompts, result, security
 from bench.clouds import ADAPTERS, base
 from bench.clouds.github import GitHub
-from bench.redact import redact_tree, secret_values
+from bench.redact import redact_tree, screen_screenshots, secret_values
 from bench.verify import VERIFIERS
 from bench.verify.browser import Browser
 
@@ -367,6 +367,7 @@ def verify(cell: Cell, use_browser: bool = True) -> dict[str, Any]:
                 browser=browser,
                 browser_required=use_browser,
                 ready_timeout=60 if probed else cell.config.defaults["ready_timeout_minutes"] * 60,
+                screenshots_dir=cell.dir / result.SCREENSHOTS,
             )
             report = verifier.run_all()
         except Exception as error:
@@ -461,7 +462,9 @@ def secrets_to_hide(cfg: config.Config, cell: Cell | None = None) -> list[str]:
 def redact(cell_dir: Path) -> int:
     """Masks secrets in every file of the cell directory; safe to run on a half-finished cell."""
     current = Cell(cell_dir) if (cell_dir / "cell.json").exists() else None
-    return redact_tree(cell_dir, secrets_to_hide(config.load(), current))
+    hidden = secrets_to_hide(config.load(), current)
+    screen_screenshots(cell_dir / result.SCREENSHOTS, hidden)
+    return redact_tree(cell_dir, hidden)
 
 
 def finalize(cell: Cell) -> dict[str, Any]:
@@ -474,6 +477,9 @@ def finalize(cell: Cell) -> dict[str, Any]:
             codestats.snapshot(cell.workspace, cell.dir / "source.tar.gz", ignore, hidden)
         except Exception as error:
             code["error"] = f"code statistics failed: {error!r}"
+    # Before the record is built, so it lists only the screenshots that are kept.
+    if removed := screen_screenshots(cell.dir / result.SCREENSHOTS, hidden):
+        log(f"removed screenshots of pages that showed a secret: {', '.join(removed)}")
     record = result.build(cell)
     record["code"] = code
     cell.write("result.json", record)

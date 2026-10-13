@@ -64,6 +64,8 @@ class StaticSiteVerifier(Verifier):
         with self.check("not_found", "Unknown paths return 404"):
             expect_status(self.get("/no-such-page-" + token()), 404)
 
+        self.screenshot("/", "home", "The home page")
+
         with self.check("browser_contact_form", "Submitting the /contact form in a browser posts to /api/contact without leaving the page") as check:
             self.require_browser(check)
             self._submit_contact_form()
@@ -92,6 +94,7 @@ class StaticSiteVerifier(Verifier):
             response = info.value
             expect(response.status == 200, f"browser submission got HTTP {response.status}")
             page.wait_for_timeout(1500)
+            self.capture(page, "contact", "The contact page after the verifier submitted the form")
             try:
                 marker = page.evaluate("() => window.__benchMarker")
             except Exception:  # the execution context was destroyed by a navigation
