@@ -1,0 +1,513 @@
+{
+  "schema": 1,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38465347915-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-qhvza-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-qhvza-static-web.vercel.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 72.6,
+      "tokens": 398277,
+      "cost_usd": 0.30715
+    },
+    "status": "completed",
+    "score": 73.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 8,
+        "rationale": "No secrets exist in the source or deployed files, and the token never appeared in transcript output. But the Vercel token was passed as a --token CLI argument, and the first deployment was uploaded before a .vercelignore existed, right after `vercel link` had written .env.local into the project directory. The agent spotted this and deleted that deployment."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "The live site matches the reviewed source and has no third-party dependencies. However, it was uploaded from a local working directory with `npx -y vercel@latest` (an unpinned installer) instead of from a version-controlled source, and the Node runtime is unpinned (`engines: >=18`)."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 15,
+        "score": 5,
+        "rationale": "HTTPS works with a valid certificate, HTTP 308-redirects to HTTPS, and Vercel adds HSTS. The app sets no headers of its own, so X-Content-Type-Options, frame protection (X-Frame-Options or frame-ancestors) and a Content-Security-Policy are all missing."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 15,
+        "score": 9,
+        "rationale": "Only public/ and the function are served. .env, .git, .vercel, package.json, lib/, tests and the dev server all return 404, and errors don't leak stack traces. Static responses carry the platform default `Access-Control-Allow-Origin: *`, which is harmless for public content."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 20,
+        "score": 7,
+        "rationale": "Validation is correct and type-checked, malformed JSON returns a clean 400, the client renders server messages with textContent (no XSS), and nothing is stored. The public endpoint has no length limits and no rate limiting, though: a 2 MB message was accepted with HTTP 200."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 10,
+        "score": 9,
+        "rationale": "There is one Vercel project with a single stateless function, no data stores and no extra resources. The deployment-specific URL is protected by Vercel SSO, and the stale first deployment was deleted. The agent used a broad team token, but that was the credential it was given."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "transport",
+        "title": "No app-defined security headers (CSP, X-Content-Type-Options, frame protection)",
+        "evidence": "app/vercel.json contains only cleanUrls/trailingSlash. `curl -sI https://adb-qhvza-static-web.vercel.app/` returns only strict-transport-security plus caching headers: no content-security-policy, x-content-type-options or x-frame-options.",
+        "recommendation": "Add a `headers` block to vercel.json setting Content-Security-Policy (e.g. default-src 'self'; frame-ancestors 'none'), X-Content-Type-Options: nosniff, X-Frame-Options: DENY and Referrer-Policy."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "title": "Contact endpoint has no input size limits or rate limiting",
+        "evidence": "app/lib/validate.js checks only presence and format. POST /api/contact with a ~2 MB `message` returned {\"ok\":true} with HTTP 200. Nothing throttles repeated submissions.",
+        "recommendation": "Cap the lengths of name, email and message (e.g. 100/254/5000 characters), reject non-JSON content types, and add rate limiting (Vercel Firewall rules or a per-IP limiter)."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "title": "First deployment uploaded before ignore rules existed, right after .env.local was created",
+        "evidence": "process/deploy.md: `vercel link ... && vercel deploy --prod` printed 'Created .env.local file'. .vercelignore was added only in the next command. The agent then deleted dpl_HpQDu1PbN4iNc7tQ4xgTmdeqhF1b (the API returned state DELETED), and its URL now returns 404.",
+        "recommendation": "Create .vercelignore (excluding .env*, .vercel and tests) before the first deploy, and avoid `vercel link` pulling env files into the upload directory."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "title": "Vercel token passed as a command-line argument",
+        "evidence": "process/deploy.md: `npx -y vercel@latest deploy --prod --yes --token \"$VERCEL_TOKEN\" ...`. The value was expanded from the environment and not printed, but it is visible in the process list.",
+        "recommendation": "Have the CLI read the token from the VERCEL_TOKEN environment variable instead of passing --token."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "title": "Unpinned deploy tooling and runtime; deployed from a local directory",
+        "evidence": "process/deploy.md uses `npx -y vercel@latest`. app/package.json declares `\"engines\": { \"node\": \">=18\" }`, and the build log warns it will auto-upgrade. The deployment was a CLI upload with no git source.",
+        "recommendation": "Pin the Vercel CLI version (e.g. vercel@64.0.1) and the Node major version (e.g. \"20.x\"), and deploy from a git repository connected to the project so that each deployment maps to a commit."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "title": "No sensitive files exposed",
+        "evidence": "GET /.env, /.env.local, /.git/config, /.vercel/project.json, /package.json, /lib/validate.js, /dev-server.js, /test/app.test.js, /vercel.json and /TASK.md all return 404. /_src redirects to vercel.com, which requires authentication. GET /api/contact returns a JSON 405.",
+        "recommendation": "None needed."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a simple static site with one stateless validation function on Vercel. It exposes no source, env files or secrets, validates input correctly and avoids XSS. The main weaknesses: the app sets no security headers of its own (no CSP, nosniff or frame protection), the contact endpoint has no size or rate limits, and the deployment was uploaded from a local directory with unpinned tooling (`vercel@latest`). Minor secrets-hygiene lapses happened during deployment, and the agent cleaned up the one that mattered."
+  },
+  "timing": {
+    "build_s": 74.2,
+    "deploy_s": 109.1,
+    "agent_s": 183.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 9.0
+  },
+  "tokens": {
+    "build": {
+      "input": 3648,
+      "output": 8064,
+      "cache_read": 203350,
+      "cache_write": 38856,
+      "total": 253918
+    },
+    "deploy": {
+      "input": 420,
+      "output": 2871,
+      "cache_read": 331782,
+      "cache_write": 5867,
+      "total": 340940
+    },
+    "total": {
+      "input": 4068,
+      "output": 10935,
+      "cache_read": 535132,
+      "cache_write": 44723,
+      "total": 594858
+    }
+  },
+  "cost": {
+    "agent_usd": 0.565613,
+    "agent_build_usd": 0.410822,
+    "agent_deploy_usd": 0.154791,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 7,
+      "deploy": 8
+    },
+    "tool_calls": {
+      "Bash": 13
+    },
+    "shell_commands": {
+      "build": 6,
+      "deploy": 7
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T20:46:40+00:00",
+      "wall_time_s": 74.2,
+      "api_time_s": 70.6,
+      "turns": 7,
+      "tokens": {
+        "input": 3648,
+        "output": 8064,
+        "cache_read": 203350,
+        "cache_write": 38856,
+        "total": 253918
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.410822,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3648,
+          "output": 8064,
+          "cache_read": 203350,
+          "cache_write": 38856,
+          "cost_usd": 0.4108220000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 6
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T20:47:55+00:00",
+      "wall_time_s": 109.1,
+      "api_time_s": 32.0,
+      "turns": 8,
+      "tokens": {
+        "input": 420,
+        "output": 2871,
+        "cache_read": 331782,
+        "cache_write": 5867,
+        "total": 340940
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.154791,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 420,
+          "output": 2871,
+          "cache_read": 331782,
+          "cache_write": 5867,
+          "cost_usd": 0.15479139999999986,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 7
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and works locally. All 10 automated tests pass, and I checked every page and the endpoint with curl against a running server. I haven't run it under Vercel's own tooling (`vercel dev` / `vercel build`) because that needs credentials, so the routing has only been tested with a local server I wrote to imitate Vercel.\n\n**Stack:** plain static HTML/CSS plus one Node serverless function. There are no dependencies and no build step.\n\n- **Pages:** `public/index.html`, `about.html` and `contact.html`, with shared styling in `styles.css` that adapts to mobile and desktop.\n- **Clean paths:** `vercel.json` sets `cleanUrls: true`, so `/about` and `/contact` work without `.html`. Unknown paths get `public/404.html` with a 404 status.\n- **Contact endpoint:** `POST /api/contact` lives in `api/contact.js`, with validation in `lib/validate.js`. Valid input returns 200 `{\"ok\":true}`. A missing name, invalid email, empty message or broken JSON returns 400 `{\"ok\":false,\"error\":\"...\"}`.\n- **Form:** `public/contact.js` sends the form to the endpoint with `fetch` and shows a confirmation or error message in place, without reloading the page.\n\n**What was checked:** all three pages return 200 with `text/html` and contain a title, viewport tag and navigation links; the home page has the \"Northwind Robotics\" heading; the contact form has the required fields; an unknown path returns 404; and the endpoint returns the right result for valid input and each kind of bad input.\n\n**Running it:**\n- `npm run dev` starts the local server on port 3000 (set `PORT` to change it).\n- `npm test` runs the tests.\n- For deployment, Vercel should pick this up with default settings: it serves `public/` and runs `api/` as functions.\n\nThe local server I started has been stopped.",
+    "deploy": "The site is live at **https://adb-qhvza-static-web.vercel.app**, and every requirement in `TASK.md` works through that public URL. I checked each one with curl.\n\n- **What's deployed:** one Vercel project, `adb-qhvza-static-web` (`prj_r56AgZbGr83tvz9TfUSRMrmt35dU`). It serves the static pages from `public/` and runs `/api/contact` as a Node serverless function. It uses the free tier, so the cost is $0 a month.\n- **Pages:** `/`, `/about` and `/contact` return 200 with `text/html`. Each has a title, a viewport tag and navigation, and the home heading and contact form fields are all there.\n- **Paths:** unknown paths return 404. `/about.html` redirects (308) to `/about`.\n- **Contact endpoint:** valid input returns 200 `{\"ok\":true}`. A missing name, invalid email, empty message or broken JSON each return 400 with an error message.\n- **Cleanup:** the CLI made two deployments. The first went out before I added a `.vercelignore` to keep `.env*`, `.vercel` and the tests out of uploads. I deleted it in case it included the `.env.local` that `vercel link` had just created. The live site is the second deployment.\n- **Credentials:** I didn't create any, so there's no `.env`, and no secrets were printed or written to files.\n- **Records:** `deployment.json` is written. `human_steps` is empty because nothing needed a person.\n\nNothing failed."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-qhvza-static-web.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (static site + Node.js serverless function /api/contact)",
+        "name": "adb-qhvza-static-web",
+        "id": "prj_r56AgZbGr83tvz9TfUSRMrmt35dU",
+        "plan": "Hobby/free usage (team's existing plan, no changes)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "Deployed with the Vercel CLI (production deployment dpl_Hz3778xxirxBDZ1wq3dEQZf5BPKC). Static pages are served from public/ with cleanUrls, so /about and /contact work without .html (and /about.html 308-redirects to /about). Unknown paths return 404 using public/404.html. POST /api/contact validates the input and returns {ok:true} or a 400 with {ok:false,error}; submissions are not stored. All requirements were checked through the public URL with curl."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 140
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 45,
+      "p90_ms": 51
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 45
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 43
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 82
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 48
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 80
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 168
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 45
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2532
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2377
+      }
+    ],
+    "browser": true,
+    "duration_s": 9.0
+  },
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_r56AgZbGr83tvz9TfUSRMrmt35dU",
+      "name": "adb-qhvza-static-web",
+      "plan": null,
+      "url": "https://adb-qhvza-static-web.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1791924523411,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": null
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 15,
+    "lines": {
+      "HTML": 166,
+      "JavaScript": 164,
+      "CSS": 38,
+      "JSON": 24
+    },
+    "code_lines": 368,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "vercel.json"
+    ],
+    "git_repo": false
+  }
+}

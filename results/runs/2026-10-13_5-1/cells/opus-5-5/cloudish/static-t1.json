@@ -1,0 +1,539 @@
+{
+  "schema": 1,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38465347915-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-l0oek-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-l0oek-static-web.on.do.cloudish.ai",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Claim the Cloudish API key 'adb-l0oek-static' (mint a link with GET https://cloudish.ai/api/v1/credits/claim using the key in .env) and add prepaid credits. (The free grant is only 0.1 credits. Once it runs out the app returns 402/503 instead of serving pages. Keeping it up long-term needs credits a",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 57.7,
+      "tokens": 345071,
+      "cost_usd": 0.285401
+    },
+    "status": "completed",
+    "score": 83.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The Cloudish API key was written straight to .env without being echoed, and both the upload tarball (--exclude='.env*') and .dockerignore leave it out. The app itself needs no secrets, and no credential shows up in the source, the image or any live response."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 15,
+        "score": 7,
+        "rationale": "The agent's own local sources were uploaded as a tarball and built server-side from the Dockerfile in app/, and there are no npm dependencies. The base image node:22-alpine is a floating tag, not pinned to a digest."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 15,
+        "score": 6,
+        "rationale": "HTTPS uses a valid Let's Encrypt certificate, HTTP gets a 308 redirect to HTTPS, and HSTS is set. There is no Content-Security-Policy and no frame protection (X-Frame-Options or frame-ancestors), and the JSON responses lack nosniff."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 15,
+        "score": 9,
+        "rationale": "The server answers only on an allowlist of routes, so source files, .env, .git, Dockerfile and TASK.md all return 404, and path traversal is rejected. The only extras are a harmless /healthz endpoint and a platform-level CORS layer that echoes back any Origin with credentials allowed."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 20,
+        "score": 8,
+        "rationale": "Input is validated strictly for type, email format and non-empty fields. Bodies over 64 KB get a 413, bad JSON gets a clean 400, and the client renders messages with textContent, so there is no XSS path. /api/contact has no rate limiting or per-field length limits, and it accepts cross-origin submissions."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 10,
+        "score": 9,
+        "rationale": "The container runs as the non-root 'node' user, there is no data store or volume, and only one service is public, which this public site needs. The API key is an unclaimed anonymous account."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "title": "Missing Content-Security-Policy and frame protection headers",
+        "evidence": "curl -sI https://adb-l0oek-static-web.on.do.cloudish.ai/ returns only content-type, x-content-type-options, strict-transport-security, vary and access-control-allow-credentials, with no CSP or X-Frame-Options. server.js:37-40 sets only Content-Type, Content-Length and X-Content-Type-Options.",
+        "recommendation": "Add Content-Security-Policy: default-src 'self'; frame-ancestors 'none' (and/or X-Frame-Options: DENY) and Referrer-Policy in send()."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "title": "No rate limiting on the contact endpoint",
+        "evidence": "15 back-to-back POST /api/contact requests all returned 200. server.js:42-66 has no throttling, and every valid submission is logged (server.js:63).",
+        "recommendation": "Add per-IP rate limiting (for example a token bucket in memory) and per-field length limits for name, email and message."
+      },
+      {
+        "severity": "low",
+        "criterion": "exposure",
+        "title": "Platform CORS echoes back any Origin with credentials allowed",
+        "evidence": "OPTIONS /api/contact with Origin: https://evil.example returned access-control-allow-origin: https://evil.example, access-control-allow-credentials: true and allow-methods GET,HEAD,PUT,PATCH,POST,DELETE. The app sets no CORS headers, so the platform ingress adds them. The impact is limited because the app uses no cookies or auth.",
+        "recommendation": "Turn off or restrict CORS at the platform if it allows that. Otherwise check the Origin in /api/contact and reject foreign origins."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "title": "Base image not pinned to a digest",
+        "evidence": "app/Dockerfile:1 FROM node:22-alpine",
+        "recommendation": "Pin the base image to a digest, e.g. node:22-alpine@sha256:..., and update it on purpose."
+      },
+      {
+        "severity": "info",
+        "criterion": "transport",
+        "title": "JSON API responses lack X-Content-Type-Options",
+        "evidence": "server.js:32-35 sendJson sets only Content-Type and Content-Length. The POST /api/contact response headers have no x-content-type-options.",
+        "recommendation": "Add X-Content-Type-Options: nosniff in sendJson as well."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "title": "API key handled correctly",
+        "evidence": "deploy.md: the key is written to .env through a python one-liner without being printed, the tar uses --exclude='.env*', and app/.dockerignore lists .env.",
+        "recommendation": "None needed. If the platform supports it, consider claiming or rotating the key once the credits have been added."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a small, dependency-free Node server running as a non-root user. It serves only allowlisted routes over valid HTTPS with an HTTP redirect and HSTS, and the API key was kept out of the build context and every deployed file. The weaknesses are minor: no CSP or frame-protection headers, no rate limiting on /api/contact, a base image not pinned to a digest, and a platform CORS layer that echoes back any origin."
+  },
+  "timing": {
+    "build_s": 77.5,
+    "deploy_s": 218.3,
+    "agent_s": 295.8,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 7.6
+  },
+  "tokens": {
+    "build": {
+      "input": 8693,
+      "output": 8144,
+      "cache_read": 154443,
+      "cache_write": 13789,
+      "total": 185069
+    },
+    "deploy": {
+      "input": 5906,
+      "output": 5943,
+      "cache_read": 514446,
+      "cache_write": 14680,
+      "total": 540975
+    },
+    "total": {
+      "input": 14599,
+      "output": 14087,
+      "cache_read": 668889,
+      "cache_write": 28469,
+      "total": 726044
+    }
+  },
+  "cost": {
+    "agent_usd": 0.520307,
+    "agent_build_usd": 0.253876,
+    "agent_deploy_usd": 0.266431,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 21.66,
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 6,
+      "deploy": 11
+    },
+    "tool_calls": {
+      "Bash": 13,
+      "WebFetch": 2
+    },
+    "shell_commands": {
+      "build": 4,
+      "deploy": 9
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 2,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T20:46:52+00:00",
+      "wall_time_s": 77.5,
+      "api_time_s": 64.9,
+      "turns": 6,
+      "tokens": {
+        "input": 8693,
+        "output": 8144,
+        "cache_read": 154443,
+        "cache_write": 13789,
+        "total": 185069
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.253876,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3416,
+          "output": 6963,
+          "cache_read": 154443,
+          "cache_write": 13789,
+          "cost_usd": 0.2527576,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 5277,
+          "output": 1181,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0011182,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 4,
+        "WebFetch": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T20:48:10+00:00",
+      "wall_time_s": 218.3,
+      "api_time_s": 59.3,
+      "turns": 11,
+      "tokens": {
+        "input": 5906,
+        "output": 5943,
+        "cache_read": 514446,
+        "cache_write": 14680,
+        "total": 540975
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.266431,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 610,
+          "output": 4318,
+          "cache_read": 514446,
+          "cache_write": 14680,
+          "cost_usd": 0.2650892,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 5296,
+          "output": 1625,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0013421000000000004,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "WebFetch": 1,
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and works locally. I checked it two ways: an automated test suite (7 tests, all passing) and curl against the Docker container. The contact form's in-browser behaviour (sending without a reload and showing the confirmation) has not been run in an actual browser.\n\n**Stack:** a single Node.js server (`server.js`) using only Node's built-in modules, with no npm dependencies. I chose a container setup because Cloudish runs apps as Docker containers. Port 8080 is the default; the `PORT` environment variable overrides it.\n\n**Layout:**\n- `server.js` serves the three pages at `/`, `/about` and `/contact`, with no `.html` suffix. Unknown paths (including `/index.html`) get a 404 page.\n- `POST /api/contact` returns `{\"ok\": true}` for valid input. A missing name, a bad email, an empty message or invalid JSON gets a 400 with `{\"ok\": false, \"error\": \"...\"}`. Submissions are logged, not stored.\n- `public/` holds the HTML pages, the CSS (a responsive layout for mobile and desktop) and `contact.js`, which sends the form to the endpoint and shows the confirmation or error on the page.\n- I also added a `/healthz` endpoint and a 64 KB limit on the contact request body.\n- `Dockerfile` uses `node:22-alpine` and runs as a non-root user.\n- `test/server.test.js` holds the tests.\n\n**What I checked:**\n- **Tests:** they cover each page's status, content type, title, viewport tag, navigation links and required content, the form fields, the 404s, and valid and invalid contact submissions.\n- **Docker:** I built the image, ran it and used curl. All three pages returned 200 `text/html`, an unknown path returned 404, and the contact endpoint returned 200 for a valid submission and 400 for a bad email. I stopped the container afterwards, and nothing is left running.\n\n**How to run:**\n```bash\nnpm start            # http://localhost:8080\nnpm test\ndocker build -t northwind . && docker run -p 8080:8080 northwind\n```",
+    "deploy": "The Northwind Robotics site is live at **https://adb-l0oek-static-web.on.do.cloudish.ai**, and everything in `TASK.md` works through that URL. The catch is credits: it's running on a free grant of only 0.1 credits, so it will stop serving once that runs out unless someone adds more.\n\n**What I deployed**\n- I created a Cloudish API key named `adb-l0oek-static` through the API; no signup was needed. The key is saved in `.env`, and I added `.env` to `.gitignore`.\n- Cloudish built the existing Dockerfile on its own servers and deployed it as one container app, `adb-l0oek-static-web` (project id 82). It uses the default shared size and shuts down after a period with no traffic.\n- I gave it a readable subdomain in place of the random one it was assigned.\n\n**What I tested through the public URL**\n- `/`, `/about` and `/contact` return 200 `text/html`, each with a `<title>`, the viewport tag and links to the other pages.\n- The home page has the \"Northwind Robotics\" `<h1>`, and the contact page has the `name`, `email` and `message` fields and a submit button.\n- Unknown paths, and the pages with an `.html` suffix, return 404.\n- `POST /api/contact` returns 200 `{\"ok\":true}` for valid input. It returns 400 with an error for a missing name, an invalid email or an empty message.\n- In a headless Chrome test, submitting the contact form showed the confirmation without reloading the page.\n\n**What didn't go smoothly**\n- **Credits:** the balance after deploying was about 0.097 credits. At most $7.84 a month if it ran all day; actual cost will be lower because it shuts down when idle. When the credits run out, visitors get a 402 or 503 page. Adding more requires a person to claim the key and add credits, which I listed under `human_steps` in `deployment.json`. That step isn't blocking yet.\n- **First request after a quiet spell:** because the app shuts down when idle, that first request can take a few seconds while it starts.\n- **Initial start:** the cluster reported it was short on capacity when the app first started. It came up on its own within about a minute."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-l0oek-static-web.on.do.cloudish.ai",
+    "resources": [
+      {
+        "type": "API key / account",
+        "name": "adb-l0oek-static",
+        "id": "64",
+        "plan": "unclaimed key, free credit grant (0.1 credits)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Docker container app, built server-side from Dockerfile)",
+        "name": "adb-l0oek-static-web",
+        "id": "82",
+        "plan": "shared (default size), scale-to-zero when idle",
+        "monthly_cost_usd": 7.84
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Claim the Cloudish API key 'adb-l0oek-static' (mint a link with GET https://cloudish.ai/api/v1/credits/claim using the key in .env) and add prepaid credits.",
+        "why": "The free grant is only 0.1 credits. Once it runs out the app returns 402/503 instead of serving pages. Keeping it up long-term needs credits added by a person.",
+        "blocking": false
+      }
+    ],
+    "notes": "Dependency-free Node.js 22 HTTP server in a container listening on 8080, deployed with the Cloudish projects API (build id 220). The app scales to zero after idle time, so the first request after a pause can take a few seconds while it cold-starts. The monthly cost is the always-on upper bound for the shared size; real cost with scale-to-zero is lower. Checked through the public URL: /, /about and /contact return 200 text/html; unknown paths and /about.html return 404; POST /api/contact returns 200 {ok:true} for valid input and 400 with an error for a missing name, a bad email or an empty message. A headless Chrome test filled in the form and saw the confirmation appear without a page reload. Initial pod scheduling hit a brief capacity warning but recovered within about a minute."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 207
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 77,
+      "p90_ms": 203
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 73
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 74
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 101
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 79
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 74
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 155
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 74
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2541
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2578
+      }
+    ],
+    "browser": true,
+    "duration_s": 7.6
+  },
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-l0oek-static/adb-l0oek-static-web",
+      "name": "adb-l0oek-static-web",
+      "plan": "small",
+      "url": "https://adb-l0oek-static-web.on.do.cloudish.ai/",
+      "monthly_usd": 21.66,
+      "pricing": "0.5 CPU / 1 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T20:48:32.660Z",
+      "details": {
+        "cpuCores": null,
+        "memoryGb": null,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": false,
+        "access": "open"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.097201
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 173,
+      "HTML": 88,
+      "JSON": 24,
+      "CSS": 13,
+      "Docker": 8
+    },
+    "code_lines": 282,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false
+  }
+}
