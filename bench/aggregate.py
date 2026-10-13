@@ -213,7 +213,7 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
         "",
         f"- Date: {run['date']}",
         f"- Agent: {cfg.agent.get('name', 'Claude Code')} {', '.join(run['agent_versions']) or cfg.agent.get('version', '')}",
-        f"- Models: {', '.join(cfg.model(m).name for m in run['models'])}",
+        f"- Models: {', '.join(cfg.model(m).label for m in run['models'])}",
         f"- Scope: {run.get('scope', 'full')}",
         f"- Trials per cell: {run['trials']}",
     ]
@@ -309,7 +309,7 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
     lines = [
         f"Latest full run: [{run_title(run)}]({base}summary.md) · "
         f"{cfg.agent.get('name', 'Claude Code')} {', '.join(run['agent_versions']) or cfg.agent.get('version', '')} · "
-        f"{', '.join(cfg.model(m).name for m in run['models'])}",
+        f"{', '.join(cfg.model(m).label for m in run['models'])}",
         "",
     ] + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
         "Success counts deployments that passed every required check. *Human steps* and *human time* are what a "

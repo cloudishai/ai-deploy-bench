@@ -25,12 +25,15 @@ models:
     # Passed as --effort so runs don't depend on Claude Code's default (also medium for Opus 5.5)
     # and reports state it. null would use the default.
     effort: medium
+    # The API key's organization has the HIPAA configuration, which rejects two Claude Code features.
+    hipaa: true
 
 # An independent Claude Code session reviews each deployment's security while it's still live. The
 # reviewer is the same for every cell, whatever model built the app, so scores stay comparable.
 reviewer:
   model: claude-opus-5-5
   effort: high
+  hipaa: true
   timeout_minutes: 20
   max_budget_usd: 5
 

@@ -145,7 +145,7 @@ def prepare(cell_dir: Path, workspace_root: Path, run_id: str, cloud_id: str, mo
         "session_id": str(uuid.uuid4()),
         "inputs": app_inputs(app.id),
         "seeded_files": sorted(p.relative_to(workspace).as_posix() for p in workspace.rglob("*") if p.is_file()),
-        "agent": {**cfg.agent, "model": model.model, "effort": model.effort or "default"},
+        "agent": {**cfg.agent, "model": model.model, "effort": model.effort or "default", "hipaa": model.hipaa},
         "created_at": now(),
     }
     (cell_dir / "cell.json").write_text(json.dumps(info, indent=2))
@@ -167,7 +167,7 @@ def build(cell: Cell) -> agent.Phase:
         timeout_s=cfg.defaults["build_timeout_minutes"] * 60,
         session_id=cell.info["session_id"],
         max_budget_usd=cfg.defaults.get("max_budget_usd_per_phase"),
-        env=agent_env(cfg, cloud=None),
+        env=agent_env(cfg, cloud=None, extra=model.env),
         prices=cfg.model_prices,
         secrets=secrets_to_hide(cfg),
         claude=claude_binary(),
@@ -182,7 +182,7 @@ def deploy(cell: Cell) -> agent.Phase:
     cloud, model, app = cfg.cloud(cell.info["cloud"]), cfg.model(cell.info["model"]), cfg.app(cell.info["app"])
     built = cell.phase("build")
     resume = bool(built and built.started)
-    extra = {}
+    extra = model.env
     if keys := cell.info["inputs"].get("api_keys"):
         extra["BENCH_API_KEYS"] = ",".join(keys)
     env = agent_env(cfg, cloud, extra=extra)
@@ -372,7 +372,8 @@ def verify(cell: Cell, use_browser: bool = True) -> dict[str, Any]:
 
 def review(cell: Cell) -> dict[str, Any]:
     """Independent security review of the live deployment, with no cloud credentials."""
-    report = security.run(cell, env=agent_env(cell.config, cloud=None), secrets=secrets_to_hide(cell.config, cell),
+    extra = dict(config.HIPAA_ENV) if cell.config.reviewer.get("hipaa") else {}
+    report = security.run(cell, env=agent_env(cell.config, cloud=None, extra=extra), secrets=secrets_to_hide(cell.config, cell),
                           claude=claude_binary(), log=log)
     cell.write("security.json", report)
     if report["status"] == "completed":

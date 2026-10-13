@@ -36,12 +36,28 @@ class Cloud:
         return tuple(c for c in self.credentials if c.provided)
 
 
+# An organization with the HIPAA configuration rejects Claude Code's advisor tool and pre-release API
+# features (context management), so they're turned off for models that use such a key.
+HIPAA_ENV = {"CLAUDE_CODE_DISABLE_ADVISOR_TOOL": "1", "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1"}
+
+
 @dataclasses.dataclass(frozen=True)
 class Model:
     id: str
     name: str
     model: str
     effort: str | None = None
+    hipaa: bool = False
+
+    @property
+    def env(self) -> dict[str, str]:
+        return dict(HIPAA_ENV) if self.hipaa else {}
+
+    @property
+    def label(self) -> str:
+        """For reports, e.g. "Opus 5.5 · medium effort · HIPAA organization"."""
+        parts = [self.name] + ([f"{self.effort} effort"] if self.effort else [])
+        return " · ".join(parts + (["HIPAA organization"] if self.hipaa else []))
 
 
 @dataclasses.dataclass(frozen=True)

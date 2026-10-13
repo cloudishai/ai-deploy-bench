@@ -158,7 +158,8 @@ def run(cell: "Cell", env: dict[str, str], secrets: list[str], claude: str, log:
         log=log,
     )
     report: dict[str, Any] = {"reviewer": {
-        "model": reviewer["model"], "effort": reviewer.get("effort"), "status": phase.status,
+        "model": reviewer["model"], "effort": reviewer.get("effort"), "hipaa": bool(reviewer.get("hipaa")),
+        "status": phase.status,
         "wall_time_s": phase.wall_time_s, "tokens": phase.tokens.get("total"), "cost_usd": phase.cost_usd,
     }}
     result = directory / RESULT_FILE

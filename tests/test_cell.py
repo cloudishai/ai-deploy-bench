@@ -88,3 +88,16 @@ def test_credentials_the_agent_saved_are_inventoried_and_hidden(tmp_path, monkey
     roles = [(role, adapter.env.get("CLOUDISH_API_KEY")) for role, adapter in cell.adapters(current)]
     assert ("cloud", "cld_provided_0123456789") in roles and ("cloud", "cld_minted_by_agent_0123") in roles
     assert "cld_minted_by_agent_0123" in cell.secrets_to_hide(current.config, current)
+
+
+def test_hipaa_models_turn_off_the_features_the_organization_rejects(tmp_path, monkeypatch):
+    from bench import agent
+
+    seen = {}
+    monkeypatch.setattr(agent, "run_phase", lambda **kwargs: seen.update(kwargs) or agent.Phase("build"))
+    current = cell.prepare(tmp_path / "cell", tmp_path / "work", "8-1", "cloudish", "opus-5-5", "static", 1)
+    cell.build(current)
+    assert seen["env"]["CLAUDE_CODE_DISABLE_ADVISOR_TOOL"] == "1"
+    assert seen["env"]["CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS"] == "1"
+    assert current.info["agent"]["hipaa"] is True
+    assert config.load().model("opus-5-5").label == "Opus 5.5 · medium effort · HIPAA organization"

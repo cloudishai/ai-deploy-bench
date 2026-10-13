@@ -36,7 +36,9 @@ variable names, and the cell's resource prefix. Agents get no provider-specific 
 MCP servers. Finding out how to deploy to each cloud is part of what is measured.
 
 Claude Code runs headless (`claude -p --output-format stream-json`) with `bypassPermissions`, a
-pinned version, the model from `benchmark.yaml` and its default effort unless one is configured.
+pinned version, and the model and effort from `benchmark.yaml`. A model marked `hipaa: true` uses an
+API key from an organization with the HIPAA configuration, which rejects Claude Code's advisor tool
+and pre-release API features, so those are turned off for it; reports note it next to the model.
 Each phase has a wall-clock limit (`build_timeout_minutes`, `deploy_timeout_minutes`) and a spend
 cap (`max_budget_usd_per_phase`, which Claude Code applies per invocation, so a resumed deploy gets
 its own budget). The deploy prompt requires every resource name to start with the cell's prefix

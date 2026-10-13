@@ -173,7 +173,8 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         + (f" (the agent estimated {fmt.usd(_number(cost['hosting_agent_estimate_usd']))})"
            if cost.get("hosting_agent_estimate_usd") is not None else ""),
         f"- Agent: {record['agent'].get('name', 'Claude Code')} {record['agent'].get('version') or ''}, "
-        f"model `{record['agent'].get('model')}`, effort {record['agent'].get('effort')}",
+        f"model `{record['agent'].get('model')}`, effort {record['agent'].get('effort')}"
+        + (", HIPAA organization" if record["agent"].get("hipaa") else ""),
         f"- Resource prefix: `{record['prefix']}`",
         "",
         "| | Build | Deploy | Total |",
@@ -244,7 +245,8 @@ def security_lines(review: dict[str, Any]) -> list[str]:
     reviewer = review.get("reviewer") or {}
     lines = [
         f"**{review['score']:.0f}/100**, from an independent Claude Code review (`{reviewer.get('model')}`, "
-        f"{reviewer.get('effort')} effort, {fmt.usd(reviewer.get('cost_usd'))}) of the process, the code and the live app.",
+        f"{reviewer.get('effort')} effort{', HIPAA organization' if reviewer.get('hipaa') else ''}, "
+        f"{fmt.usd(reviewer.get('cost_usd'))}) of the process, the code and the live app.",
         "",
         review.get("summary") or "",
         "",
