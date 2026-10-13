@@ -22,8 +22,9 @@ models:
   - id: opus-5-5
     name: Opus 5.5
     model: claude-opus-5-5
-    # null runs Claude Code's default effort for the model (medium for Opus 5.5).
-    effort: null
+    # Passed as --effort so runs don't depend on Claude Code's default (also medium for Opus 5.5)
+    # and reports state it. null would use the default.
+    effort: medium
 
 # USD per million tokens, used only to estimate cost when a phase ends without Claude Code's own
 # cost report (timeouts, crashes). Source: https://platform.claude.com/docs/en/about-claude/pricing
