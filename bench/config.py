@@ -65,6 +65,7 @@ class App:
     id: str
     name: str
     short: str = ""
+    use: str = ""  # who runs it: "commercial" (a business) or "personal" (a person or club)
 
     @property
     def dir(self) -> Path:

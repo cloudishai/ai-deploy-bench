@@ -57,3 +57,9 @@ def test_human_steps_are_in_the_catalog():
         assert step["minutes"] >= 0 and step["description"]
     for cloud in cfg.clouds:
         assert set(cloud.prerequisites) | set(cloud.when_paid) <= cfg.human_steps.keys(), cloud.id
+
+
+def test_rubric_weights_add_up_and_every_app_has_a_use():
+    cfg = config.load()
+    assert sum(c["weight"] for c in cfg.security_rubric) == 100
+    assert {a.use for a in cfg.apps} == {"commercial", "personal"}

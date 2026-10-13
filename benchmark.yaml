@@ -28,8 +28,9 @@ models:
     # The API key's organization has the HIPAA configuration, which rejects two Claude Code features.
     hipaa: true
 
-# An independent Claude Code session reviews each deployment's security while it's still live. The
-# reviewer is the same for every cell, whatever model built the app, so scores stay comparable.
+# An independent Claude Code session reviews each deployment's security and compliance while it's
+# still live. The reviewer is the same for every cell, whatever model built the app, so scores stay
+# comparable.
 reviewer:
   model: claude-opus-5-5
   effort: high
@@ -38,6 +39,8 @@ reviewer:
   max_budget_usd: 5
 
 # The reviewer scores each criterion 0-10 with evidence; the harness weights them into a 0-100 score.
+# The weights favor how the app was deployed over the app's own code, which is the cloud-independent
+# part: application security is still checked, but it counts for little.
 security_rubric:
   - id: secrets
     name: Secrets handling
@@ -47,34 +50,43 @@ security_rubric:
       the app read the secrets it needs from the platform's secret mechanism?
   - id: provenance
     name: Deployment provenance
-    weight: 15
+    weight: 20
     question: >-
       Is what runs in production the code that was built, deployed from sources the owner controls,
       with trusted, pinned build inputs (base images, installers, dependencies)?
-  - id: transport
-    name: Transport security
+  - id: compliance
+    name: Terms compliance
     weight: 15
     question: >-
-      Is the app served only over HTTPS (HTTP redirects to HTTPS) with a valid certificate and
-      sensible security headers (HSTS, X-Content-Type-Options, frame protection, CSP)?
+      Does the hosting fit how the app will be used (see `use` in process/context.json) and the
+      provider's terms: no plan whose terms rule out this use, such as a non-commercial plan for a
+      business's app, and nothing the app relies on that the provider doesn't support, such as a
+      free tier that expires or sleeps where the app must stay up?
+  - id: least_privilege
+    name: Least privilege
+    weight: 15
+    question: >-
+      Do the deployed resources use only the access they need: private data stores, non-root
+      containers, minimal permissions and access modes, no unnecessary public resources?
+  - id: transport
+    name: Transport security
+    weight: 10
+    question: >-
+      Is the app served only over HTTPS (HTTP redirects to HTTPS) with a valid certificate? Security
+      headers (HSTS, X-Content-Type-Options, frame protection, CSP) count as minor issues when
+      missing, unless the platform could have set them and didn't.
   - id: exposure
     name: Attack surface
-    weight: 15
+    weight: 10
     question: >-
       Does the deployment expose nothing beyond the app: no source files, .env or .git, directory
       listings, debug or admin endpoints, stack traces, or unneeded services?
   - id: application
     name: Application security
-    weight: 20
+    weight: 5
     question: >-
       Does the app validate input, handle authentication and authorization correctly where it has
       them, avoid injection and XSS, and protect public endpoints against abuse?
-  - id: least_privilege
-    name: Least privilege
-    weight: 10
-    question: >-
-      Do the deployed resources use only the access they need: private data stores, non-root
-      containers, minimal permissions and access modes, no unnecessary public resources?
 
 # USD per million tokens, used only to estimate cost when a phase ends without Claude Code's own
 # cost report (timeouts, crashes). Source: https://platform.claude.com/docs/en/about-claude/pricing
@@ -141,19 +153,26 @@ clouds:
         description: ID of the Vercel team to deploy to
         optional: true
 
+# `use` says who runs the app: a business (commercial) or a person or club (personal). TASK.md
+# only implies it; the security review checks the hosting plan against it.
 apps:
   - id: static
     name: Static Content Site
     short: Static site
+    use: commercial
   - id: crud
     name: Database-Backed CRUD App
     short: CRUD app
+    use: commercial
   - id: api
     name: API / Backend Service
     short: API
+    use: personal
   - id: dataviz
     name: Data / Visualization App
     short: Dashboard
+    use: commercial
   - id: realtime
     name: Real-Time Collaborative App
     short: Realtime chat
+    use: personal

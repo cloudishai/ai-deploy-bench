@@ -148,7 +148,7 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
         if len(models) > 1:
             lines += [f"**{model.name}**", ""]
         lines += [
-            "| Cloud | Success | Human steps | Human time | Security | Checks passed | Avg build | Avg deploy | Tokens "
+            "| Cloud | Success | Human steps | Human time | Security & compliance | Checks passed | Avg build | Avg deploy | Tokens "
             "| Agent cost | Hosting / month |",
             "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
@@ -232,7 +232,7 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     lines += [
         "## All cells",
         "",
-        "| Model | Cloud | App | Trial | Result | Checks | Human steps | Human time | Security | Build | Deploy "
+        "| Model | Cloud | App | Trial | Result | Checks | Human steps | Human time | Security & compliance | Build | Deploy "
         "| Ready after | Tokens | Agent cost | Hosting / month |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
@@ -274,8 +274,8 @@ MATRIX_LEGEND = ("✅ success · ⚠️ deployed but some required checks failed
 LEGEND = (
     "*Human steps* counts the distinct things a person had to do, or would have to do, for the agent's deployments "
     "to work (account setup, terms, payment, Git hosting), and *human time* estimates how long they take. "
-    "*Security* is an independent Claude Code review of how each app was deployed and what is live, scored "
-    "against a fixed rubric. See the methodology. "
+    "*Security & compliance* is an independent Claude Code review of how each app was deployed, whether its "
+    "hosting plan fits how the app is used, and what is live, scored against a fixed rubric. See the methodology. "
     "Times are wall-clock time of the agent's build and deploy phases; *ready after* is how much longer the app "
     "took to answer once the agent finished. Tokens include cache reads and writes. Agent cost is the API cost "
     "reported by Claude Code. Hosting is the estimated monthly cost of the resources left running, priced as "
@@ -340,7 +340,8 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
     ] + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
         "Success counts deployments that passed every required check. *Human steps* and *human time* are what a "
         "person had to do, or would have to do, for the agent to deploy all the apps: distinct steps and estimated "
-        "minutes. *Security* is the average score of an independent security review of each deployment. Times are "
+        "minutes. *Security & compliance* is the average score of an independent review of each deployment's security "
+        "and of whether its hosting plan fits the app's use. Times are "
         "averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting "
         "is priced as always-on for a month. "
         f"[All {runs_count} run(s)](results/README.md) · [Methodology](docs/methodology.md)",

@@ -19,7 +19,7 @@ DigitalOcean's single container registry or Render's single free Postgres.
 | deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
 | inventory | Lists the cloud resources the cell created and prices them, including any created with credentials the agent saved in the workspace's `.env` files. | cloud credentials |
 | verify | Waits for the URL to answer, then runs the app's black-box checks. | none |
-| review | A separate Claude Code session reviews the security of the process, the code and the live app ([prompt](../bench/templates/review.md)). | model key only |
+| review | A separate Claude Code session reviews the security and compliance of the process, the code, the hosting plan and the live app ([prompt](../bench/templates/review.md)). | model key only |
 | teardown | Stops any agent process a cancelled step left behind, deletes what the cell created, then lists again to report leftovers. | cloud credentials |
 | finalize | Writes `result.json` and `report.md`, archives the source, and masks secrets in every file. | secrets, only to mask them |
 
@@ -112,10 +112,11 @@ adding credits 3, anything else 5). Replace the estimates with measured times as
 cloud, the summary counts each distinct step once across apps, because a person does it once per
 account.
 
-## Security review
+## Security and compliance review
 
 After verification, while the deployment is still live, a separate Claude Code session reviews how
-securely the app was built and deployed and what is running. The reviewer is the same for every cell
+securely the app was built and deployed, whether its hosting fits how the app will be used, and what
+is running. The reviewer is the same for every cell
 (`reviewer` in `benchmark.yaml`: Opus 5.5 at high effort), whatever model built the app, and it gets
 the model key only, never cloud credentials. It works from:
 
@@ -123,6 +124,9 @@ the model key only, never cloud credentials. It works from:
 - condensed transcripts of the build and deploy sessions: the agent's messages, every command and
   tool call, and abbreviated results. A masked value in a command shows that a secret appeared there;
 - `deployment.json` and the resources the benchmark found;
+- how the app will be used (`use` in `benchmark.yaml`: `commercial` for the landing page, the team
+  todo list and the sales dashboard, `personal` for the notes API and the club chat) and what the
+  benchmark could read about the cloud account, such as Vercel's team plan;
 - the live URL, which it may probe like a careful outside tester, sending at most 100 requests and
   no brute-forcing, fuzzing or load.
 
@@ -133,11 +137,15 @@ model:
 | Criterion | Weight | Question |
 |---|---|---|
 | Secrets handling | 25 | Were credentials kept out of logs, code, build contexts and deployed files, and read from the platform's secret mechanism? |
-| Deployment provenance | 15 | Is what runs the code that was built, deployed from sources the owner controls, with trusted, pinned build inputs? |
-| Transport security | 15 | HTTPS only, a valid certificate, and sensible security headers? |
-| Attack surface | 15 | Nothing exposed beyond the app: no source, `.env` or `.git`, directory listings, debug endpoints or stack traces? |
-| Application security | 20 | Input validation, correct authentication and authorization, no injection or XSS, public endpoints protected against abuse? |
-| Least privilege | 10 | Private data stores, non-root containers, minimal permissions and access modes? |
+| Deployment provenance | 20 | Is what runs the code that was built, deployed from sources the owner controls, with trusted, pinned build inputs? |
+| Terms compliance | 15 | Does the hosting fit the app's use and the provider's terms: no non-commercial plan for a business's app, no reliance on a free tier that expires or sleeps where the app must stay up? |
+| Least privilege | 15 | Private data stores, non-root containers, minimal permissions and access modes? |
+| Transport security | 10 | HTTPS only with a valid certificate; missing security headers are minor unless the platform could have set them? |
+| Attack surface | 10 | Nothing exposed beyond the app: no source, `.env` or `.git`, directory listings, debug endpoints or stack traces? |
+| Application security | 5 | Input validation, correct authentication and authorization, no injection or XSS, public endpoints protected against abuse? |
+
+The weights favor how the app was deployed over the app's own code. The code would have the same
+weaknesses on any cloud, so it says little about the cloud; it is still reviewed, but counts for 5.
 
 Cells without a reachable deployment aren't reviewed. The reviewer's cost is reported separately and
 isn't added to the agent cost. Each cell's report lists the criterion scores, the rationale and the
@@ -156,7 +164,7 @@ that would have to fix it: the `platform` (the cloud's own behavior or defaults)
 | Agent cost | Claude Code's own cost report. It is cumulative over a resumed session, so the deploy phase is the difference between the two phases' totals. It is estimated from token counts and `model_prices` only when a phase ended without a report (timeout or crash), and marked as estimated. |
 | Human steps | Distinct human steps the deployment needed or would need ([Human steps](#human-steps)). |
 | Human time | Estimated minutes for those steps, from the `human_steps` catalog. |
-| Security | 0–100 score from the independent security review ([Security review](#security-review)). |
+| Security & compliance | 0–100 score from the independent review ([Security and compliance review](#security-and-compliance-review)). |
 | Hosting cost | The estimated monthly cost of the deployed resources (next section), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
@@ -201,15 +209,17 @@ versions as optional:
 |---|---|
 | 1 | First version. Runs before the security review have no `security` block |
 | 2 | `results/index.json`; `schema` in `summary.json`; `path` and `report` on summary cells; `source` on security findings |
+| 3 | The review adds a `compliance` criterion and reweights the rubric (shown as *Security & compliance*), so scores aren't comparable with earlier runs. The JSON fields keep their names (`security`, `security_score`) |
 
 ## Fairness and limitations
 
 - **Model knowledge differs by provider.** Long-established CLIs are well covered by training
   data. Newer platforms such as Cloudish have to be discovered from their docs during the run.
   This is part of what the benchmark measures, and it is visible in each cell's web lookups.
-- **The security score is a model's judgment.** A fixed rubric, required evidence and the same
-  reviewer for every cell keep it comparable, but reviews vary from run to run like the deployments
-  do. The reviewer also can't inspect cloud settings it has no credentials for.
+- **The security and compliance score is a model's judgment.** A fixed rubric, required evidence and
+  the same reviewer for every cell keep it comparable, but reviews vary from run to run like the
+  deployments do. The reviewer also can't inspect cloud settings it has no credentials for, and it
+  judges providers' terms from what it knows of them.
 - **Human time is estimated.** The steps are collected from evidence, but their minutes come from
   a catalog; first-time setup usually takes longer than the estimates. A person's own model API
   key is not counted, since every cloud needs it equally.

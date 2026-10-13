@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
     "tokens_estimated", "cost_usd", "cost_source", "model_usage", "tool_calls", "tool_errors", "compactions",
@@ -197,7 +197,7 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         "",
         *human_lines(record.get("human") or {}),
         "",
-        "## Security review",
+        "## Security and compliance review",
         "",
         *security_lines(record.get("security") or {}),
         "",
@@ -246,7 +246,7 @@ def security_lines(review: dict[str, Any]) -> list[str]:
     lines = [
         f"**{review['score']:.0f}/100**, from an independent Claude Code review (`{reviewer.get('model')}`, "
         f"{reviewer.get('effort')} effort{', HIPAA organization' if reviewer.get('hipaa') else ''}, "
-        f"{fmt.usd(reviewer.get('cost_usd'))}) of the process, the code and the live app.",
+        f"{fmt.usd(reviewer.get('cost_usd'))}) of the process, the code, the hosting plan and the live app.",
         "",
         review.get("summary") or "",
         "",
@@ -296,7 +296,7 @@ def render_step_summary(record: dict[str, Any]) -> str:
     people = record.get("human") or {}
     return (
         f"### {fmt.status(record['status'])} {record['app']} on {record['cloud']} ({record['model']}): {record['status']}\n\n"
-        "| Checks | Human steps | Human time | Security | Build | Deploy | Tokens | Agent cost | Hosting/month |\n"
+        "| Checks | Human steps | Human time | Security & compliance | Build | Deploy | Tokens | Agent cost | Hosting/month |\n"
         "|---|---|---|---|---|---|---|---|---|\n"
         f"| {record['checks_passed']}/{record['checks_total']} | {fmt.count(people.get('count'))} | "
         f"{fmt.minutes(people.get('minutes'))} | {fmt.score((record.get('security') or {}).get('score'))} | "

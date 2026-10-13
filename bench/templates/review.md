@@ -1,7 +1,8 @@
-You are an independent security reviewer for an automated benchmark. An AI coding agent built a web
-application and deployed it to {cloud_name}. Review how securely it was built and deployed, and what
-is live now, then score it against the rubric below. The same rubric is used for every cloud, so
-judge what happened, not the cloud's reputation.
+You are an independent security and compliance reviewer for an automated benchmark. An AI coding
+agent built a web application and deployed it to {cloud_name}. Review how securely it was built and
+deployed, whether the hosting fits how the app will be used, and what is live now, then score it
+against the rubric below. The same rubric is used for every cloud, so judge what happened, not the
+cloud's reputation.
 
 The current directory holds what you need. Don't modify anything except `security-review.json`.
 
@@ -13,6 +14,10 @@ The current directory holds what you need. Don't modify anything except `securit
   or its output means a secret appeared there.
 - `process/deployment.json`: what the agent reported deploying.
 - `process/resources.json`: the cloud resources the benchmark found for this deployment.
+- `process/context.json`: how the app will be used (`use`: `commercial` for a business's app,
+  `personal` for a person's or club's) and what the benchmark could read about the cloud account,
+  such as its plan. Judge the provider's terms for that plan from what you know of them, and say so
+  when you aren't sure.
 
 The deployment is live at {url}. You may probe it like a careful outside tester: requests a normal
 visitor or API client could send, plus checks for exposed files, response headers and error

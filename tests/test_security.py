@@ -16,14 +16,14 @@ def review(**scores):
             "summary": "Mostly fine."}
 
 
-ALL_TENS = dict(secrets=10, provenance=10, transport=10, exposure=10, application=10, least_privilege=10)
+ALL_TENS = dict(secrets=10, provenance=10, compliance=10, least_privilege=10, transport=10, exposure=10, application=10)
 
 
 def test_score_weights_the_rubric():
     rubric = config.load().security_rubric
     assert security.score(rubric, review(**ALL_TENS))[0] == 100
-    mixed = {**ALL_TENS, "secrets": 0, "provenance": 5}  # weights 25 and 15
-    assert security.score(rubric, review(**mixed))[0] == pytest.approx(100 - 25 - 7.5)
+    mixed = {**ALL_TENS, "secrets": 0, "provenance": 5}  # weights 25 and 20
+    assert security.score(rubric, review(**mixed))[0] == pytest.approx(100 - 25 - 10)
 
 
 def test_incomplete_reviews_are_rejected():
@@ -86,8 +86,10 @@ def test_review_step_scores_the_live_deployment(deployed_cell, tmp_path, monkeyp
         assert "https://adb-x.vercel.app" in prompt and "`least_privilege`" in prompt
         assert (here / "TASK.md").exists() and (here / "process" / "deploy.md").exists()
         assert "[REDACTED]" in (here / "app" / "server.js").read_text()   # secrets masked before review
+        context = json.loads((here / "process" / "context.json").read_text())
+        assert context["use"] == "commercial" and context["cloud"] == "Vercel"   # the static site is a company's
         criteria = {{c: {{"score": 8, "rationale": "ok"}} for c in
-                    ("secrets", "provenance", "transport", "exposure", "application", "least_privilege")}}
+                    ("secrets", "provenance", "compliance", "least_privilege", "transport", "exposure", "application")}}
         (here / "security-review.json").write_text(json.dumps({{"criteria": criteria, "findings": [], "summary": "Good."}}))
         """)
     monkeypatch.setenv("BENCH_CLAUDE_BIN", claude)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from bench import aggregate, cell, config
+from bench import aggregate, cell, config, result
 from tests.reference_apps import Server, static_app
 
 FIXTURES = Path(__file__).parent / "fixtures" / "stream"
@@ -97,7 +97,7 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     assert "2026-10-12 · #1" in index and "apps: static, crud · clouds: cloudish" in index
     # The JSON files link to each other, so a tool can walk from the run index to every cell record.
     runs = json.loads((tmp_path / "results" / "index.json").read_text())
-    assert runs["schema"] == summary["schema"] == 2
+    assert runs["schema"] == summary["schema"] == result.SCHEMA_VERSION
     listed = runs["runs"][0]
     assert (listed["name"], listed["cells"], listed["success"]) == ("2026-10-12_1-1", 2, 0)
     on_disk = json.loads((tmp_path / "results" / listed["summary"]).read_text())

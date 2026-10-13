@@ -1,8 +1,8 @@
-"""Independent security review of a deployment, by a separate Claude Code session.
+"""Independent security and compliance review of a deployment, by a separate Claude Code session.
 
 While the deployment is still live, the reviewer gets a read-only copy of what the agent produced,
-condensed transcripts of the build and deploy sessions, the resources the benchmark found and the
-public URL. It has no cloud credentials. It scores the fixed rubric in benchmark.yaml with evidence,
+condensed transcripts of the build and deploy sessions, the resources and account plans the benchmark
+found, how the app will be used, and the public URL. It has no cloud credentials. It scores the fixed rubric in benchmark.yaml with evidence,
 and the harness turns those scores into a 0-100 score, so the weighting isn't left to the model.
 """
 
@@ -63,6 +63,7 @@ def condensed_transcript(path: Path) -> str:
 
 def prepare(cell: "Cell", directory: Path, secrets: list[str]) -> None:
     """Lays out what the reviewer reads: app/, process/ and TASK.md."""
+    app_config = cell.config.app(cell.info["app"])
     if directory.exists():
         shutil.rmtree(directory)
     app = directory / "app"
@@ -83,7 +84,10 @@ def prepare(cell: "Cell", directory: Path, secrets: list[str]) -> None:
     resources = [{k: r.get(k) for k in ("kind", "name", "plan", "url", "details")}
                  for role in inventory.values() if isinstance(role, dict) for r in role.get("resources", [])]
     (process / "resources.json").write_text(json.dumps(resources, indent=2, default=str))
-    (directory / "TASK.md").write_text(cell.config.app(cell.info["app"]).task)
+    context = {"cloud": cell.config.cloud(cell.info["cloud"]).name, "use": app_config.use or None,
+               "account": (inventory.get("cloud") or {}).get("account") or {}}
+    (process / "context.json").write_text(json.dumps(context, indent=2, default=str))
+    (directory / "TASK.md").write_text(app_config.task)
 
 
 def render_prompt(cell: "Cell", url: str) -> str:

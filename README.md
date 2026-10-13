@@ -27,7 +27,7 @@ For every cloud × model × app (a *cell*):
 | **Agent cost** | API cost per phase, as reported by Claude Code |
 | **Human steps** | How many distinct things a person had to do, or would have to do, for the agent to deploy (sign up, payment method, API token, accepting integration terms, Git hosting). A deploy that can't finish without one fails at the `human` stage |
 | **Human time** | Estimated minutes those human steps take |
-| **Security** | A 0–100 score from an independent Claude Code review of how the app was built and deployed and what is live, against a fixed rubric (secrets, provenance, transport, attack surface, application security, least privilege) |
+| **Security & compliance** | A 0–100 score from an independent Claude Code review of how the app was built and deployed, whether its hosting plan fits how the app is used, and what is live, against a fixed rubric (secrets, provenance, terms compliance, least privilege, transport, attack surface, application security) |
 | **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables, next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
 
@@ -59,7 +59,7 @@ flowchart LR
    resource prefix and writes `deployment.json`.
 4. **Inventory, verify, review, tear down**: the harness lists and prices what was created, runs
    the app's checks against the public URL (HTTP, WebSocket/SSE and a headless browser), has a
-   separate Claude Code session review the deployment's security, then deletes everything.
+   separate Claude Code session review the deployment's security and compliance, then deletes everything.
 5. **Collect**: per-cell results go to `results/runs/<run>/` and the summary table above is
    refreshed.
 
