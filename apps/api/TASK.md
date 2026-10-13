@@ -1,7 +1,7 @@
 # API / Backend Service: Notes API
 
-Build a JSON REST API for storing notes, meant to be consumed by other programs. No UI is
-required.
+Build a public JSON REST API for storing notes, a personal side project that a few friends' scripts
+and apps will call. No UI is required.
 
 ## Authentication
 

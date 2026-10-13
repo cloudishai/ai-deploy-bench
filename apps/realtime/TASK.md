@@ -1,6 +1,7 @@
 # Real-Time Collaborative App: Chat Rooms
 
-Build a multi-user chat app where everyone in a room sees each other's messages live.
+Build a multi-user chat app for a local hobby club, where everyone in a room sees each other's
+messages live.
 
 ## Web UI (`GET /`)
 

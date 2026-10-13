@@ -1,7 +1,7 @@
 # Database-Backed CRUD App: Multi-user Todo List
 
-Build a multi-user todo list web app with accounts. Users sign up, log in, and manage their own
-todos.
+Build a multi-user todo list web app for small teams, with accounts. Users sign up, log in, and
+manage their own todos.
 
 ## Web UI
 

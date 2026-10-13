@@ -1,7 +1,7 @@
 # Data / Visualization App: Sales Dashboard
 
-Build an interactive sales dashboard for the dataset in `data/sales.csv`: 2,400 order lines from
-2025.
+Build an interactive sales dashboard for a small company, using its order data in
+`data/sales.csv`: 2,400 order lines from 2025.
 
 ## Data
 
