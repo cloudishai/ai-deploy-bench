@@ -106,6 +106,8 @@ def static_app(bugs: frozenset = frozenset()) -> web.Application:
 # -- crud ------------------------------------------------------------------------------------
 
 def crud_app(bugs: frozenset = frozenset()) -> web.Application:
+    """`bugs` may also contain "cookie_sessions": signup and login also set a session cookie, which
+    the API accepts when there's no Authorization header (TASK.md lets the web UI use cookies)."""
     users: dict[str, str] = {}
     tokens: dict[str, str] = {}
     todos: list[dict] = []
@@ -119,9 +121,18 @@ def crud_app(bugs: frozenset = frozenset()) -> web.Application:
         tokens[value] = email
         return value
 
+    def session(email: str, status: int = 200) -> web.Response:
+        token = issue(email)
+        response = web.json_response({"token": token}, status=status)
+        if "cookie_sessions" in bugs:
+            response.set_cookie("token", token, httponly=True, samesite="Lax")
+        return response
+
     def caller(request) -> str | None:
         header = request.headers.get("Authorization", "")
-        return tokens.get(header.removeprefix("Bearer ").strip()) if header.startswith("Bearer ") else None
+        if header.startswith("Bearer "):
+            return tokens.get(header.removeprefix("Bearer ").strip())
+        return tokens.get(request.cookies.get("token", "")) if "cookie_sessions" in bugs else None
 
     def visible(email: str) -> list[dict]:
         return todos if "no_isolation" in bugs else [t for t in todos if t["owner"] == email]
@@ -140,14 +151,14 @@ def crud_app(bugs: frozenset = frozenset()) -> web.Application:
         if email in users:
             return error(409, "email already registered")
         users[email] = hash_password(password)
-        return web.json_response({"token": issue(email)}, status=201)
+        return session(email, 201)
 
     async def login(request):
         body = await json_body(request)
         email = str(body.get("email", ""))
         if users.get(email) != hash_password(str(body.get("password", ""))):
             return error(401, "wrong credentials")
-        return web.json_response({"token": issue(email)})
+        return session(email)
 
     async def list_todos(request):
         if not (email := caller(request)):

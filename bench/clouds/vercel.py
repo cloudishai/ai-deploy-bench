@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Iterator
 
 from bench.clouds.base import Cloud, Resource, api_for, load_pricing
+from bench.clouds.http import Api, ApiError
 
 API = "https://api.vercel.com"
+BLOB_API = "https://vercel.com"
+BLOB_API_VERSION = "12"  # what @vercel/blob 2.x sends
+ENV_TARGETS = ("development", "production", "preview")
+MAX_BLOB_BATCHES = 100  # of 1,000 blobs; a benchmark store holds a handful
 
 
 class Vercel(Cloud):
@@ -18,6 +24,7 @@ class Vercel(Cloud):
     def __init__(self, env) -> None:
         super().__init__(env)
         self.api = api_for(API, env.get("VERCEL_TOKEN", ""))
+        self.blob = Api(BLOB_API, {})  # authenticated per store, see _blob_headers
         self._teams: list[dict[str, Any]] | None = None
 
     def teams(self) -> list[dict[str, Any]]:
@@ -110,6 +117,8 @@ class Vercel(Cloud):
         if resource.kind == "project":
             self.api.delete(f"/v9/projects/{resource.id}", params=scope)
         elif resource.kind == "blob_store":
+            # Vercel refuses to delete a store that still holds blobs (HTTP 409 not_empty).
+            self._empty_blob_store(resource, scope)
             self.api.delete(f"/v1/storage/stores/{resource.id}/connections", params=scope)
             self.api.delete(f"/v1/storage/stores/blob/{resource.id}", params=scope)
         elif resource.kind == "global_config":
@@ -118,6 +127,44 @@ class Vercel(Cloud):
             self.api.delete(f"/v1/storage/stores/{resource.id}/connections", params=scope)
             self.api.delete(f"/v1/storage/stores/integration/{resource.id}", params=scope)
 
+    def _empty_blob_store(self, store: Resource, scope: dict[str, str]) -> None:
+        """Deletes every blob in a store, like `vercel blob empty-store`. The Blob API only accepts the
+        store's own credentials, so they come from the environment of a project connected to it (as
+        `vercel env pull` gets them), or else of a temporary project connected just for this."""
+        connections = (self.api.get(f"/v1/storage/stores/{store.id}/connections", **scope) or {}).get("connections") or []
+        projects = {c.get("projectId") or (c.get("project") or {}).get("id") for c in connections} - {None}
+        headers = next(filter(None, (self._blob_headers(project, store.id, scope) for project in sorted(projects))), None)
+        temporary = None
+        try:
+            if headers is None:
+                temporary = self.api.request("POST", "/v11/projects", params=scope,
+                                             json={"name": temporary_project_name(store.name)})["id"]
+                self.api.request("POST", f"/v1/storage/stores/{store.id}/connections", params=scope,
+                                 json={"projectId": temporary, "envVarEnvironments": ["development"]})
+                headers = self._blob_headers(temporary, store.id, scope)
+            if headers is None:
+                raise RuntimeError("found no credentials to empty the Blob store")
+            for _ in range(MAX_BLOB_BATCHES):
+                listing = self.blob.request("GET", "/api/blob", params={"limit": 1000}, headers=headers) or {}
+                urls = [blob["url"] for blob in listing.get("blobs") or []]
+                if not urls:
+                    return
+                self.blob.request("POST", "/api/blob/delete", json={"urls": urls}, headers=headers)
+            raise RuntimeError(f"the Blob store still holds blobs after {MAX_BLOB_BATCHES} batches of deletes")
+        finally:
+            if temporary:
+                self.api.delete(f"/v9/projects/{temporary}", params=scope)
+
+    def _blob_headers(self, project_id: str, store_id: str, scope: dict[str, str]) -> dict[str, str] | None:
+        for target in ENV_TARGETS:
+            try:
+                env = (self.api.get(f"/v3/env/pull/{project_id}/{target}", **scope) or {}).get("env") or {}
+            except ApiError:
+                continue
+            if headers := blob_headers(env, store_id):
+                return headers
+        return None
+
     def account(self) -> dict[str, Any]:
         plans = {}
         for team in self.teams():
@@ -125,6 +172,28 @@ class Vercel(Cloud):
                 info = self.api.get(f"/v2/teams/{team['id']}") or {}
                 plans[team["id"]] = (info.get("billing") or {}).get("plan")
         return {"team_plans": plans}
+
+
+def blob_headers(env: dict[str, Any], store_id: str) -> dict[str, str] | None:
+    """Blob API headers from a project's pulled environment: the store's read-write token
+    (vercel_blob_rw_<store>_<secret>), or the project's OIDC token when the store is connected by OIDC."""
+    store = store_id.removeprefix("store_")
+    for value in map(str, env.values()):
+        parts = value.split("_")
+        if value.startswith("vercel_blob_rw_") and len(parts) > 4 and parts[3].lower() == store.lower():
+            return {"Authorization": f"Bearer {value}", "x-vercel-blob-store-id": parts[3],
+                    "x-api-version": BLOB_API_VERSION}
+    connected = {str(value).removeprefix("store_").lower() for name, value in env.items() if name.endswith("STORE_ID")}
+    if env.get("VERCEL_OIDC_TOKEN") and store.lower() in connected:
+        return {"Authorization": f"Bearer {env['VERCEL_OIDC_TOKEN']}", "x-vercel-blob-store-id": store,
+                "x-api-version": BLOB_API_VERSION}
+    return None
+
+
+def temporary_project_name(store_name: str) -> str:
+    """Keeps the store's name, and with it the cell prefix, so a leftover is found and deleted."""
+    base = re.sub(r"[^a-z0-9._-]+", "-", store_name.lower()).strip("-") or "store"
+    return re.sub(r"-{3,}", "--", f"{base[:80]}-teardown")
 
 
 def production_url(project: dict[str, Any]) -> str | None:

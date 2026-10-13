@@ -36,6 +36,7 @@ def failures(result):
 REFERENCE = {
     "static": lambda: (static_app(), {}),
     "crud": lambda: (crud_app(), {}),
+    "crud-cookies": lambda: (crud_app(frozenset({"cookie_sessions"})), {}),
     "api": lambda: (api_app(KEYS), {"inputs": {"api_keys": KEYS}}),
     "dataviz": lambda: (dataviz_app(), {}),
     "realtime": lambda: (realtime_app(), {}),

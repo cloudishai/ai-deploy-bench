@@ -1,9 +1,11 @@
 """Cloud adapters against mocked provider APIs: matching, pricing, leak detection and teardown."""
 
+import json
+
 import httpx
 import pytest
 
-from bench.clouds import ADAPTERS, base
+from bench.clouds import ADAPTERS, base, vercel
 from bench.clouds.base import Cloud, Resource
 from bench.clouds.github import GitHub
 from bench.clouds.http import Api
@@ -137,6 +139,75 @@ def test_vercel_uses_production_alias_and_team_scope(fake):
         "api.vercel.com/v9/projects/prj_1",
     ]
     assert all(params.get("teamId") == "team_1" for (method, _), params in api.calls if method == "DELETE")
+
+
+BLOB_STORE = {"kind": "blob_store", "id": "store_8zHQ", "name": "adb-k3x9f-crud-blob", "details": {"team_id": "team_1"}}
+BLOB_TOKEN = "vercel_blob_rw_8zHQ_secret"
+
+
+def test_vercel_empties_a_blob_store_before_deleting_it(fake):
+    pages = [[{"url": "https://8zhq.private.blob.vercel-storage.com/todos/a.json"}], []]
+    seen = {}
+
+    def listing(request):
+        seen["auth"], seen["store"] = request.headers["authorization"], request.headers["x-vercel-blob-store-id"]
+        return {"blobs": pages.pop(0), "hasMore": False}
+
+    def remove(request):
+        seen["deleted"] = json.loads(request.content)["urls"]
+        return {}
+
+    api = fake({
+        ("GET", "api.vercel.com/v1/storage/stores/store_8zHQ/connections"): {"connections": [{"id": "c1", "projectId": "prj_1"}]},
+        ("GET", "api.vercel.com/v3/env/pull/prj_1/development"): {"env": {"BLOB_READ_WRITE_TOKEN": BLOB_TOKEN}},
+        ("GET", "vercel.com/api/blob"): listing,
+        ("POST", "vercel.com/api/blob/delete"): remove,
+        ("DELETE", "api.vercel.com/v1/storage/stores/store_8zHQ/connections"): None,
+        ("DELETE", "api.vercel.com/v1/storage/stores/blob/store_8zHQ"): None,
+    })
+    cloud = ADAPTERS["vercel"]({"VERCEL_TOKEN": "vcp_test"})
+    assert base.teardown(cloud, [BLOB_STORE], retry_delay=0) == [
+        {"kind": "blob_store", "name": "adb-k3x9f-crud-blob", "deleted": True}]
+    assert seen == {"auth": f"Bearer {BLOB_TOKEN}", "store": "8zHQ",
+                    "deleted": ["https://8zhq.private.blob.vercel-storage.com/todos/a.json"]}
+    assert api.deleted() == ["api.vercel.com/v1/storage/stores/store_8zHQ/connections",
+                             "api.vercel.com/v1/storage/stores/blob/store_8zHQ"]
+
+
+def test_vercel_empties_an_unconnected_blob_store_through_a_temporary_project(fake):
+    created = {}
+
+    def create_project(request):
+        created["name"] = json.loads(request.content)["name"]
+        return {"id": "prj_tmp"}
+
+    def connect(request):
+        created["connection"] = json.loads(request.content)
+        return {}
+
+    api = fake({
+        ("GET", "api.vercel.com/v1/storage/stores/store_8zHQ/connections"): {"connections": []},
+        ("POST", "api.vercel.com/v11/projects"): create_project,
+        ("POST", "api.vercel.com/v1/storage/stores/store_8zHQ/connections"): connect,
+        ("GET", "api.vercel.com/v3/env/pull/prj_tmp/development"): {"env": {"TEARDOWN_READ_WRITE_TOKEN": BLOB_TOKEN}},
+        ("GET", "vercel.com/api/blob"): {"blobs": []},
+        ("DELETE", "api.vercel.com/v9/projects/prj_tmp"): None,
+        ("DELETE", "api.vercel.com/v1/storage/stores/store_8zHQ/connections"): None,
+        ("DELETE", "api.vercel.com/v1/storage/stores/blob/store_8zHQ"): None,
+    })
+    cloud = ADAPTERS["vercel"]({"VERCEL_TOKEN": "vcp_test"})
+    assert base.teardown(cloud, [BLOB_STORE], retry_delay=0)[0]["deleted"]
+    # The temporary project keeps the cell prefix, so the janitor would find it if this crashed.
+    assert created == {"name": "adb-k3x9f-crud-blob-teardown",
+                       "connection": {"projectId": "prj_tmp", "envVarEnvironments": ["development"]}}
+    assert "api.vercel.com/v9/projects/prj_tmp" in api.deleted()
+    assert api.deleted()[-1] == "api.vercel.com/v1/storage/stores/blob/store_8zHQ"
+
+
+def test_vercel_blob_credentials():
+    assert vercel.blob_headers({"BLOB_READ_WRITE_TOKEN": "vercel_blob_rw_other_secret"}, "store_8zHQ") is None
+    oidc = vercel.blob_headers({"VERCEL_OIDC_TOKEN": "oidc-jwt", "BLOB_STORE_ID": "store_8zHQ"}, "store_8zHQ")
+    assert oidc["Authorization"] == "Bearer oidc-jwt" and oidc["x-vercel-blob-store-id"] == "8zHQ"
 
 
 DO_EMPTY = {

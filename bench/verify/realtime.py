@@ -9,7 +9,9 @@ from urllib.parse import urlencode, urlsplit, urlunsplit
 
 import httpx
 
-from bench.verify.base import USER_AGENT, CheckFailed, Verifier, expect, expect_html, expect_json, expect_status, token
+from bench.verify.base import (
+    USER_AGENT, CheckFailed, Verifier, expect, expect_html, expect_json, expect_status, no_cookies, token,
+)
 
 Predicate = Callable[[dict], bool]
 
@@ -152,7 +154,8 @@ class RealtimeVerifier(Verifier):
                 expect(not errors, f"uncaught error: {errors[0][:200] if errors else ''}")
 
     async def _live_checks(self, run_id: str) -> None:
-        http = httpx.AsyncClient(base_url=self.base_url, timeout=30.0, headers={"User-Agent": USER_AGENT})
+        http = httpx.AsyncClient(base_url=self.base_url, timeout=30.0, headers={"User-Agent": USER_AGENT},
+                                 cookies=no_cookies())  # the simulated users share this client
         clients: list[Client] = []
 
         def make(room: str, user: str) -> Client:

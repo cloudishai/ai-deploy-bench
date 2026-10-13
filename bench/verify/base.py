@@ -14,6 +14,7 @@ import secrets
 import statistics
 import threading
 import time
+from http.cookiejar import CookieJar, DefaultCookiePolicy
 from typing import Any, Awaitable, Callable, Iterator
 from urllib.parse import urlsplit
 
@@ -22,6 +23,15 @@ import httpx
 from bench.verify.htmlscan import PageScan
 
 USER_AGENT = "ai-deploy-bench-verifier/1.0"
+
+
+def no_cookies() -> CookieJar:
+    """A cookie jar that keeps nothing, so a request carries only the credentials its check gives it.
+
+    Apps may also set session cookies. A client that kept them would send a login's session with
+    the requests that check authentication is required, and with requests made as another user.
+    """
+    return CookieJar(DefaultCookiePolicy(allowed_domains=[]))
 
 
 class CheckFailed(Exception):
@@ -128,6 +138,7 @@ class Verifier:
             timeout=timeout,
             follow_redirects=True,
             headers={"User-Agent": USER_AGENT},
+            cookies=no_cookies(),
         )
         self.checks: list[Check] = []
         self.started_at = time.monotonic()
