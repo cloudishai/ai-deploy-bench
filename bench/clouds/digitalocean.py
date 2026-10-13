@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any, Iterator
 
-from bench.clouds.base import Cloud, Resource, api_for, load_pricing, lookup_plan
+from bench.clouds.base import Cloud, Resource, api_for, fixed_cost, load_pricing, lookup_plan
 
 API = "https://api.digitalocean.com/v2"
 SERVICE_COMPONENTS = ("services", "workers")
@@ -127,6 +127,7 @@ class DigitalOcean(Cloud):
         for r in resources:
             if r.kind == "app":
                 r.monthly_usd, r.pricing, r.plan = app_cost(r.details.get("spec") or {}, sizes, table["app_platform"])
+                r.details["bandwidth_gib"] = bandwidth_allowance(r.details.get("spec") or {}, table["app_platform"])
             elif r.kind == "database":
                 engine_prices = table["databases"].get(str(r.details.get("engine")), {})
                 if (node := lookup_plan(engine_prices, r.plan)) is not None:
@@ -148,6 +149,16 @@ class DigitalOcean(Cloud):
             if r.monthly_usd is None and not r.pricing:
                 r.pricing = "price unknown"
 
+    def usage_cost(self, resources, usage, account, use):
+        """Containers always run, so they cost their fixed price at any traffic. Outbound transfer is free
+        up to an allowance per container, pooled across the team, then billed per GiB."""
+        table = load_pricing(self.id)["app_platform"]
+        allowance = sum(r.details.get("bandwidth_gib") or 0 for r in resources if r.kind == "app")
+        transfer_gib = usage.transfer_gb / 1.073741824
+        over = max(0.0, transfer_gib - allowance)
+        return fixed_cost(resources, f"fixed monthly prices; {transfer_gib:.3g} GiB out of a {allowance:g} GiB allowance"
+                          + (f", {over:.3g} GiB billed" if over else ""), extra=over * table["transfer_per_gib"])
+
     def delete(self, resource: Resource) -> None:
         if resource.kind == "kubernetes_cluster":
             self.api.delete(f"/kubernetes/clusters/{resource.id}/destroy_with_associated_resources/dangerous",
@@ -165,6 +176,19 @@ class DigitalOcean(Cloud):
             "project": "/projects",
         }[resource.kind]
         self.api.delete(f"{path}/{resource.id}")
+
+
+def bandwidth_allowance(spec: dict[str, Any], table: dict[str, Any]) -> float:
+    """Outbound GiB per month an app adds to the team's pool: per container, or 1 GiB if static-only."""
+    total = 0.0
+    for kind in SERVICE_COMPONENTS:
+        for component in spec.get(kind) or []:
+            slug = component.get("instance_size_slug") or "apps-s-1vcpu-0.5gb"
+            count = int((component.get("autoscaling") or {}).get("min_instance_count") or component.get("instance_count") or 1)
+            total += float(table["bandwidth_gib"].get(slug, 0)) * count
+    if not total and (spec.get("static_sites") or spec.get("functions")):
+        return float(table["static_site_bandwidth_gib"])
+    return total
 
 
 def app_cost(spec: dict[str, Any], sizes: dict[str, float], table: dict[str, Any]) -> tuple[float | None, str, str]:

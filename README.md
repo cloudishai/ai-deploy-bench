@@ -28,7 +28,7 @@ For every cloud × model × app (a *cell*):
 | **Human steps** | How many distinct things a person had to do, or would have to do, for the agent to deploy (sign up, payment method, API token, accepting integration terms, Git hosting). A deploy that can't finish without one fails at the `human` stage |
 | **Human time** | Estimated minutes those human steps take |
 | **Security & compliance** | A 0–100 score from an independent Claude Code review of how the app was built and deployed, whether its hosting plan fits how the app is used, and what is live, against a fixed rubric (secrets, provenance, terms compliance, least privilege, transport, attack surface, application security) |
-| **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables, next to the agent's own estimate |
+| **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables for a month of *light use* (a few visits a week) and a *busy* month (hit around the clock), next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
 
 Definitions and caveats are in [docs/methodology.md](docs/methodology.md).

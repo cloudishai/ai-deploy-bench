@@ -165,30 +165,62 @@ that would have to fix it: the `platform` (the cloud's own behavior or defaults)
 | Human steps | Distinct human steps the deployment needed or would need ([Human steps](#human-steps)). |
 | Human time | Estimated minutes for those steps, from the `human_steps` catalog. |
 | Security & compliance | 0–100 score from the independent review ([Security and compliance review](#security-and-compliance-review)). |
-| Hosting cost | The estimated monthly cost of the deployed resources (next section), plus the agent's own estimate from `deployment.json` for comparison. |
+| Hosting cost | The estimated monthly cost of the deployed resources with light use and when busy ([Hosting cost](#hosting-cost)), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
 | Performance | p50 and p90 latency of the ready path over 10 requests after the checks, plus WebSocket delivery latency for the chat app. |
 
 ## Hosting cost
 
-Each cloud adapter in [`bench/clouds/`](../bench/clouds) lists the resources a cell created and
-prices them with the provider's live price APIs where they exist, and otherwise with the dated
-tables in [`bench/clouds/pricing/`](../bench/clouds/pricing). The estimate is the cost of keeping
-those resources running for a 730-hour month with light traffic:
+Clouds bill in different ways: some charge a fixed price per instance, some per second while a
+container runs, and some per request with free allowances. A single "monthly cost" therefore only
+compares fairly at a stated level of traffic. Each deployment is priced for a month at two levels,
+defined in `hosting_usage` in `benchmark.yaml`:
 
-- **Fixed-price plans** (Render instances and databases, DigitalOcean App Platform instances,
-  databases and Droplets) cost their list price per month, times the instance count.
-- **Usage-billed compute** (Cloudish containers, billed per second) is priced as always on at the
-  provisioned size. Cloudish scales idle apps to zero, so an app with little traffic costs less.
-- **Serverless and request-based billing** (Vercel functions, bandwidth, requests) is treated as
-  inside the plan's included allowance at benchmark traffic, so it costs $0.
-- **Free tiers** cost $0 even when they sleep when idle (Render free web services spin down after
-  15 minutes) or expire (Render free Postgres lasts 30 days).
-- **Account-level fees** (Vercel Pro seats, Render workspace plans, DigitalOcean registry tiers
-  beyond Starter) are not attributed to an app unless the agent created the billed resource.
+| | Light use | Busy |
+|---|---|---|
+| Who uses it | A few visits a week | A public app that crawlers, uptime monitors and visitors hit around the clock |
+| Requests a month | 2,000 | 2,628,000 (one a second) |
+| Hours a scale-to-zero app is awake | 10 (idle timeouts included) | 730 (it never goes idle) |
+| Outbound transfer (20 KB a request) | 0.04 GB | 52.6 GB |
+| Requests that reach app code | half, at 20 ms of CPU and 100 ms with 2 GB of memory each | the same |
 
-Resources whose price can't be determined are listed as unpriced, and totals show `+`.
+Each cloud adapter in [`bench/clouds/`](../bench/clouds) lists the resources a cell created,
+gives each its list price at the size it was provisioned, from the provider's live price API
+where there is one and otherwise from the dated tables in
+[`bench/clouds/pricing/`](../bench/clouds/pricing), and then prices the whole deployment at each
+level:
+
+- **Cloudish** bills containers per second while they run and scales idle ones to zero after 15
+  minutes, so a container costs its size's hourly rate for the hours it is awake: 10 at light use,
+  730 when busy. Cloudish lists no bandwidth or request charges.
+- **DigitalOcean App Platform** containers always run, so they cost their fixed price at both
+  levels. Each container size includes outbound transfer (50 GiB a month for the $5 size), pooled
+  across the team's apps, and beyond it transfer costs $0.02 per GiB. Static-only apps get 1 GiB.
+- **Render** paid instances cost their plan price at both levels. Free web services cost nothing
+  while the workspace's 750 free instance hours last, and spin down after 15 idle minutes. Outbound
+  transfer beyond the workspace plan's allowance costs $0.15 per GB. The API doesn't report the
+  workspace plan, so the benchmark assumes Hobby, which includes 5 GB. Without a payment method on
+  file, Render suspends the services instead of billing the extra transfer.
+- **Vercel** Hobby is free within fixed monthly limits (1M CDN requests, 100 GB of transfer, 1M
+  function invocations, 4 hours of active CPU, 360 GB-hours of memory). It pauses projects that
+  exceed them, can't buy more, and is for personal, non-commercial use only. So on a Hobby team, a
+  business's app (`use: commercial` in `benchmark.yaml`), or traffic beyond the limits, is priced
+  on Pro: the $20 monthly platform fee, which includes $20 of usage credit, plus usage beyond the
+  credit at Pro's on-demand rates. On a Pro team, only usage beyond the credit counts, since the
+  fee is paid once per team.
+- **Databases, volumes, registries and other fixed-price resources** cost their list price at both
+  levels.
+- **Free tiers** cost $0 even when they sleep when idle or expire (Render free Postgres lasts 30
+  days). The security and compliance review judges whether relying on them suits the app.
+- **Other account-level fees** (Render workspace plans, Vercel seats beyond the first) aren't
+  attributed to an app.
+
+The two levels bracket what a small app costs: light use shows what scale-to-zero and free plans
+save when nobody visits, and busy shows what an app costs once it never idles. Each cell report
+explains how each figure was reached. Resources whose price can't be determined are listed as
+unpriced, and totals show `+`. Each resource's list price, always on at its provisioned size, is
+also recorded (`hosting_monthly_usd`).
 
 ## Result files
 
@@ -210,6 +242,7 @@ versions as optional:
 | 1 | First version. Runs before the security review have no `security` block |
 | 2 | `results/index.json`; `schema` in `summary.json`; `path` and `report` on summary cells; `source` on security findings |
 | 3 | The review adds a `compliance` criterion and reweights the rubric (shown as *Security & compliance*), so scores aren't comparable with earlier runs. The JSON fields keep their names (`security`, `security_score`) |
+| 4 | `cost.hosting_usage` in cell records (cost, `incomplete` and `basis` for each traffic level), and `hosting_usage_usd` and `hosting_usage_incomplete` on summary cells and groups |
 
 ## Fairness and limitations
 

@@ -294,6 +294,20 @@ def merge_inventories(reports: list[dict[str, Any]]) -> dict[str, Any]:
         for key in ("resources", "possible_leaks", "unpriced", "errors"):
             merged[key] = merged.get(key, []) + report.get(key, [])
         merged["monthly_usd"] = round((merged.get("monthly_usd") or 0) + (report.get("monthly_usd") or 0), 2)
+        merged["usage"] = merge_usage(merged.get("usage") or {}, report.get("usage") or {})
+    return merged
+
+
+def merge_usage(first: dict[str, Any], second: dict[str, Any]) -> dict[str, Any]:
+    """Adds two accounts' costs for each traffic level."""
+    merged = {}
+    for key in first.keys() | second.keys():
+        a, b = first.get(key), second.get(key)
+        if not (a and b):
+            merged[key] = a or b
+            continue
+        usd = None if a["usd"] is None or b["usd"] is None else round(a["usd"] + b["usd"], 2)
+        merged[key] = {"usd": usd, "incomplete": a["incomplete"] or b["incomplete"], "basis": f"{a['basis']}; {b['basis']}"}
     return merged
 
 
@@ -307,7 +321,9 @@ def inventory(cell: Cell) -> dict[str, Any]:
         if not adapter.configured():
             found.setdefault(role, []).append({"skipped": "credentials not available", "resources": [], "monthly_usd": None})
             continue
-        found.setdefault(role, []).append(base.inventory(adapter, cell.prefix, declared, since))
+        found.setdefault(role, []).append(base.inventory(adapter, cell.prefix, declared, since,
+                                                         usages=cell.config.hosting_usage,
+                                                         use=cell.config.app(cell.info["app"]).use))
     report = {role: merge_inventories(reports) for role, reports in found.items()}
     cell.write("inventory.json", report)
     cloud = report["cloud"]

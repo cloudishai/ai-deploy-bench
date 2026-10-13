@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterator
 
-from bench.clouds.base import Cloud, Resource, api_for, load_pricing, lookup_plan
+from bench.clouds.base import HOURS_PER_MONTH, Cloud, Resource, api_for, fixed_cost, load_pricing, lookup_plan
 
 API = "https://api.render.com/v1"
 PAGE = 100
@@ -125,6 +125,23 @@ class Render(Cloud):
                 r.monthly_usd, r.pricing = 0.0, "no charge"
             if r.monthly_usd is None:
                 r.pricing = f"unknown plan {r.plan!r}"
+
+    def usage_cost(self, resources, usage, account, use):
+        """Paid instances cost their plan price at any traffic, and free ones nothing while the workspace's
+        free hours last. Outbound transfer beyond the workspace plan's allowance is billed per GB."""
+        table = load_pricing(self.id)
+        plan = table["assumed_workspace_plan"]
+        included = float(table["bandwidth_included_gb"][plan])
+        over = max(0.0, usage.transfer_gb - included)
+        basis = (f"fixed monthly prices; {usage.transfer_gb:.3g} GB out of the {plan.title()} workspace's {included:g} GB"
+                 + (f", {over:.3g} GB billed (with a payment method on file; without one Render suspends the "
+                    "services instead)" if over else ""))
+        free = [r for r in resources if r.kind == "service" and (r.plan or "").lower() == "free"]
+        if free:
+            hours = min(usage.awake_hours, HOURS_PER_MONTH) * len(free)
+            basis += (f"; free instances awake {hours:g} h of {table['free_instance_hours']} free hours"
+                      + (", so they are suspended for the rest of the month" if hours > table["free_instance_hours"] else ""))
+        return fixed_cost(resources, basis, extra=over * table["bandwidth_per_gb"])
 
     def delete(self, resource: Resource) -> None:
         path = {

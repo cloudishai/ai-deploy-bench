@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from bench.clouds.base import HOURS_PER_MONTH, Cloud, Resource, api_for, load_pricing
+from bench.clouds.base import HOURS_PER_MONTH, Cloud, Resource, api_for, fixed_cost, load_pricing
 
 API = "https://cloudish.ai/api/v1"
 
@@ -84,8 +84,18 @@ class Cloudish(Cloud):
             resource.plan = next((i["name"] for i in live.get("instances", [])
                                   if float(i["cpuCores"]) == cpu and float(i["memoryGb"]) == memory), size)
             resource.monthly_usd = round(hourly * HOURS_PER_MONTH * replicas, 2)
+            resource.details["hourly_usd"] = hourly * replicas
             resource.pricing = (f"{size} x {replicas} replica(s) running 730 h/month ({source}); "
                                 "billed per second and scales to zero when idle, so idle apps cost less")
+
+    def usage_cost(self, resources, usage, account, use):
+        """Containers are billed per second while running and scale to zero when idle, so they cost their
+        hourly rate for the hours the app is awake. Cloudish lists no bandwidth or request charges."""
+        hours = min(usage.awake_hours, HOURS_PER_MONTH)
+        awake = sum(r.details["hourly_usd"] * hours for r in resources if r.details.get("hourly_usd") is not None)
+        others = [r for r in resources if r.details.get("hourly_usd") is None]
+        return fixed_cost(others, f"containers awake {hours:g} h at their size's hourly rate; no bandwidth charges",
+                          extra=awake)
 
     def delete(self, resource: Resource) -> None:
         self.api.delete(f"/projects/{resource.id}")

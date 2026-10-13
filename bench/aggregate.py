@@ -52,6 +52,8 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "tokens": record["tokens"]["total"]["total"],
         "agent_usd": record["cost"]["agent_usd"],
         "hosting_monthly_usd": record["cost"]["hosting_monthly_usd"],
+        "hosting_usage_usd": {k: u["usd"] for k, u in (record["cost"].get("hosting_usage") or {}).items()},
+        "hosting_usage_incomplete": [k for k, u in (record["cost"].get("hosting_usage") or {}).items() if u["incomplete"]],
         "shell_commands": sum(record["activity"]["shell_commands"].values()),
         "agent_version": record["agent"].get("version"),
         "build_tokens": record["tokens"]["build"].get("total"),
@@ -69,8 +71,8 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
     return {**{k: None for k in SUMMARY_FIELDS}, **cell, "status": "missing", "failure_stage": "harness",
             "score": 0.0, "checks_passed": 0, "checks_total": 0, "required_failed": [], "build_s": None,
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
-            "hosting_monthly_usd": None, "path": None, "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None,
-            "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
+            "hosting_monthly_usd": None, "hosting_usage_usd": {}, "hosting_usage_incomplete": [], "path": None,
+            "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
             "human_steps": [], "security_score": None}
 
 
@@ -85,11 +87,13 @@ def total(values: Iterable[float | None]) -> tuple[float, bool]:
     return sum(v for v in values if v is not None), any(v is None for v in values)
 
 
-def per_app_total(cells: list[dict[str, Any]], field: str) -> tuple[float, bool]:
-    """Sum over apps of the mean over trials, so totals describe one pass over the apps."""
+def per_app_total(cells: list[dict[str, Any]], field: str, usage: str | None = None) -> tuple[float, bool]:
+    """Sum over apps of the mean over trials, so totals describe one pass over the apps. With `usage`,
+    `field` is a dict of values per traffic level and that level's value is summed."""
     sums, unknown = 0.0, False
     for app in sorted({c["app"] for c in cells}):
-        values = [c[field] for c in cells if c["app"] == app and c["status"] != "missing"]
+        values = [(c.get(field) or {}).get(usage) if usage else c[field]
+                  for c in cells if c["app"] == app and c["status"] != "missing"]
         known = [v for v in values if v is not None]
         unknown = unknown or len(known) < len([c for c in cells if c["app"] == app])
         sums += statistics.fmean(known) if known else 0.0
@@ -107,6 +111,8 @@ def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
     tokens, _ = per_app_total(cells, "tokens")
     agent_usd, agent_unknown = per_app_total(cells, "agent_usd")
     hosting, hosting_unknown = per_app_total(cells, "hosting_monthly_usd")
+    usages = list(dict.fromkeys(k for c in cells for k in c.get("hosting_usage_usd") or {}))
+    usage_totals = {k: per_app_total(cells, "hosting_usage_usd", usage=k) for k in usages}
     return {
         "cells": len(cells),
         "success": sum(c["status"] == "success" for c in cells),
@@ -124,6 +130,9 @@ def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
         "agent_usd_incomplete": agent_unknown,
         "hosting_monthly_usd": round(hosting, 2),
         "hosting_incomplete": hosting_unknown,
+        "hosting_usage_usd": {k: round(v, 2) for k, (v, _) in usage_totals.items()},
+        "hosting_usage_incomplete": [k for k, (_, unknown) in usage_totals.items()
+                                     if unknown or any(k in c.get("hosting_usage_incomplete", []) for c in finished)],
     }
 
 
@@ -149,8 +158,8 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
             lines += [f"**{model.name}**", ""]
         lines += [
             "| Cloud | Success | Human steps | Human time | Security & compliance | Checks passed | Avg build | Avg deploy | Tokens "
-            "| Agent cost | Hosting / month |",
-            "|---|---|---|---|---|---|---|---|---|---|---|",
+            "| Agent cost | " + " | ".join(hosting_headers(cfg)) + " |",
+            "|---|---|---|---|---|---|---|---|---|---|" + "---|" * len(cfg.hosting_usage),
         ]
         for group in [g for g in summary["groups"] if g["model"] == model.id]:
             cloud = cfg.cloud(group["cloud"])
@@ -161,10 +170,20 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
                 f"{fmt.pct(group['mean_score'])} | "
                 f"{fmt.duration(group['mean_build_s'])} | {fmt.duration(group['mean_deploy_s'])} | "
                 f"{fmt.tokens(group['tokens'])} | {fmt.usd(group['agent_usd'])}{'+' if group['agent_usd_incomplete'] else ''} | "
-                f"{fmt.usd(group['hosting_monthly_usd'])}{'+' if group['hosting_incomplete'] else ''} |"
+                + " | ".join(hosting_values(group, cfg)) + " |"
             )
         lines.append("")
     return lines
+
+
+def hosting_headers(cfg: config.Config) -> list[str]:
+    return [f"Hosting, {u.label.lower()}" for u in cfg.hosting_usage]
+
+
+def hosting_values(entry: dict[str, Any], cfg: config.Config) -> list[str]:
+    """Monthly hosting per traffic level for a group or cell, `+` where some resources were unpriced."""
+    costs, unknown = entry.get("hosting_usage_usd") or {}, entry.get("hosting_usage_incomplete") or []
+    return [f"{fmt.usd(costs.get(u.id))}{'+' if u.id in unknown else ''}" for u in cfg.hosting_usage]
 
 
 def app_matrix(summary: dict[str, Any], cfg: config.Config, link_prefix: str = "") -> list[str]:
@@ -233,8 +252,8 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
         "## All cells",
         "",
         "| Model | Cloud | App | Trial | Result | Checks | Human steps | Human time | Security & compliance | Build | Deploy "
-        "| Ready after | Tokens | Agent cost | Hosting / month |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Ready after | Tokens | Agent cost | " + " | ".join(hosting_headers(cfg)) + " |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|" + "---|" * len(cfg.hosting_usage),
     ]
     for c in summary["cells"]:
         report = f"[{fmt.status(c['status'])} {c['status']}]({cell_path(c)}.md)" if c["status"] != "missing" else "❔ missing"
@@ -244,7 +263,7 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
             f"{fmt.count(people['count']) if people else fmt.DASH} | {fmt.minutes(people['minutes']) if people else fmt.DASH} | "
             f"{fmt.score(c.get('security_score'))} | "
             f"{fmt.duration(c['build_s'])} | {fmt.duration(c['deploy_s'])} | {fmt.duration(c['ready_after_deploy_s'])} | "
-            f"{fmt.tokens(c['tokens'])} | {fmt.usd(c['agent_usd'])} | {fmt.usd(c['hosting_monthly_usd'])} |"
+            f"{fmt.tokens(c['tokens'])} | {fmt.usd(c['agent_usd'])} | " + " | ".join(hosting_values(c, cfg)) + " |"
         )
     lines += [
         "",
@@ -278,9 +297,11 @@ LEGEND = (
     "hosting plan fits how the app is used, and what is live, scored against a fixed rubric. See the methodology. "
     "Times are wall-clock time of the agent's build and deploy phases; *ready after* is how much longer the app "
     "took to answer once the agent finished. Tokens include cache reads and writes. Agent cost is the API cost "
-    "reported by Claude Code. Hosting is the estimated monthly cost of the resources left running, priced as "
-    "always-on (730 h) with light traffic; usage-billed and free-tier resources can cost less in practice. `+` "
-    "means some values were unknown. See [docs/methodology.md](../../../docs/methodology.md)."
+    "reported by Claude Code. Hosting is the estimated monthly cost of the deployed resources at two levels of "
+    "traffic: *light use* is a few visits a week, and *busy* is a public app that crawlers, monitors and visitors hit "
+    "around the clock. Plans that a business's app can't use under their terms, or that the traffic would exceed, "
+    "are priced on the cheapest plan that allows it. `+` means some values were unknown. "
+    "See [docs/methodology.md](../../../docs/methodology.md#hosting-cost)."
 )
 
 
@@ -343,7 +364,7 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
         "minutes. *Security & compliance* is the average score of an independent review of each deployment's security "
         "and of whether its hosting plan fits the app's use. Times are "
         "averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting "
-        "is priced as always-on for a month. "
+        "is a month's cost with *light use* (a few visits a week) and when *busy* (hit around the clock). "
         f"[All {runs_count} run(s)](results/README.md) · [Methodology](docs/methodology.md)",
     ]
     return "\n".join(lines)

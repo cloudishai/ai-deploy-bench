@@ -3,6 +3,7 @@ sources:
   - https://vercel.com/pricing
   - https://vercel.com/docs/plans/pro-plan
   - https://vercel.com/docs/vercel-blob/usage-and-pricing
+  - https://vercel.com/docs/plans/hobby
 note: >
   Projects have no fixed fee: functions, bandwidth and requests are billed by usage, and light
   benchmark traffic stays inside the plan's included allowance. The team plan fee (Hobby $0,
@@ -13,3 +14,26 @@ global_config: 0
 team_plans:
   hobby: 0
   pro: 20
+
+# Hobby includes this much usage a month and pauses projects that exceed it; it can't buy more, and
+# it is for personal, non-commercial use only.
+hobby_limits:
+  requests: 1000000
+  transfer_gb: 100
+  function_invocations: 1000000
+  function_cpu_hours: 4
+  function_memory_gb_hours: 360
+
+# Pro: a platform fee that includes one deploying seat and a monthly usage credit, the Flat Rate CDN
+# tier (requests and transfer) at no extra cost, then on-demand usage (starting prices; some regions
+# cost more).
+pro:
+  platform_fee: 20
+  monthly_credit: 20
+  included_requests: 1000000
+  included_transfer_gb: 1000
+  per_million_requests: 2
+  per_gb_transfer: 0.15
+  per_million_invocations: 0.60
+  per_cpu_hour: 0.128
+  per_memory_gb_hour: 0.0106

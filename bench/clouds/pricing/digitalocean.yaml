@@ -39,6 +39,26 @@ app_platform:
     professional-l: 150
     professional-xl: 300
 
+  # Outbound transfer included per container, pooled across the team's apps; static-only apps get
+  # 1 GiB each. Beyond the pool it costs transfer_per_gib.
+  bandwidth_gib:
+    apps-s-1vcpu-0.5gb: 50
+    apps-s-1vcpu-1gb-fixed: 100
+    apps-s-1vcpu-1gb: 150
+    apps-s-1vcpu-2gb: 200
+    apps-s-2vcpu-4gb: 250
+    apps-d-1vcpu-0.5gb: 100
+    apps-d-1vcpu-1gb: 200
+    apps-d-1vcpu-2gb: 300
+    apps-d-1vcpu-4gb: 400
+    apps-d-2vcpu-4gb: 500
+    apps-d-2vcpu-8gb: 600
+    apps-d-4vcpu-8gb: 700
+    apps-d-4vcpu-16gb: 800
+    apps-d-8vcpu-32gb: 900
+  static_site_bandwidth_gib: 1
+  transfer_per_gib: 0.02
+
 # Managed databases, per node, including the minimum storage.
 databases:
   pg: {db-s-1vcpu-1gb: 15.15, db-s-1vcpu-2gb: 30.45, db-s-2vcpu-4gb: 60.90}

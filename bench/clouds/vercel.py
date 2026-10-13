@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any, Iterator
 
-from bench.clouds.base import Cloud, Resource, api_for, load_pricing
+from bench.clouds.base import Cloud, Resource, api_for, fixed_cost, load_pricing
 from bench.clouds.http import Api, ApiError
 
 API = "https://api.vercel.com"
@@ -111,6 +111,38 @@ class Vercel(Cloud):
                     r.monthly_usd, r.pricing = price, f"Marketplace plan {r.plan or '?'} ({r.details.get('product')})"
                 else:
                     r.pricing = f"Marketplace plan {r.plan or '?'} ({r.details.get('product')}): price not reported"
+
+    def usage_cost(self, resources, usage, account, use):
+        """Hobby is free up to fixed limits, but it pauses projects that exceed them and is for personal,
+        non-commercial use only. Anything Hobby can't host is priced on Pro: its platform fee, which
+        includes a usage credit, plus on-demand usage beyond the credit. On a Pro team only usage beyond
+        the credit counts, since the fee is paid once per team."""
+        table = load_pricing(self.id)
+        teams = {r.details.get("team_id") for r in resources if r.kind == "project"}
+        plans = account.get("team_plans") or {}
+        plan = str(next((plans[t] for t in teams if plans.get(t)), "hobby")).lower()
+        pro = table["pro"]
+        on_demand = (max(0.0, usage.requests - pro["included_requests"]) / 1e6 * pro["per_million_requests"]
+                     + max(0.0, usage.transfer_gb - pro["included_transfer_gb"]) * pro["per_gb_transfer"]
+                     + usage.function_invocations / 1e6 * pro["per_million_invocations"]
+                     + usage.function_cpu_hours * pro["per_cpu_hour"]
+                     + usage.function_memory_gb_hours * pro["per_memory_gb_hour"])
+        if not teams:
+            return fixed_cost(resources, "no project, so no traffic")
+        if plan != "hobby":
+            return fixed_cost(resources, f"{plan.title()} team: ${on_demand:.2f} of usage, ${max(0.0, on_demand - pro['monthly_credit']):.2f}"
+                              f" beyond the ${pro['monthly_credit']} monthly credit (the platform fee is per team)",
+                              extra=max(0.0, on_demand - pro["monthly_credit"]))
+        names = {"requests": "CDN requests", "transfer_gb": "data transfer", "function_invocations": "function invocations",
+                 "function_cpu_hours": "active CPU", "function_memory_gb_hours": "provisioned memory"}
+        over = [names[name] for name, limit in table["hobby_limits"].items() if getattr(usage, name) > limit]
+        if use != "commercial" and not over:
+            return fixed_cost(resources, "within Hobby's included usage")
+        why = ("Hobby is for non-commercial use only" if use == "commercial"
+               else f"exceeds Hobby's limits ({', '.join(over)}), which pauses the project")
+        return fixed_cost(resources, f"{why}, so priced on Pro: ${pro['platform_fee']} platform fee including "
+                          f"${pro['monthly_credit']} of usage credit, ${on_demand:.2f} of usage",
+                          extra=pro["platform_fee"] + max(0.0, on_demand - pro["monthly_credit"]))
 
     def delete(self, resource: Resource) -> None:
         scope = {"teamId": resource.details["team_id"]} if resource.details.get("team_id") else {}

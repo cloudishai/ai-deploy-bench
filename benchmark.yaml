@@ -88,6 +88,35 @@ security_rubric:
       Does the app validate input, handle authentication and authorization correctly where it has
       them, avoid injection and XSS, and protect public endpoints against abuse?
 
+# Each deployment's hosting is priced for a month at two levels of traffic, since usage-billed and
+# free plans only compare fairly with fixed-price ones at a stated traffic level. See "Hosting cost"
+# in docs/methodology.md.
+hosting_usage:
+  light:
+    label: Light use
+    description: >-
+      Barely used: a few visits a week, about 2,000 requests a month. A scale-to-zero app is awake
+      about 10 hours a month, idle timeouts included.
+    awake_hours: 10
+    requests: 2000
+    function_share: 0.5
+    function_cpu_ms: 20
+    function_duration_ms: 100
+    function_memory_gb: 2
+    kb_per_request: 20
+  busy:
+    label: Busy
+    description: >-
+      A public app that crawlers, uptime monitors and visitors hit around the clock: one request a
+      second on average, so it never goes idle.
+    awake_hours: 730
+    requests: 2628000
+    function_share: 0.5
+    function_cpu_ms: 20
+    function_duration_ms: 100
+    function_memory_gb: 2
+    kb_per_request: 20
+
 # USD per million tokens, used only to estimate cost when a phase ends without Claude Code's own
 # cost report (timeouts, crashes). Source: https://platform.claude.com/docs/en/about-claude/pricing
 model_prices:

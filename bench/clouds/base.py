@@ -4,6 +4,10 @@ Cells name every resource with a unique prefix, so an adapter lists the account'
 keeps those whose name starts with the prefix or that the agent declared in deployment.json.
 Resources created during the cell that match neither are reported as possible leaks but never
 deleted automatically, because the account may hold unrelated resources.
+
+Pricing has two parts: `price` gives each resource its list price per month at the size it was
+provisioned, and `usage_cost` prices the whole deployment for a month of traffic (a `Usage` from
+benchmark.yaml), which is where scale-to-zero, bandwidth allowances and plan limits come in.
 """
 
 from __future__ import annotations
@@ -12,11 +16,14 @@ import dataclasses
 import datetime as dt
 import time
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Mapping
 
 import yaml
 
 from bench.clouds.http import Api
+
+if TYPE_CHECKING:
+    from bench.config import Usage
 
 PRICING_DIR = Path(__file__).parent / "pricing"
 HOURS_PER_MONTH = 730
@@ -85,6 +92,12 @@ class Cloud:
     def price(self, resources: list[Resource]) -> None:
         """Fills `monthly_usd` and `pricing` on each resource."""
 
+    def usage_cost(self, resources: list[Resource], usage: "Usage", account: dict[str, Any], use: str) -> dict[str, Any]:
+        """The deployment's cost for a month of `usage`, after `price`. `use` is the app's intended use
+        (commercial or personal), for plans whose terms depend on it. By default the resources cost
+        their fixed monthly price and the traffic fits the included allowances."""
+        return fixed_cost(resources, "fixed monthly prices; traffic within the included allowances")
+
     def delete(self, resource: Resource) -> None:
         raise NotImplementedError
 
@@ -113,7 +126,14 @@ def matches(resource: Resource, prefix: str, declared: Iterable[dict[str, Any]])
     return ""
 
 
-def inventory(cloud: Cloud, prefix: str, declared: list[dict[str, Any]], since: str | None) -> dict[str, Any]:
+def fixed_cost(resources: list[Resource], basis: str, extra: float = 0.0) -> dict[str, Any]:
+    """Sums the resources' monthly prices plus `extra`; `incomplete` when some couldn't be priced."""
+    priced = [r.monthly_usd for r in resources if r.monthly_usd is not None]
+    return {"usd": round(sum(priced) + extra, 2), "incomplete": len(priced) < len(resources), "basis": basis}
+
+
+def inventory(cloud: Cloud, prefix: str, declared: list[dict[str, Any]], since: str | None,
+              usages: Iterable["Usage"] = (), use: str = "") -> dict[str, Any]:
     started = parse_time(since)
     owned, possible_leaks = [], []
     for resource in cloud.list_resources():
@@ -128,12 +148,21 @@ def inventory(cloud: Cloud, prefix: str, declared: list[dict[str, Any]], since: 
     except Exception as error:
         cloud.errors.append(f"pricing failed: {error}")
     priced = [r.monthly_usd for r in owned if r.monthly_usd is not None]
+    account = _safe(cloud.account, cloud.errors)
+    usage_costs = {}
+    for usage in usages:
+        try:
+            usage_costs[usage.id] = cloud.usage_cost(owned, usage, account, use) if owned else fixed_cost([], "nothing deployed")
+        except Exception as error:
+            cloud.errors.append(f"pricing {usage.id} usage failed: {error}")
+            usage_costs[usage.id] = {"usd": None, "incomplete": True, "basis": f"pricing failed: {error}"}
     return {
         "resources": [r.to_dict() for r in owned],
         "possible_leaks": [r.to_dict() for r in possible_leaks],
         "monthly_usd": round(sum(priced), 2) if owned else 0.0,
+        "usage": usage_costs,
         "unpriced": [r.name for r in owned if r.monthly_usd is None],
-        "account": _safe(cloud.account, cloud.errors),
+        "account": account,
         "errors": cloud.errors,
     }
 

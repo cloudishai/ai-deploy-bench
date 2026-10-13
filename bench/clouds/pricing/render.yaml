@@ -3,6 +3,8 @@ sources:
   - https://render.com/pricing
   - https://render.com/docs/compute-plans
   - https://render.com/changelog/new-compute-plans-and-new-ids-for-existing-plans
+  - https://render.com/docs/outbound-bandwidth
+  - https://render.com/docs/free
 note: >
   USD per month per instance. Plan IDs changed on 2026-08-26 (starter -> 0.5c-512mb, ...); the API
   accepts both, so both are listed. Workspace plans (Hobby $0, Pro $25/month flat) are account-level
@@ -82,3 +84,11 @@ key_value:
   pro_ultra: 600
   40g: 600
   50g: 750
+
+# Outbound bandwidth included per workspace plan each month (web services and static sites alike),
+# then billed per GB. The API doesn't report the workspace plan, so the benchmark assumes Hobby.
+bandwidth_included_gb: {hobby: 5, pro: 25, scale: 1000}
+bandwidth_per_gb: 0.15
+assumed_workspace_plan: hobby
+# Free web services share these hours per workspace each month and spin down after 15 idle minutes.
+free_instance_hours: 750

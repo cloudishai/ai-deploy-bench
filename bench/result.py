@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from bench import agent, fmt, human
+from bench import agent, config, fmt, human
 from bench.clouds.base import parse_time
 
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
     "tokens_estimated", "cost_usd", "cost_source", "model_usage", "tool_calls", "tool_errors", "compactions",
@@ -119,6 +119,8 @@ def build(cell: "Cell") -> dict[str, Any]:
             "agent_deploy_usd": deployed.cost_usd,
             "agent_cost_estimated": "estimated" in (built.cost_source, deployed.cost_source),
             "hosting_monthly_usd": cloud_inventory.get("monthly_usd"),
+            # The deployment priced for a month at each traffic level in benchmark.yaml (hosting_usage).
+            "hosting_usage": cloud_inventory.get("usage") or {},
             "hosting_unpriced": cloud_inventory.get("unpriced", []),
             "hosting_agent_estimate_usd": deployment.get("estimated_monthly_cost_usd"),
         },
@@ -169,7 +171,8 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         + f": {record['checks_passed']}/{record['checks_total']} checks passed ({fmt.pct(record['score'])}).",
         "",
         f"- URL: {record['url'] or 'none'}" + (f" (from {record['url_source']})" if record.get("url_source") else ""),
-        f"- Estimated hosting: {fmt.usd(cost['hosting_monthly_usd'])}/month"
+        "- Estimated hosting: " + (hosting_summary(cost.get("hosting_usage") or {}, cell)
+                                    or f"{fmt.usd(cost['hosting_monthly_usd'])}/month")
         + (f" (the agent estimated {fmt.usd(_number(cost['hosting_agent_estimate_usd']))})"
            if cost.get("hosting_agent_estimate_usd") is not None else ""),
         f"- Agent: {record['agent'].get('name', 'Claude Code')} {record['agent'].get('version') or ''}, "
@@ -213,6 +216,12 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         if record["verification"].get(key):
             lines.append(f"\nVerification error: {record['verification'][key]}")
     lines += ["", "## Cloud resources", ""]
+    if usage := cost.get("hosting_usage"):
+        labels = usage_labels(cell)
+        lines += ["| Traffic | $/month | How it was priced |", "|---|---|---|"]
+        lines += [f"| {labels.get(key, key)} | {fmt.usd(u['usd'])}{'+' if u['incomplete'] else ''} | {fmt.cell(u['basis'])} |"
+                  for key, u in usage.items()]
+        lines += ["", "Each resource's list price, at the size it was provisioned and always on:", ""]
     if record["resources"]:
         lines += ["| Kind | Name | Plan | $/month | How it was priced |", "|---|---|---|---|---|"]
         for r in record["resources"]:
@@ -301,8 +310,21 @@ def render_step_summary(record: dict[str, Any]) -> str:
         f"| {record['checks_passed']}/{record['checks_total']} | {fmt.count(people.get('count'))} | "
         f"{fmt.minutes(people.get('minutes'))} | {fmt.score((record.get('security') or {}).get('score'))} | "
         f"{fmt.duration(t['build_s'])} | {fmt.duration(t['deploy_s'])} | "
-        f"{fmt.tokens(record['tokens']['total']['total'])} | {fmt.usd(cost['agent_usd'])} | {fmt.usd(cost['hosting_monthly_usd'])} |\n\n"
+        f"{fmt.tokens(record['tokens']['total']['total'])} | {fmt.usd(cost['agent_usd'])} | "
+        f"{hosting_summary(cost.get('hosting_usage') or {}) or fmt.usd(cost['hosting_monthly_usd'])} |\n\n"
     )
+
+
+def usage_labels(cell: "Cell | None" = None) -> dict[str, str]:
+    cfg = cell.config if cell is not None else config.load()
+    return {u.id: u.label for u in cfg.hosting_usage}
+
+
+def hosting_summary(usage: dict[str, Any], cell: "Cell | None" = None) -> str:
+    """'Light use: $0.30/month, Busy: $21.66/month', from the record's hosting_usage."""
+    labels = usage_labels(cell)
+    return ", ".join(f"{labels.get(key, key)}: {fmt.usd(u['usd'])}{'+' if u['incomplete'] else ''}/month"
+                     for key, u in usage.items())
 
 
 def _quote(text: str) -> str:

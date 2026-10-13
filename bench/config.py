@@ -87,6 +87,39 @@ class App:
 
 
 @dataclasses.dataclass(frozen=True)
+class Usage:
+    """A month of traffic to price a deployment for. The function figures only matter where compute is
+    billed per request (Vercel Functions); elsewhere what counts is how long the app is awake."""
+
+    id: str
+    label: str
+    description: str
+    awake_hours: float  # hours a scale-to-zero app runs, idle timeouts included
+    requests: int
+    function_share: float  # share of requests that reach app code instead of static files on a CDN
+    function_cpu_ms: float  # CPU time per function invocation
+    function_duration_ms: float  # wall-clock time per invocation, for provisioned memory
+    function_memory_gb: float
+    kb_per_request: float  # average response size, for outbound transfer
+
+    @property
+    def transfer_gb(self) -> float:
+        return self.requests * self.kb_per_request / 1_000_000
+
+    @property
+    def function_invocations(self) -> float:
+        return self.requests * self.function_share
+
+    @property
+    def function_cpu_hours(self) -> float:
+        return self.function_invocations * self.function_cpu_ms / 3_600_000
+
+    @property
+    def function_memory_gb_hours(self) -> float:
+        return self.function_invocations * self.function_duration_ms / 3_600_000 * self.function_memory_gb
+
+
+@dataclasses.dataclass(frozen=True)
 class Config:
     agent: dict[str, Any]
     defaults: dict[str, Any]
@@ -97,6 +130,7 @@ class Config:
     human_steps: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
     reviewer: dict[str, Any] = dataclasses.field(default_factory=dict)
     security_rubric: tuple[dict[str, Any], ...] = ()
+    hosting_usage: tuple[Usage, ...] = ()
 
     def cloud(self, cloud_id: str) -> Cloud:
         return _by_id(self.clouds, cloud_id, "cloud")
@@ -152,4 +186,5 @@ def load(path: Path = ROOT / "benchmark.yaml") -> Config:
         human_steps=raw.get("human_steps", {}),
         reviewer=raw.get("reviewer", {}),
         security_rubric=tuple(raw.get("security_rubric") or ()),
+        hosting_usage=tuple(Usage(id=key, **value) for key, value in (raw.get("hosting_usage") or {}).items()),
     )
