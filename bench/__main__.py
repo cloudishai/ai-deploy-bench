@@ -75,6 +75,10 @@ def cmd_aggregate(args: argparse.Namespace) -> None:
                                   Path(args.readme), run)
     for group in summary["groups"]:
         print(f"{group['model']}/{group['cloud']}: {group['success']}/{group['cells']} succeeded")
+    commit = summary["run"]["commit"]
+    write_github_output(commit=str(commit).lower())
+    if not commit:
+        print("::warning::No agent could run in any cell (see each cell's deploy phase); results won't be committed")
 
 
 def cmd_janitor(args: argparse.Namespace) -> None:

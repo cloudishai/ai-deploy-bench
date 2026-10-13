@@ -137,3 +137,39 @@ def test_group_totals_average_over_trials():
     assert group["tokens"] == 250 and group["agent_usd"] == 2.5  # mean per app, summed over apps
     assert group["hosting_monthly_usd"] == 0.0 and group["hosting_incomplete"]
     assert (group["success"], group["cells"]) == (2, 3)
+
+
+def test_an_agent_that_cannot_reach_the_api_is_an_error_and_not_committed(tmp_path, monkeypatch):
+    script = tmp_path / "claude-api-error"
+    script.write_text(textwrap.dedent(f"""\
+        #!{sys.executable}
+        import json, sys
+        sys.stdin.read()
+        error = "API Error: 400 The requested features are not available for HIPAA-configured organizations"
+        print(json.dumps({{"type": "system", "subtype": "init", "session_id": "s", "model": "claude-opus-5-5"}}))
+        print(json.dumps({{"type": "result", "subtype": "success", "is_error": True, "result": error, "num_turns": 1,
+                          "total_cost_usd": 0, "usage": {{}}, "modelUsage": {{}}}}))
+        """))
+    script.chmod(0o755)
+    monkeypatch.setenv("BENCH_CLAUDE_BIN", str(script))
+    for name in ("CLOUDISH_API_KEY", "GH_TOKEN", "GH_OWNER", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+    current = cell.prepare(tmp_path / "cell", tmp_path / "work", "1-1", "cloudish", "opus-5-5", "static", 1)
+    build = cell.build(current)
+    assert build.status == "error" and build.detail.startswith("API Error: 400")
+    cell.deploy(current)
+    cell.verify(current, use_browser=False)
+    record = cell.finalize(current)
+    assert (record["status"], record["failure_stage"]) == ("error", "agent")
+
+    readme = tmp_path / "README.md"
+    readme.write_text("# Bench\n")
+    plan = {"cells": [{"cloud": "cloudish", "model": "opus-5-5", "app": "static", "trial": 1}]}
+    run = {"name": "2026-10-13_9-1", "date": "2026-10-13", "number": 9, "attempt": 1, "url": ""}
+    summary = aggregate.aggregate(tmp_path, plan, tmp_path / "results", readme, run)
+    assert summary["run"]["commit"] is False
+    assert "💥 agent" in (tmp_path / "results" / "runs" / "2026-10-13_9-1" / "summary.md").read_text()
+
+
+def test_results_index_without_runs():
+    assert aggregate.render_index([], config.load()).rstrip().endswith("No runs yet.")

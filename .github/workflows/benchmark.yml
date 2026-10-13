@@ -127,6 +127,7 @@ jobs:
           pattern: cell-*
           path: artifacts
       - name: Aggregate results
+        id: aggregate
         env:
           DATE: ${{ needs.plan.outputs.date }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -136,7 +137,7 @@ jobs:
           --run-url "$RUN_URL"
       - run: cat "results/runs/$RUN_NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Commit results
-        if: ${{ !inputs.smoke_test && (inputs.commit_results || github.event_name == 'schedule') }}
+        if: ${{ !inputs.smoke_test && (inputs.commit_results || github.event_name == 'schedule') && steps.aggregate.outputs.commit == 'true' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

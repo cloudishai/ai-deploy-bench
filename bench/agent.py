@@ -357,7 +357,8 @@ def run_phase(
     if result:
         phase.result_subtype = result.get("subtype")
         phase.status = "completed" if result.get("subtype") == "success" and not result.get("is_error") else "error"
-        phase.detail = "; ".join(result.get("errors") or []) or (result.get("subtype") or "")
+        failure = str(result.get("result") or "")[:300] if result.get("is_error") else ""
+        phase.detail = "; ".join(result.get("errors") or []) or failure or (result.get("subtype") or "")
         phase.turns = result.get("num_turns")
         phase.stop_reason = result.get("stop_reason")
         phase.terminal_reason = result.get("terminal_reason")

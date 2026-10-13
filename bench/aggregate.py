@@ -186,7 +186,7 @@ def matrix_cell(members: list[dict[str, Any]], link_prefix: str) -> str:
         label += " needs a person"
     elif c["status"] == "partial":
         label += f" {c['checks_passed']}/{c['checks_total']}"
-    elif c["status"] in ("failed", "missing"):
+    elif c["status"] in ("failed", "error", "missing"):
         label += f" {c['failure_stage']}"
     if link_prefix and c["status"] != "missing":
         return f"[{label}]({link_prefix}{cell_path(c)}.md)"
@@ -254,7 +254,8 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
 
 
 MATRIX_LEGEND = ("✅ success · ⚠️ deployed but some required checks failed (checks passed shown) · "
-                 "🙋 blocked on something only a person can do · ❌ failed (stage shown) · ❔ no result")
+                 "🙋 blocked on something only a person can do · ❌ failed (stage shown) · "
+                 "💥 the agent couldn't run (stage shown) · ❔ no result")
 
 LEGEND = (
     "*Human setup* counts the distinct steps a person had to do, or would have to do, for the agent's deployments "
@@ -276,6 +277,10 @@ def render_index(runs: list[dict[str, Any]], cfg: config.Config) -> str:
         "",
         "Only full runs (every cloud, app and model) update the summary in the repository's README.",
         "",
+    ]
+    if not runs:
+        return "\n".join(lines + ["No runs yet."]) + "\n"
+    lines += [
         "| Run | Scope | Models | Success | Checks passed | Agent cost |",
         "|---|---|---|---|---|---|",
     ]
@@ -356,6 +361,8 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
     run = {**run, "models": sorted({c["model"] for c in planned}, key=[m.id for m in cfg.models].index),
            "trials": max((int(c["trial"]) for c in planned), default=1), "scope": scope(planned, cfg)}
     summary = summarize(run, cells, cfg)
+    # A run where no agent could work at all (say, a bad API key) says nothing about the clouds.
+    summary["run"]["commit"] = any(c["status"] not in ("error", "missing") for c in cells)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (run_dir / "summary.md").write_text(render_summary(summary, cfg))

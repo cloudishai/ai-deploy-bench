@@ -24,6 +24,9 @@ def outcome(build: agent.Phase, deploy: agent.Phase, verification: dict[str, Any
     """(status, failure stage): the first stage that didn't deliver a working app."""
     if verification.get("harness_error"):
         return "error", "harness"
+    ran = [p for p in (build, deploy) if p.status != "not_run"]
+    if ran and all(p.status in ("error", "crashed") and not p.tokens.get("total") for p in ran):
+        return "error", "agent"  # the agent never worked: bad API key, model access, quota and so on
     if verification.get("success"):
         return "success", None
     if verification.get("url") and (verification.get("readiness") or {}).get("ready"):
