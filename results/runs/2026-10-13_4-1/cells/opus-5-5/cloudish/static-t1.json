@@ -1,0 +1,421 @@
+{
+  "schema": 1,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38455576719-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-xtzco-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium"
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-xtzco-static-web.on.do.cloudish.ai",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Claim the Cloudish key 'adb-xtzco-static' and add credits: mint a fresh claim link with `GET https://cloudish.ai/api/v1/credits/claim` (auth with CLOUDISH_API_KEY from .env; links expire after 30 minutes) and open it in a browser while signed in to a Cloudish account. (The key runs on the free 0.1-c",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "timing": {
+    "build_s": 126.3,
+    "deploy_s": 413.0,
+    "agent_s": 539.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 5.8
+  },
+  "tokens": {
+    "build": {
+      "input": 22,
+      "output": 9874,
+      "cache_read": 247412,
+      "cache_write": 19806,
+      "total": 277114
+    },
+    "deploy": {
+      "input": 32,
+      "output": 5965,
+      "cache_read": 717985,
+      "cache_write": 23575,
+      "total": 747557
+    },
+    "total": {
+      "input": 54,
+      "output": 15839,
+      "cache_read": 965397,
+      "cache_write": 43381,
+      "total": 1024671
+    }
+  },
+  "cost": {
+    "agent_usd": 0.72698,
+    "agent_build_usd": 0.34608,
+    "agent_deploy_usd": 0.3809,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 16
+    },
+    "tool_calls": {
+      "Bash": 23,
+      "ToolSearch": 1,
+      "Write": 1
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 13
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T19:33:06+00:00",
+      "wall_time_s": 126.3,
+      "api_time_s": 99.5,
+      "turns": 11,
+      "tokens": {
+        "input": 22,
+        "output": 9874,
+        "cache_read": 247412,
+        "cache_write": 19806,
+        "total": 277114
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.34608,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 22,
+          "output": 9874,
+          "cache_read": 247412,
+          "cache_write": 19806,
+          "cost_usd": 0.3460804,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T19:35:13+00:00",
+      "wall_time_s": 413.0,
+      "api_time_s": 87.8,
+      "turns": 16,
+      "tokens": {
+        "input": 32,
+        "output": 5965,
+        "cache_read": 717985,
+        "cache_write": 23575,
+        "total": 747557
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.3809,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 32,
+          "output": 5965,
+          "cache_read": 717985,
+          "cache_write": 23575,
+          "cost_usd": 0.38090000000000007,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 13,
+        "ToolSearch": 1,
+        "Write": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and every requirement checks out locally, run directly with Node and inside the Docker image. All servers and containers are stopped.\n\n**Stack:** a plain Node.js server (`server.js`) with no dependencies, and a `Dockerfile` based on `node:22-alpine`. Cloudish builds from a Dockerfile and sends traffic to one port, so the server listens on `0.0.0.0` at `$PORT`, which defaults to 8080.\n\n**Layout:**\n- `server.js` serves the three pages at `/`, `/about` and `/contact` (no `.html` needed), plus `/styles.css` and `/contact.js`. Any other path gets a 404 page. It also handles `POST /api/contact`: valid input returns `{\"ok\":true}`; a missing name, invalid email or empty message returns a 400 with `{\"ok\":false,\"error\":\"...\"}`. There's also a `/healthz` check.\n- `public/` holds the pages, which share a header and footer and work on mobile and desktop, plus the stylesheet and the script that sends the form with `fetch` and shows the result on the page without reloading.\n- `test/server.test.js` has 8 tests using Node's built-in test runner.\n\n**How I checked it:**\n- **Tests:** `npm test` passes 8 of 8.\n- **Docker:** I built the image, ran it, and used curl on every page and the contact endpoint: status codes, content types and JSON bodies were all correct.\n- **Browser:** in headless Chromium at phone width, the form showed an error for a bad email and then a confirmation for a valid one, with no page reload. The layout didn't scroll sideways.\n\n**Run it:**\n```bash\nnpm start          # http://localhost:8080 (set PORT to change)\nnpm test\ndocker build -t northwind . && docker run -p 8080:8080 northwind\n```\nFor step 2, deploy the folder as a Cloudish build with `port=8080`.",
+    "deploy": "The site is live on Cloudish at **https://adb-xtzco-static-web.on.do.cloudish.ai**, and every requirement in `TASK.md` passed when I tested it through that URL.\n\n**What I set up:**\n- **Cloudish key `adb-xtzco-static`:** created without signing up. It's saved in `.env`, which is gitignored and left out of what was uploaded.\n- **Project `adb-xtzco-static-web`:** Cloudish built the existing Dockerfile on its own servers. It runs on the cheapest size (`shared`: 0.1 CPU, 0.2 GB, one copy) and shuts down when idle. I swapped the random web address Cloudish assigned for a readable one.\n\n**Tested through the public URL:**\n- `/`, `/about` and `/contact` return 200 HTML pages with the required title, viewport tag, nav and content.\n- Unknown paths, including `/about.html`, return 404.\n- `POST /api/contact` returns 200 `{\"ok\":true}` for valid input, and 400 with an error message for a missing name, an invalid email or an empty message.\n- In a headless browser, the form showed an error and then a confirmation without reloading the page.\n\n**Cost:** about $0.011 per hour while the app is running, so at most $7.84 a month if it never shut down.\n\n**What a person needs to do:** the key only has Cloudish's free starting credit (about $0.095 left), which covers roughly 9 hours of running time. Once it runs out, the site returns errors (402 or 503) until credits are added. Someone needs to claim the key and add credits using a claim link. A link expires 30 minutes after it's created, so make a new one when needed. This is listed in `human_steps` in `deployment.json` and doesn't stop the site working now.\n\nThe first request after the app has been idle takes a few seconds while it starts up again. Right after setup, the first couple of requests got no response before the app came up."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-xtzco-static-web.on.do.cloudish.ai",
+    "resources": [
+      {
+        "type": "API key / account (prepaid credits)",
+        "name": "adb-xtzco-static",
+        "id": "owner id 63",
+        "plan": "unclaimed key with free 0.1-credit grant",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "container app (project built from Dockerfile, Node.js 22)",
+        "name": "adb-xtzco-static-web",
+        "id": "project 81 / docker app 240 / image registry.do.cloudish.ai/builds/81:a641c7f292d0",
+        "plan": "shared (0.1 CPU / 0.2 GB), 1 replica, scale-to-zero after idle (default 15 min)",
+        "monthly_cost_usd": 7.84
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Claim the Cloudish key 'adb-xtzco-static' and add credits: mint a fresh claim link with `GET https://cloudish.ai/api/v1/credits/claim` (auth with CLOUDISH_API_KEY from .env; links expire after 30 minutes) and open it in a browser while signed in to a Cloudish account.",
+        "why": "The key runs on the free 0.1-credit grant (~0.095 left), which covers about 9 hours of container runtime on the shared size. Once it runs out, the site returns 402/503 until someone adds credits.",
+        "blocking": false
+      }
+    ],
+    "notes": "Served over HTTPS at the Cloudish subdomain (the random-token URL https://1023b3a37f7731a4ebccaf8920388469.on.do.cloudish.ai/ was replaced with a custom label). Everything was checked through the public URL: /, /about and /contact return 200 text/html with a title, viewport meta and nav; unknown paths and /about.html return 404; POST /api/contact returns 200 {ok:true} for valid input and 400 {ok:false,error} for a missing name, an invalid email or an empty message; in headless Chromium the form submits with fetch and shows a confirmation without reloading. The app scales to zero when idle, so the first request after an idle period has a cold start of a few seconds. $7.84/month is the always-on upper bound for the shared size; actual cost is lower with scale-to-zero (about $0.0107 per running hour). Contact submissions are only logged to stdout, never stored. The API key is only in .env (gitignored and excluded from the build context)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 73
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 23,
+      "p90_ms": 25
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 54
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 40
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 25
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 33
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 51
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 31
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2344
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2043
+      }
+    ],
+    "browser": true,
+    "duration_s": 5.8
+  },
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-xtzco-static/adb-xtzco-static-web",
+      "name": "adb-xtzco-static-web",
+      "plan": "shared",
+      "url": "https://adb-xtzco-static-web.on.do.cloudish.ai/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-13T19:35:31.043Z",
+      "details": {
+        "cpuCores": 0.1,
+        "memoryGb": 0.2,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": false,
+        "access": "open"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.095254
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 211,
+      "HTML": 177,
+      "CSS": 56,
+      "JSON": 40,
+      "Docker": 8
+    },
+    "code_lines": 452,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false
+  }
+}

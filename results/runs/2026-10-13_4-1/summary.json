@@ -1,0 +1,264 @@
+{
+  "run": {
+    "name": "2026-10-13_4-1",
+    "date": "2026-10-13",
+    "number": 4,
+    "attempt": 1,
+    "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/38455576719",
+    "models": [
+      "opus-5-5"
+    ],
+    "trials": 1,
+    "scope": "apps: static \u00b7 clouds: all \u00b7 models: all",
+    "agent_versions": [
+      "2.1.296"
+    ],
+    "commit": true
+  },
+  "groups": [
+    {
+      "model": "opus-5-5",
+      "cloud": "cloudish",
+      "cells": 1,
+      "success": 1,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 0,
+        "minutes": 0
+      },
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 126.3,
+      "mean_deploy_s": 413.0,
+      "tokens": 1024671,
+      "agent_usd": 0.73,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 7.84,
+      "hosting_incomplete": false
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "digitalocean",
+      "cells": 1,
+      "success": 1,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 3,
+        "minutes": 7
+      },
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 91.1,
+      "mean_deploy_s": 146.1,
+      "tokens": 484678,
+      "agent_usd": 0.45,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 5.0,
+      "hosting_incomplete": false
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "render",
+      "cells": 1,
+      "success": 1,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 2,
+        "minutes": 5
+      },
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 81.2,
+      "mean_deploy_s": 128.4,
+      "tokens": 537677,
+      "agent_usd": 0.5,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "vercel",
+      "cells": 1,
+      "success": 1,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 2,
+        "minutes": 5
+      },
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 85.4,
+      "mean_deploy_s": 116.6,
+      "tokens": 419556,
+      "agent_usd": 0.42,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false
+    }
+  ],
+  "cells": [
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-xtzco-static-web.on.do.cloudish.ai",
+      "build_s": 126.3,
+      "deploy_s": 413.0,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1024671,
+      "agent_usd": 0.72698,
+      "hosting_monthly_usd": 7.84,
+      "shell_commands": 23,
+      "agent_version": "2.1.296",
+      "build_tokens": 277114,
+      "deploy_tokens": 747557,
+      "stack": [],
+      "code_lines": 452,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": []
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-iwyf5-static-k39h3.ondigitalocean.app",
+      "build_s": 91.1,
+      "deploy_s": 146.1,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 484678,
+      "agent_usd": 0.452669,
+      "hosting_monthly_usd": 5.0,
+      "shell_commands": 16,
+      "agent_version": "2.1.296",
+      "build_tokens": 211189,
+      "deploy_tokens": 273489,
+      "stack": [],
+      "code_lines": 386,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore",
+        ".do/app.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ]
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-x0ewo-static-web.onrender.com",
+      "build_s": 81.2,
+      "deploy_s": 128.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 537677,
+      "agent_usd": 0.502095,
+      "hosting_monthly_usd": 0.0,
+      "shell_commands": 17,
+      "agent_version": "2.1.296",
+      "build_tokens": 183658,
+      "deploy_tokens": 354019,
+      "stack": [],
+      "code_lines": 371,
+      "dependencies": 0,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ]
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-tibat-static-web.vercel.app",
+      "build_s": 85.4,
+      "deploy_s": 116.6,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 419556,
+      "agent_usd": 0.417771,
+      "hosting_monthly_usd": 0.0,
+      "shell_commands": 14,
+      "agent_version": "2.1.296",
+      "build_tokens": 210977,
+      "deploy_tokens": 208579,
+      "stack": [],
+      "code_lines": 395,
+      "dependencies": 0,
+      "deploy_config": [
+        "vercel.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,410 @@
+{
+  "schema": 1,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38455576719-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-tibat-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium"
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-tibat-static-web.vercel.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "timing": {
+    "build_s": 85.4,
+    "deploy_s": 116.6,
+    "agent_s": 202.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 6.9
+  },
+  "tokens": {
+    "build": {
+      "input": 18,
+      "output": 8841,
+      "cache_read": 186673,
+      "cache_write": 15445,
+      "total": 210977
+    },
+    "deploy": {
+      "input": 14,
+      "output": 2908,
+      "cache_read": 200038,
+      "cache_write": 5619,
+      "total": 208579
+    },
+    "total": {
+      "input": 32,
+      "output": 11749,
+      "cache_read": 386711,
+      "cache_write": 21064,
+      "total": 419556
+    }
+  },
+  "cost": {
+    "agent_usd": 0.417771,
+    "agent_build_usd": 0.291452,
+    "agent_deploy_usd": 0.126319,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 9,
+      "deploy": 7
+    },
+    "tool_calls": {
+      "Bash": 14
+    },
+    "shell_commands": {
+      "build": 8,
+      "deploy": 6
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-13T19:33:05+00:00",
+      "wall_time_s": 85.4,
+      "api_time_s": 81.6,
+      "turns": 9,
+      "tokens": {
+        "input": 18,
+        "output": 8841,
+        "cache_read": 186673,
+        "cache_write": 15445,
+        "total": 210977
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.291452,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 18,
+          "output": 8841,
+          "cache_read": 186673,
+          "cache_write": 15445,
+          "cost_usd": 0.29145160000000003,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-13T19:34:31+00:00",
+      "wall_time_s": 116.6,
+      "api_time_s": 33.5,
+      "turns": 7,
+      "tokens": {
+        "input": 14,
+        "output": 2908,
+        "cache_read": 200038,
+        "cache_write": 5619,
+        "total": 208579
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.126319,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 14,
+          "output": 2908,
+          "cache_read": 200038,
+          "cache_write": 5619,
+          "cost_usd": 0.1263186,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 6
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and works locally. All 8 automated tests pass, and I checked every page and the API by hand with curl. I didn't try the form in a real browser; the script that submits it only passed a syntax check. I also haven't run it under `vercel dev` or `vercel build`, which need a Vercel login.\n\n**Stack:** plain static HTML/CSS/JS plus one Vercel serverless function in Node. There are no dependencies and no build step.\n\n**How it fits together:**\n- **Pages:** `public/index.html`, `about.html` and `contact.html`, with a shared `styles.css` that adapts to mobile and desktop. Each page has a `<title>`, a viewport meta tag and navigation to the other pages.\n- **Clean paths:** `vercel.json` turns on `cleanUrls`, so `/about` and `/contact` work without `.html`.\n- **404s:** `public/404.html` is returned with HTTP 404 for unknown paths.\n- **Contact endpoint:** `api/contact.js` handles `POST /api/contact`. Valid input gets 200 with `{\"ok\":true}`. A missing name, a bad email, an empty message or malformed JSON gets 400 with `{\"ok\":false,\"error\":\"\u2026\"}`. The validation rules are in `lib/validate.js`.\n- **Form:** `public/contact.js` sends the form to the endpoint with `fetch` and shows the confirmation or error on the page, without a reload.\n- **Local server:** `dev-server.js` copies Vercel's behaviour (clean URLs, the API route, 404s) so the app runs without the Vercel CLI. Vercel ignores this file when deployed.\n\n**To run it:**\n```bash\nnpm run dev    # http://localhost:3000 (set PORT to change)\nnpm test       # node:test suite: pages, nav, form fields, 404, API valid/invalid\n```\n\nTo deploy in step 2, run `vercel deploy` from the project root. Vercel needs no framework preset or build command for this layout.\n\nNo servers are left running.",
+    "deploy": "The site is live at **https://adb-tibat-static-web.vercel.app**, and every requirement in `TASK.md` passed when tested through that URL.\n\n**What I deployed:** one Vercel project, `adb-tibat-static-web`, deployed with the Vercel CLI. It serves the three pages as static files and runs `/api/contact` as a Node.js serverless function. It should cost $0 a month, since this little traffic fits within the free allowances.\n\n**What I tested on the public URL:**\n- **Pages:** `/`, `/about` and `/contact` return 200 as `text/html`, with a title, the viewport meta tag, navigation and the right content. `/contact` has the `name`, `email` and `message` fields and a submit button.\n- **Unknown paths:** `/missing` returns 404, and `/about.html` redirects to `/about`.\n- **API:** valid input returns 200 with `{\"ok\":true}`. A missing name, a bad email, an empty message or malformed JSON each return 400 with a reason.\n- **Browser:** in a headless Chrome at phone width, submitting the form showed the confirmation without reloading the page, and nothing was wider than the screen.\n\n**Things to know:**\n- **Preview URLs are locked:** the public address above is open, but each deployment's own preview URL stays behind Vercel's login, which is the default setting.\n- **Odd error for non-JSON posts:** a POST without the JSON content type gets \"Name is required\" rather than \"Invalid JSON body\". The browser form always sends JSON, so users never see this.\n- **No secrets saved:** `.env` was not needed because I created no credentials. The token isn't in any file; the CLI's auto-created `.env.local` is gitignored and excluded from deploys.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-tibat-static-web.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (static site + Node.js serverless function /api/contact)",
+        "name": "adb-tibat-static-web",
+        "id": "prj_e1rz96a31pUXB2HhIi60c5dtvkNw",
+        "plan": "Existing team plan; usage fits within included free allowances",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "Production deployment dpl_DdhwVzTNW2CJwHaCTmiHRFesFhKp. Static pages are served from public/ with cleanUrls (/about.html 308-redirects to /about); unknown paths return public/404.html with HTTP 404. POST /api/contact validates JSON and returns {ok:true} or 400 {ok:false,error}; submissions are not stored. The production alias is public; per-deployment preview URLs keep Vercel's default Deployment Protection. Verified via curl and a headless Chromium submission of the contact form (confirmation shown without a reload, no horizontal overflow on a 375px mobile viewport)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 210
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 30,
+      "p90_ms": 54
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 58
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 33
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 30
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 32
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 33
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 106
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 338
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 119
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2584
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2357
+      }
+    ],
+    "browser": true,
+    "duration_s": 6.9
+  },
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_e1rz96a31pUXB2HhIi60c5dtvkNw",
+      "name": "adb-tibat-static-web",
+      "plan": null,
+      "url": "https://adb-tibat-static-web.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1791920111083,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": null
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 15,
+    "lines": {
+      "JavaScript": 192,
+      "HTML": 166,
+      "CSS": 37,
+      "JSON": 32
+    },
+    "code_lines": 395,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "vercel.json"
+    ],
+    "git_repo": false
+  }
+}
