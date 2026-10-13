@@ -41,6 +41,7 @@ def cmd_cell(args: argparse.Namespace) -> None:
         "deploy": lambda: cell.deploy(current),
         "inventory": lambda: cell.inventory(current),
         "verify": lambda: cell.verify(current, use_browser=not args.no_browser),
+        "review": lambda: cell.review(current),
         "teardown": lambda: cell.teardown(current, keep=args.keep),
         "finalize": lambda: cell.finalize(current),
     }[args.step]()
@@ -150,7 +151,7 @@ def main(argv: list[str] | None = None) -> None:
 
 
 def cell_steps() -> list[str]:
-    return ["build", "deploy", "inventory", "verify", "teardown", "finalize"]
+    return ["build", "deploy", "inventory", "verify", "review", "teardown", "finalize"]
 
 
 if __name__ == "__main__":

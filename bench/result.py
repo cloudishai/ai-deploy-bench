@@ -104,6 +104,7 @@ def build(cell: "Cell") -> dict[str, Any]:
         "checks_total": verification.get("passed", 0) + verification.get("failed", 0),
         "required_failed": verification.get("required_failed", []),
         "human": people,
+        "security": cell.read("security.json") or {"status": "not_run"},
         "timing": {
             "build_s": built.wall_time_s,
             "deploy_s": deployed.wall_time_s,
@@ -195,6 +196,10 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         "",
         *human_lines(record.get("human") or {}),
         "",
+        "## Security review",
+        "",
+        *security_lines(record.get("security") or {}),
+        "",
         "## Checks",
         "",
         "| Check | Required | Result | Detail |",
@@ -233,6 +238,28 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def security_lines(review: dict[str, Any]) -> list[str]:
+    if review.get("status") != "completed":
+        return [f"Not scored: {review.get('detail') or review.get('status') or 'not run'}."]
+    reviewer = review.get("reviewer") or {}
+    lines = [
+        f"**{review['score']:.0f}/100**, from an independent Claude Code review (`{reviewer.get('model')}`, "
+        f"{reviewer.get('effort')} effort, {fmt.usd(reviewer.get('cost_usd'))}) of the process, the code and the live app.",
+        "",
+        review.get("summary") or "",
+        "",
+        "| Criterion | Weight | Score | Rationale |",
+        "|---|---|---|---|",
+    ]
+    lines += [f"| {fmt.cell(c['name'])} | {c['weight']} | {c['score']}/10 | {fmt.cell(c['rationale'])} |"
+              for c in review.get("criteria", [])]
+    if review.get("findings"):
+        lines += ["", "Findings:", ""]
+        lines += [f"- **{f['severity']}** · {f['title']}: {f['evidence']}"
+                  + (f" Fix: {f['recommendation']}" if f.get("recommendation") else "") for f in review["findings"]]
+    return lines
+
+
 def human_lines(people: dict[str, Any]) -> list[str]:
     """What a person had to do, or would have to do, for this deployment."""
     if not people.get("steps"):
@@ -267,8 +294,10 @@ def render_step_summary(record: dict[str, Any]) -> str:
     people = record.get("human") or {}
     return (
         f"### {fmt.status(record['status'])} {record['app']} on {record['cloud']} ({record['model']}): {record['status']}\n\n"
-        "| Checks | Human steps | Build | Deploy | Tokens | Agent cost | Hosting/month |\n|---|---|---|---|---|---|---|\n"
-        f"| {record['checks_passed']}/{record['checks_total']} | {fmt.human(people.get('count'), people.get('minutes'))} | "
+        "| Checks | Human steps | Human time | Security | Build | Deploy | Tokens | Agent cost | Hosting/month |\n"
+        "|---|---|---|---|---|---|---|---|---|\n"
+        f"| {record['checks_passed']}/{record['checks_total']} | {fmt.count(people.get('count'))} | "
+        f"{fmt.minutes(people.get('minutes'))} | {fmt.score((record.get('security') or {}).get('score'))} | "
         f"{fmt.duration(t['build_s'])} | {fmt.duration(t['deploy_s'])} | "
         f"{fmt.tokens(record['tokens']['total']['total'])} | {fmt.usd(cost['agent_usd'])} | {fmt.usd(cost['hosting_monthly_usd'])} |\n\n"
     )

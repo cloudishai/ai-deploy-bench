@@ -26,8 +26,9 @@ optional GitHub scratch account. The build phase only gets the model API key.
 ## Anthropic
 
 An API key from the [Claude Console](https://platform.claude.com) with access to every model in
-`benchmark.yaml`. Each phase is capped by `max_budget_usd_per_phase` (default $30). Cells for a
-cloud run one at a time by default, so expect up to one concurrent session per cloud. The model key
+`benchmark.yaml`. Each phase is capped by `max_budget_usd_per_phase` (default $30), and each cell's
+security review by `reviewer.max_budget_usd` ($5). Cells for a cloud run one at a time by default,
+so expect up to one concurrent session per cloud. The model key
 is not counted as a human step, since every cloud needs it equally.
 
 ## Cloudish

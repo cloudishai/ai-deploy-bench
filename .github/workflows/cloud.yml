@@ -138,6 +138,15 @@ jobs:
         timeout-minutes: 30
         run: '"$BENCH_PY" -m bench cell verify --dir "$BENCH_CELL_DIR"'
 
+      # A separate Claude Code session reviews the live deployment's security. It gets the model key
+      # only, never cloud credentials.
+      - name: Security review (Claude Code)
+        if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+        timeout-minutes: 30
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: 'exec "$BENCH_PY" -m bench cell review --dir "$BENCH_CELL_DIR"'
+
       # always(): resources must be deleted even when the run is cancelled or a step crashed.
       - name: Tear down cloud resources
         if: ${{ always() && steps.prepare.outcome == 'success' }}

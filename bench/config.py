@@ -78,6 +78,8 @@ class Config:
     apps: tuple[App, ...]
     model_prices: dict[str, dict[str, float]]
     human_steps: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
+    reviewer: dict[str, Any] = dataclasses.field(default_factory=dict)
+    security_rubric: tuple[dict[str, Any], ...] = ()
 
     def cloud(self, cloud_id: str) -> Cloud:
         return _by_id(self.clouds, cloud_id, "cloud")
@@ -131,4 +133,6 @@ def load(path: Path = ROOT / "benchmark.yaml") -> Config:
         apps=tuple(App(**a) for a in raw["apps"]),
         model_prices=raw.get("model_prices", {}),
         human_steps=raw.get("human_steps", {}),
+        reviewer=raw.get("reviewer", {}),
+        security_rubric=tuple(raw.get("security_rubric") or ()),
     )

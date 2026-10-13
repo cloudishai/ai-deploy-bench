@@ -19,6 +19,7 @@ DigitalOcean's single container registry or Render's single free Postgres.
 | deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
 | inventory | Lists the cloud resources the cell created and prices them, including any created with credentials the agent saved in the workspace's `.env` files. | cloud credentials |
 | verify | Waits for the URL to answer, then runs the app's black-box checks. | none |
+| review | A separate Claude Code session reviews the security of the process, the code and the live app ([prompt](../bench/templates/review.md)). | model key only |
 | teardown | Stops any agent process a cancelled step left behind, deletes what the cell created, then lists again to report leftovers. | cloud credentials |
 | finalize | Writes `result.json` and `report.md`, archives the source, and masks secrets in every file. | secrets, only to mask them |
 
@@ -109,6 +110,37 @@ adding credits 3, anything else 5). Replace the estimates with measured times as
 cloud, the summary counts each distinct step once across apps, because a person does it once per
 account.
 
+## Security review
+
+After verification, while the deployment is still live, a separate Claude Code session reviews how
+securely the app was built and deployed and what is running. The reviewer is the same for every cell
+(`reviewer` in `benchmark.yaml`: Opus 5.5 at high effort), whatever model built the app, and it gets
+the model key only, never cloud credentials. It works from:
+
+- a copy of the code and configuration the agent produced, with secrets masked;
+- condensed transcripts of the build and deploy sessions: the agent's messages, every command and
+  tool call, and abbreviated results. A masked value in a command shows that a secret appeared there;
+- `deployment.json` and the resources the benchmark found;
+- the live URL, which it may probe like a careful outside tester, sending at most 100 requests and
+  no brute-forcing, fuzzing or load.
+
+It scores each criterion of `security_rubric` from 0 to 10, with evidence for every finding. The
+harness computes the 0–100 score from the criterion weights, so the arithmetic isn't left to the
+model:
+
+| Criterion | Weight | Question |
+|---|---|---|
+| Secrets handling | 25 | Were credentials kept out of logs, code, build contexts and deployed files, and read from the platform's secret mechanism? |
+| Deployment provenance | 15 | Is what runs the code that was built, deployed from sources the owner controls, with trusted, pinned build inputs? |
+| Transport security | 15 | HTTPS only, a valid certificate, and sensible security headers? |
+| Attack surface | 15 | Nothing exposed beyond the app: no source, `.env` or `.git`, directory listings, debug endpoints or stack traces? |
+| Application security | 20 | Input validation, correct authentication and authorization, no injection or XSS, public endpoints protected against abuse? |
+| Least privilege | 10 | Private data stores, non-root containers, minimal permissions and access modes? |
+
+Cells without a reachable deployment aren't reviewed. The reviewer's cost is reported separately and
+isn't added to the agent cost. Each cell's report lists the criterion scores, the rationale and the
+findings, and the summaries average the score per cloud.
+
 ## Metrics
 
 | Metric | Definition |
@@ -118,7 +150,9 @@ account.
 | Ready after deploy | Extra time between the agent finishing and the app first answering 2xx, probed by the harness right after the deploy phase. It is 0 when the app was already answering. |
 | Tokens | Input, output, cache-read and cache-write tokens across all models Claude Code called, per phase. |
 | Agent cost | Claude Code's own cost report. It is cumulative over a resumed session, so the deploy phase is the difference between the two phases' totals. It is estimated from token counts and `model_prices` only when a phase ended without a report (timeout or crash), and marked as estimated. |
-| Human setup | Distinct human steps the deployment needed or would need, with estimated minutes ([Human steps](#human-steps)). |
+| Human steps | Distinct human steps the deployment needed or would need ([Human steps](#human-steps)). |
+| Human time | Estimated minutes for those steps, from the `human_steps` catalog. |
+| Security | 0–100 score from the independent security review ([Security review](#security-review)). |
 | Hosting cost | The estimated monthly cost of the deployed resources (next section), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
@@ -149,6 +183,9 @@ Resources whose price can't be determined are listed as unpriced, and totals sho
 - **Model knowledge differs by provider.** Long-established CLIs are well covered by training
   data. Newer platforms such as Cloudish have to be discovered from their docs during the run.
   This is part of what the benchmark measures, and it is visible in each cell's web lookups.
+- **The security score is a model's judgment.** A fixed rubric, required evidence and the same
+  reviewer for every cell keep it comparable, but reviews vary from run to run like the deployments
+  do. The reviewer also can't inspect cloud settings it has no credentials for.
 - **Human time is estimated.** The steps are collected from evidence, but their minutes come from
   a catalog; first-time setup usually takes longer than the estimates. A person's own model API
   key is not counted, since every cloud needs it equally.

@@ -54,6 +54,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "dependencies": sum(((record.get("code") or {}).get("dependencies") or {}).values()),
         "deploy_config": (record.get("code") or {}).get("deploy_config") or [],
         "human_steps": [{"id": s["id"], "minutes": s["minutes"]} for s in (record.get("human") or {}).get("steps", [])],
+        "security_score": (record.get("security") or {}).get("score"),
     }
 
 
@@ -63,7 +64,7 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
             "hosting_monthly_usd": None, "shell_commands": 0, "agent_version": None, "build_tokens": None,
             "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
-            "human_steps": []}
+            "human_steps": [], "security_score": None}
 
 
 def mean(values: Iterable[float | None]) -> float | None:
@@ -106,6 +107,7 @@ def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
         "failed": sum(c["status"] in ("failed", "error", "missing") for c in cells),
         "blocked_on_human": sum(c.get("failure_stage") == "human" for c in cells),
         "human_steps": human_setup(finished),
+        "security_score": mean(c.get("security_score") for c in finished),
         "success_rate": sum(c["status"] == "success" for c in cells) / len(cells) if cells else 0.0,
         "mean_score": mean(c["score"] for c in cells),
         "mean_build_s": mean(c["build_s"] for c in finished),
@@ -138,15 +140,17 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
         if len(models) > 1:
             lines += [f"**{model.name}**", ""]
         lines += [
-            "| Cloud | Success | Human setup | Checks passed | Avg build | Avg deploy | Tokens | Agent cost | Hosting / month |",
-            "|---|---|---|---|---|---|---|---|---|",
+            "| Cloud | Success | Human steps | Human time | Security | Checks passed | Avg build | Avg deploy | Tokens "
+            "| Agent cost | Hosting / month |",
+            "|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for group in [g for g in summary["groups"] if g["model"] == model.id]:
             cloud = cfg.cloud(group["cloud"])
             people = group["human_steps"]
             lines.append(
                 f"| [{cloud.name}]({cloud.url}) | {group['success']}/{group['cells']} | "
-                f"{fmt.human(people['count'], people['minutes'])} | {fmt.pct(group['mean_score'])} | "
+                f"{fmt.count(people['count'])} | {fmt.minutes(people['minutes'])} | {fmt.score(group['security_score'])} | "
+                f"{fmt.pct(group['mean_score'])} | "
                 f"{fmt.duration(group['mean_build_s'])} | {fmt.duration(group['mean_deploy_s'])} | "
                 f"{fmt.tokens(group['tokens'])} | {fmt.usd(group['agent_usd'])}{'+' if group['agent_usd_incomplete'] else ''} | "
                 f"{fmt.usd(group['hosting_monthly_usd'])}{'+' if group['hosting_incomplete'] else ''} |"
@@ -220,15 +224,17 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     lines += [
         "## All cells",
         "",
-        "| Model | Cloud | App | Trial | Result | Checks | Human steps | Build | Deploy | Ready after | Tokens | Agent cost | Hosting / month |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Model | Cloud | App | Trial | Result | Checks | Human steps | Human time | Security | Build | Deploy "
+        "| Ready after | Tokens | Agent cost | Hosting / month |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in summary["cells"]:
         report = f"[{fmt.status(c['status'])} {c['status']}]({cell_path(c)}.md)" if c["status"] != "missing" else "❔ missing"
         people = human_setup([c]) if c["status"] != "missing" else None
         lines.append(
             f"| {c['model']} | {c['cloud']} | {c['app']} | {c['trial']} | {report} | {c['checks_passed']}/{c['checks_total']} | "
-            f"{fmt.human(people['count'], people['minutes']) if people else fmt.DASH} | "
+            f"{fmt.count(people['count']) if people else fmt.DASH} | {fmt.minutes(people['minutes']) if people else fmt.DASH} | "
+            f"{fmt.score(c.get('security_score'))} | "
             f"{fmt.duration(c['build_s'])} | {fmt.duration(c['deploy_s'])} | {fmt.duration(c['ready_after_deploy_s'])} | "
             f"{fmt.tokens(c['tokens'])} | {fmt.usd(c['agent_usd'])} | {fmt.usd(c['hosting_monthly_usd'])} |"
         )
@@ -258,8 +264,10 @@ MATRIX_LEGEND = ("✅ success · ⚠️ deployed but some required checks failed
                  "💥 the agent couldn't run (stage shown) · ❔ no result")
 
 LEGEND = (
-    "*Human setup* counts the distinct steps a person had to do, or would have to do, for the agent's deployments "
-    "to work (account setup, terms, payment, Git hosting), with estimated minutes; see the methodology. "
+    "*Human steps* counts the distinct things a person had to do, or would have to do, for the agent's deployments "
+    "to work (account setup, terms, payment, Git hosting), and *human time* estimates how long they take. "
+    "*Security* is an independent Claude Code review of how each app was deployed and what is live, scored "
+    "against a fixed rubric. See the methodology. "
     "Times are wall-clock time of the agent's build and deploy phases; *ready after* is how much longer the app "
     "took to answer once the agent finished. Tokens include cache reads and writes. Agent cost is the API cost "
     "reported by Claude Code. Hosting is the estimated monthly cost of the resources left running, priced as "
@@ -304,8 +312,9 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
         f"{', '.join(cfg.model(m).name for m in run['models'])}",
         "",
     ] + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
-        "Success counts deployments that passed every required check. *Human setup* is what a person had to do, "
-        "or would have to do, for the agent to deploy all the apps: distinct steps and estimated minutes. Times are "
+        "Success counts deployments that passed every required check. *Human steps* and *human time* are what a "
+        "person had to do, or would have to do, for the agent to deploy all the apps: distinct steps and estimated "
+        "minutes. *Security* is the average score of an independent security review of each deployment. Times are "
         "averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting "
         "is priced as always-on for a month. "
         f"[All {runs_count} run(s)](results/README.md) · [Methodology](docs/methodology.md)",

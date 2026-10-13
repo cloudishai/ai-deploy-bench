@@ -1,6 +1,6 @@
 """The lifecycle of one benchmark cell (cloud x model x app x trial).
 
-    prepare -> build -> deploy -> inventory -> verify -> teardown -> finalize
+    prepare -> build -> deploy -> inventory -> verify -> review -> teardown -> finalize
 
 Each step runs as its own GitHub Actions step and shares state through files in the cell
 directory, so a step only receives the secrets it needs. In particular the build step never sees
@@ -22,7 +22,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from bench import ROOT_PREFIX, agent, codestats, config, prompts, result
+from bench import ROOT_PREFIX, agent, codestats, config, prompts, result, security
 from bench.clouds import ADAPTERS, base
 from bench.clouds.github import GitHub
 from bench.redact import redact_tree, secret_values
@@ -367,6 +367,18 @@ def verify(cell: Cell, use_browser: bool = True) -> dict[str, Any]:
         mark = {"passed": "PASS", "failed": "FAIL", "skipped": "SKIP"}[check["status"]]
         log(f"  {mark} {check['id']}{': ' + check['detail'] if check['detail'] else ''}")
     log(f"verify: {report['passed']} passed, {report['failed']} failed, success={report['success']}")
+    return report
+
+
+def review(cell: Cell) -> dict[str, Any]:
+    """Independent security review of the live deployment, with no cloud credentials."""
+    report = security.run(cell, env=agent_env(cell.config, cloud=None), secrets=secrets_to_hide(cell.config, cell),
+                          claude=claude_binary(), log=log)
+    cell.write("security.json", report)
+    if report["status"] == "completed":
+        log(f"security review: {report['score']:.0f}/100, {len(report['findings'])} finding(s)")
+    else:
+        log(f"security review {report['status']}: {report.get('detail')}")
     return report
 
 

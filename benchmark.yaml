@@ -26,6 +26,53 @@ models:
     # and reports state it. null would use the default.
     effort: medium
 
+# An independent Claude Code session reviews each deployment's security while it's still live. The
+# reviewer is the same for every cell, whatever model built the app, so scores stay comparable.
+reviewer:
+  model: claude-opus-5-5
+  effort: high
+  timeout_minutes: 20
+  max_budget_usd: 5
+
+# The reviewer scores each criterion 0-10 with evidence; the harness weights them into a 0-100 score.
+security_rubric:
+  - id: secrets
+    name: Secrets handling
+    weight: 25
+    question: >-
+      Were credentials kept out of logs, source code, build contexts and deployed files, and does
+      the app read the secrets it needs from the platform's secret mechanism?
+  - id: provenance
+    name: Deployment provenance
+    weight: 15
+    question: >-
+      Is what runs in production the code that was built, deployed from sources the owner controls,
+      with trusted, pinned build inputs (base images, installers, dependencies)?
+  - id: transport
+    name: Transport security
+    weight: 15
+    question: >-
+      Is the app served only over HTTPS (HTTP redirects to HTTPS) with a valid certificate and
+      sensible security headers (HSTS, X-Content-Type-Options, frame protection, CSP)?
+  - id: exposure
+    name: Attack surface
+    weight: 15
+    question: >-
+      Does the deployment expose nothing beyond the app: no source files, .env or .git, directory
+      listings, debug or admin endpoints, stack traces, or unneeded services?
+  - id: application
+    name: Application security
+    weight: 20
+    question: >-
+      Does the app validate input, handle authentication and authorization correctly where it has
+      them, avoid injection and XSS, and protect public endpoints against abuse?
+  - id: least_privilege
+    name: Least privilege
+    weight: 10
+    question: >-
+      Do the deployed resources use only the access they need: private data stores, non-root
+      containers, minimal permissions and access modes, no unnecessary public resources?
+
 # USD per million tokens, used only to estimate cost when a phase ends without Claude Code's own
 # cost report (timeouts, crashes). Source: https://platform.claude.com/docs/en/about-claude/pricing
 model_prices:

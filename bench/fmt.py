@@ -34,10 +34,16 @@ def usd(amount: float | None, approximate: bool = False) -> str:
     return ("~" if approximate else "") + f"${amount:,.2f}"
 
 
-def human(count: int | None, minutes: float | None) -> str:
-    if count is None:
-        return DASH
-    return "none" if not count else f"{count} · {minutes:g} min"
+def count(value: int | None) -> str:
+    return DASH if value is None else str(value)
+
+
+def minutes(value: float | None) -> str:
+    return DASH if value is None else f"{value:g} min"
+
+
+def score(value: float | None) -> str:
+    return DASH if value is None else f"{value:.0f}/100"
 
 
 def pct(fraction: float | None) -> str:

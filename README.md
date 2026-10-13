@@ -25,7 +25,9 @@ For every cloud × model × app (a *cell*):
 | **Time to deploy** | Wall-clock time of the agent's deploy phase, including cloud builds and rollouts, and how much longer the app took to answer afterwards |
 | **Tokens used** | Input, output and cache tokens per phase, as reported by Claude Code |
 | **Agent cost** | API cost per phase, as reported by Claude Code |
-| **Human setup** | What a person had to do, or would have to do, for the agent to deploy (sign up, payment method, API token, accepting integration terms, Git hosting), as distinct steps with estimated minutes. A deploy that can't finish without one fails at the `human` stage |
+| **Human steps** | How many distinct things a person had to do, or would have to do, for the agent to deploy (sign up, payment method, API token, accepting integration terms, Git hosting). A deploy that can't finish without one fails at the `human` stage |
+| **Human time** | Estimated minutes those human steps take |
+| **Security** | A 0–100 score from an independent Claude Code review of how the app was built and deployed and what is live, against a fixed rubric (secrets, provenance, transport, attack surface, application security, least privilege) |
 | **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables, next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
 
@@ -55,9 +57,9 @@ flowchart LR
    holds only the model API key, so nothing can be deployed early.
 3. **Deploy**: the same session resumes with the cloud's credentials, deploys under a unique
    resource prefix and writes `deployment.json`.
-4. **Inventory, verify, tear down**: the harness lists and prices what was created, runs the app's
-   checks against the public URL (HTTP, WebSocket/SSE and a headless browser), then deletes
-   everything.
+4. **Inventory, verify, review, tear down**: the harness lists and prices what was created, runs
+   the app's checks against the public URL (HTTP, WebSocket/SSE and a headless browser), has a
+   separate Claude Code session review the deployment's security, then deletes everything.
 5. **Collect**: per-cell results go to `results/runs/<run>/` and the summary table above is
    refreshed.
 
