@@ -1,4 +1,8 @@
-"""Collects cell results into results/runs/<run>/, rebuilds the run index and refreshes README.md."""
+"""Collects cell results into results/runs/<run>/, rebuilds the run indexes and refreshes README.md.
+
+The JSON files are meant for other tools to read: results/index.json lists the runs, each run's summary.json
+lists its cells with the path of each cell's full record, and every file carries the result schema version.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +13,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from bench import config, fmt
+from bench.result import SCHEMA_VERSION
 
 README_START, README_END = "<!-- results:start -->", "<!-- results:end -->"
 SUMMARY_FIELDS = (
@@ -39,6 +44,8 @@ def load_results(artifacts: Path) -> dict[tuple, tuple[dict[str, Any], Path]]:
 def compact(record: dict[str, Any]) -> dict[str, Any]:
     return {
         **{k: record.get(k) for k in SUMMARY_FIELDS},
+        "path": f"{cell_path(record)}.json",
+        "report": f"{cell_path(record)}.md",
         "build_s": record["timing"]["build_s"],
         "deploy_s": record["timing"]["deploy_s"],
         "ready_after_deploy_s": record["timing"]["ready_after_deploy_s"],
@@ -62,7 +69,7 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
     return {**{k: None for k in SUMMARY_FIELDS}, **cell, "status": "missing", "failure_stage": "harness",
             "score": 0.0, "checks_passed": 0, "checks_total": 0, "required_failed": [], "build_s": None,
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
-            "hosting_monthly_usd": None, "shell_commands": 0, "agent_version": None, "build_tokens": None,
+            "hosting_monthly_usd": None, "path": None, "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None,
             "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
             "human_steps": [], "security_score": None}
 
@@ -128,7 +135,8 @@ def summarize(run: dict[str, Any], cells: list[dict[str, Any]], cfg: config.Conf
             if members:
                 groups[f"{model.id}/{cloud.id}"] = {"model": model.id, "cloud": cloud.id, **aggregate_group(members)}
     versions = sorted({c["agent_version"] for c in cells if c.get("agent_version")})
-    return {"run": {**run, "agent_versions": versions}, "groups": list(groups.values()), "cells": cells}
+    return {"schema": SCHEMA_VERSION, "run": {**run, "agent_versions": versions}, "groups": list(groups.values()),
+            "cells": cells}
 
 
 # -- markdown ----------------------------------------------------------------------------------
@@ -281,7 +289,8 @@ def render_index(runs: list[dict[str, Any]], cfg: config.Config) -> str:
         "# Results",
         "",
         "One folder per benchmark run under [`runs/`](runs), newest first. Each has a `summary.md`, a "
-        "machine-readable `summary.json`, and per-cell `result.json` + report under `cells/`.",
+        "machine-readable `summary.json`, and a record (`<app>-t<trial>.json`) and report (`.md`) per cell under "
+        "`cells/<model>/<cloud>/`. [`index.json`](index.json) lists every run for tools that read the results.",
         "",
         "Only full runs (every cloud, app and model) update the summary in the repository's README.",
         "",
@@ -301,6 +310,23 @@ def render_index(runs: list[dict[str, Any]], cfg: config.Config) -> str:
             f"{fmt.pct(mean(c['score'] for c in cells))} | {fmt.usd(agent_usd)} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def render_json_index(runs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Every run, newest first, with the paths of its summaries, relative to results/."""
+    entries = []
+    for summary in runs:
+        run, cells = summary["run"], summary["cells"]
+        entries.append({
+            **{k: run.get(k) for k in ("name", "date", "number", "attempt", "url", "scope", "models", "trials",
+                                       "agent_versions")},
+            "schema": summary.get("schema", 1),
+            "cells": len(cells),
+            "success": sum(c["status"] == "success" for c in cells),
+            "summary": f"runs/{run['name']}/summary.json",
+            "report": f"runs/{run['name']}/summary.md",
+        })
+    return {"schema": SCHEMA_VERSION, "runs": entries}
 
 
 def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_count: int) -> str:
@@ -383,6 +409,7 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
             continue
     runs.sort(key=run_order, reverse=True)
     (results_dir / "README.md").write_text(render_index(runs, cfg))
+    (results_dir / "index.json").write_text(json.dumps(render_json_index(runs), indent=2) + "\n")
     # A partial run (a test of a few cells) must not replace the full comparison in the README.
     if run["scope"] == "full":
         update_readme(readme, render_readme_section(summary, cfg, len(runs)))

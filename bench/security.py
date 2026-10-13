@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 RESULT_FILE = "security-review.json"
 SEVERITIES = ("critical", "high", "medium", "low", "info")
+SOURCES = ("platform", "deployment", "app")
 MAX_RESULT_CHARS = 1500
 MAX_INPUT_CHARS = 4000
 FENCE = "````"
@@ -122,9 +123,11 @@ def findings(review: dict[str, Any]) -> list[dict[str, str]]:
         if not isinstance(item, dict):
             continue
         severity = str(item.get("severity") or "info").lower()
+        source = str(item.get("source") or "").lower()
         found.append({
             "severity": severity if severity in SEVERITIES else "info",
             "criterion": str(item.get("criterion") or ""),
+            "source": source if source in SOURCES else None,
             "title": str(item.get("title") or "")[:200],
             "evidence": str(item.get("evidence") or "")[:800],
             "recommendation": str(item.get("recommendation") or "")[:500],

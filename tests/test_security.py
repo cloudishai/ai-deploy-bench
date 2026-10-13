@@ -38,6 +38,13 @@ def test_findings_are_sorted_by_severity():
     assert [f["severity"] for f in security.findings(review(**ALL_TENS))] == ["critical", "low"]
 
 
+def test_findings_keep_a_known_source():
+    sourced = review(**ALL_TENS)
+    sourced["findings"][0]["source"] = "Platform"
+    sourced["findings"][1]["source"] = "the agent"
+    assert {f["title"]: f["source"] for f in security.findings(sourced)} == {"No HSTS": "platform", "Token in logs": None}
+
+
 def test_condensed_transcript(tmp_path):
     events = [
         {"type": "assistant", "message": {"content": [{"type": "text", "text": "Deploying now"},

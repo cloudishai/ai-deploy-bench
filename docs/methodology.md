@@ -141,7 +141,9 @@ model:
 
 Cells without a reachable deployment aren't reviewed. The reviewer's cost is reported separately and
 isn't added to the agent cost. Each cell's report lists the criterion scores, the rationale and the
-findings, and the summaries average the score per cloud.
+findings, and the summaries average the score per cloud. Each finding names its source, the party
+that would have to fix it: the `platform` (the cloud's own behavior or defaults), the `deployment`
+(how the agent built and deployed) or the `app` (the code the agent wrote).
 
 ## Metrics
 
@@ -179,6 +181,26 @@ those resources running for a 730-hour month with light traffic:
   beyond Starter) are not attributed to an app unless the agent created the billed resource.
 
 Resources whose price can't be determined are listed as unpriced, and totals show `+`.
+
+## Result files
+
+Everything under `results/` is plain JSON and markdown, so other tools, such as a results website,
+can read it directly. Paths inside the JSON files are relative to the folder given in the table.
+
+| File | Contents |
+|---|---|
+| `results/index.json` | `runs`: every run, newest first, with its name, date, scope, models, cell and success counts, and the paths of its `summary` (JSON) and `report` (markdown), relative to `results/` |
+| `results/runs/<run>/summary.json` | `run` (metadata), `groups` (one row per model × cloud) and `cells` (one compact row per cell, with the `path` of its full record and its `report`, relative to the run folder) |
+| `results/runs/<run>/cells/<model>/<cloud>/<app>-t<trial>.json` | The cell's full record: outcome, checks, timing, tokens and cost per phase, human steps, resources, code statistics and the security review (`security.criteria`, `security.findings`, `security.summary`) |
+
+Every file has a `schema` number, raised whenever fields are added, renamed or removed. Files from
+earlier runs keep the schema they were written with, so readers should treat fields added in later
+versions as optional:
+
+| Schema | Changes |
+|---|---|
+| 1 | First version. Runs before the security review have no `security` block |
+| 2 | `results/index.json`; `schema` in `summary.json`; `path` and `report` on summary cells; `source` on security findings |
 
 ## Fairness and limitations
 

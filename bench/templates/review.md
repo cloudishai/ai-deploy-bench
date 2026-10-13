@@ -34,7 +34,13 @@ score the parts that do.
 {rubric}
 
 Every finding needs evidence: a file and line, a command from a transcript, or a request and its
-response.
+response. Also give each finding a source, the party that would have to fix it:
+
+- `platform`: the cloud's own behavior or defaults, which the agent couldn't change, such as headers
+  its ingress adds.
+- `deployment`: how the agent built and deployed the app, such as the delivery method, an unpinned
+  base image or the container user.
+- `app`: the application code the agent wrote.
 
 When you're done, write `security-review.json` in the current directory:
 
@@ -45,7 +51,7 @@ When you're done, write `security-review.json` in the current directory:
   }},
   "findings": [
     {{"severity": "critical | high | medium | low | info", "criterion": "<criterion id>",
-     "title": "<short title>", "evidence": "<file and line, command, or request and response>",
+     "source": "platform | deployment | app", "title": "<short title>", "evidence": "<file and line, command, or request and response>",
      "recommendation": "<how to fix it>"}}
   ],
   "summary": "<two or three sentences>"

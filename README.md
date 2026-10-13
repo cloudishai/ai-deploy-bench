@@ -99,8 +99,9 @@ test whatever stack the agent picks:
    gh workflow run benchmark.yml -f trials=3                             # repeated trials
    ```
 5. **Read the results**: when the run finishes, the collect job commits
-   `results/runs/<date>_<run>/` (a summary, `summary.json`, and a `result.json` plus report per cell)
-   and updates the table above. Full agent transcripts and the generated source code are attached
+   `results/runs/<date>_<run>/` (a summary, `summary.json`, and a JSON record plus report per cell)
+   and `results/index.json`, and updates the table above. The JSON layout is described in
+   [docs/methodology.md](docs/methodology.md#result-files). Full agent transcripts and the generated source code are attached
    to the workflow run as artifacts for 30 days.
 
 Each cell's phases are capped by time and by `--max-budget-usd`. Deployments are torn down after

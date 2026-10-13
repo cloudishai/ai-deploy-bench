@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
     "tokens_estimated", "cost_usd", "cost_source", "model_usage", "tool_calls", "tool_errors", "compactions",
@@ -257,7 +257,7 @@ def security_lines(review: dict[str, Any]) -> list[str]:
               for c in review.get("criteria", [])]
     if review.get("findings"):
         lines += ["", "Findings:", ""]
-        lines += [f"- **{f['severity']}** · {f['title']}: {f['evidence']}"
+        lines += [f"- **{f['severity']}** · {' · '.join(filter(None, (f.get('source'), f['title'])))}: {f['evidence']}"
                   + (f" Fix: {f['recommendation']}" if f.get("recommendation") else "") for f in review["findings"]]
     return lines
 
