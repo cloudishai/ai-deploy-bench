@@ -172,6 +172,10 @@
       "screenshots": [
         "home.jpg",
         "contact.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -218,6 +222,11 @@
       "screenshots": [
         "signin.jpg",
         "todos.jpg"
+      ],
+      "technologies": [
+        "Node.js 24",
+        "Express",
+        "SQLite"
       ]
     },
     {
@@ -263,6 +272,11 @@
       "security_score": 79.5,
       "screenshots": [
         "docs.jpg"
+      ],
+      "technologies": [
+        "Python 3.12",
+        "FastAPI",
+        "SQLite"
       ]
     },
     {
@@ -305,6 +319,10 @@
       "security_score": 79.5,
       "screenshots": [
         "dashboard.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -349,6 +367,11 @@
       "security_score": 80.5,
       "screenshots": [
         "chat.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http",
+        "Files on a persistent volume"
       ]
     },
     {
@@ -406,6 +429,10 @@
       "screenshots": [
         "home.jpg",
         "contact.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -467,6 +494,11 @@
       "screenshots": [
         "signin.jpg",
         "todos.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express",
+        "PostgreSQL"
       ]
     },
     {
@@ -528,6 +560,11 @@
       "security_score": 84.0,
       "screenshots": [
         "docs.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express",
+        "PostgreSQL"
       ]
     },
     {
@@ -584,6 +621,10 @@
       "security_score": 88.0,
       "screenshots": [
         "dashboard.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -643,6 +684,10 @@
       "security_score": 86.0,
       "screenshots": [
         "chat.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express"
       ]
     },
     {
@@ -694,6 +739,10 @@
       "screenshots": [
         "home.jpg",
         "contact.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -749,6 +798,11 @@
       "screenshots": [
         "signin.jpg",
         "todos.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express",
+        "PostgreSQL"
       ]
     },
     {
@@ -802,6 +856,11 @@
       "security_score": 71.5,
       "screenshots": [
         "docs.jpg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express",
+        "PostgreSQL"
       ]
     },
     {
@@ -855,6 +914,10 @@
       "security_score": 73.0,
       "screenshots": [
         "dashboard.jpg"
+      ],
+      "technologies": [
+        "Node.js 24",
+        "Express"
       ]
     },
     {
@@ -908,6 +971,11 @@
       "security_score": 67.5,
       "screenshots": [
         "chat.jpg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Node.js http",
+        "PostgreSQL"
       ]
     },
     {
@@ -959,6 +1027,10 @@
       "screenshots": [
         "home.jpg",
         "contact.jpg"
+      ],
+      "technologies": [
+        "Node.js 18+",
+        "Vercel Functions"
       ]
     },
     {
@@ -1015,6 +1087,11 @@
       "screenshots": [
         "signin.jpg",
         "todos.jpg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express",
+        "Vercel Blob"
       ]
     },
     {
@@ -1082,6 +1159,11 @@
       "security_score": 80.0,
       "screenshots": [
         "docs.jpg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express",
+        "Vercel Blob"
       ]
     },
     {
@@ -1132,6 +1214,10 @@
       "security_score": 73.0,
       "screenshots": [
         "dashboard.jpg"
+      ],
+      "technologies": [
+        "Node.js 18+",
+        "Vercel Functions"
       ]
     },
     {
@@ -1187,6 +1273,11 @@
       "security_score": 84.0,
       "screenshots": [
         "chat.jpg"
+      ],
+      "technologies": [
+        "Node.js",
+        "Next.js",
+        "React"
       ]
     }
   ]

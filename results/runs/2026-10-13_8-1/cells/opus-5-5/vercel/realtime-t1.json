@@ -573,6 +573,58 @@
     "deploy_config": [
       "vercel.json"
     ],
-    "git_repo": true
+    "git_repo": true,
+    "packages": {
+      "npm": [
+        "@upstash/redis",
+        "@vercel/functions",
+        "next",
+        "react",
+        "react-dom",
+        "redis"
+      ],
+      "npm_dev": [
+        "@types/node",
+        "@types/react",
+        "typescript"
+      ],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {},
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "app",
+      "lib",
+      "tests"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js"
+    ],
+    "Frameworks": [
+      "Next.js",
+      "React"
+    ],
+    "Libraries": [
+      "Upstash Redis SDK",
+      "node-redis",
+      "Vercel Functions helpers"
+    ],
+    "Dev tools": [
+      "TypeScript"
+    ],
+    "Packaging": [
+      "vercel.json"
+    ],
+    "Hosting": [
+      "Vercel project (Next.js)",
+      "Vercel Functions"
+    ]
   }
 }

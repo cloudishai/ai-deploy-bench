@@ -622,6 +622,59 @@
       "Dockerfile",
       ".dockerignore"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [
+        "fastapi",
+        "pydantic",
+        "uvicorn"
+      ],
+      "python_dev": [
+        "httpx",
+        "pytest"
+      ]
+    },
+    "base_images": [
+      "python:3.12-slim"
+    ],
+    "runtime_hints": {},
+    "builtins": [
+      "python:sqlite3"
+    ],
+    "manifests": [
+      "requirements-dev.txt",
+      "requirements.txt"
+    ],
+    "dirs": [
+      "app",
+      "tests"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Python 3.12"
+    ],
+    "Frameworks": [
+      "FastAPI"
+    ],
+    "Data": [
+      "SQLite (on a persistent volume)"
+    ],
+    "Libraries": [
+      "Uvicorn",
+      "Pydantic"
+    ],
+    "Dev tools": [
+      "HTTPX",
+      "pytest"
+    ],
+    "Packaging": [
+      "Docker (python:3.12-slim)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared) with a persistent volume"
+    ]
   }
 }

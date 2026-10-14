@@ -135,7 +135,11 @@
         "Dockerfile",
         ".dockerignore"
       ],
-      "human_steps": []
+      "human_steps": [],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
+      ]
     },
     {
       "cloud": "digitalocean",
@@ -180,6 +184,10 @@
           "id": "api_token",
           "minutes": 2
         }
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
       ]
     },
     {
@@ -219,6 +227,10 @@
           "id": "api_token",
           "minutes": 2
         }
+      ],
+      "technologies": [
+        "Node.js 18+",
+        "Node.js http"
       ]
     },
     {
@@ -258,6 +270,10 @@
           "id": "api_token",
           "minutes": 2
         }
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Vercel Functions"
       ]
     }
   ]
