@@ -60,6 +60,11 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
         cell.teardown(current)
         record = cell.finalize(current)
 
+    # Cloudish gets no provided credentials, so the first (no-credentials) attempt is the deploy, and
+    # there is no separate fallback phase. It doesn't count as "deployed without a human" only because
+    # a local server can't offer HTTPS, so the cell is partial rather than a success.
+    assert record["no_human"]["used"] == "no_credentials" and record["no_human"]["attempted"]
+    assert record["no_human"]["deploy_s"] is None and record["deploys_without_human"] is False
     # Everything passes except HTTPS, which a local server can't offer.
     assert record["status"] == "partial" and record["required_failed"] == ["https"]
     assert record["tokens"]["build"]["total"] == 61867
@@ -114,7 +119,48 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     assert text.startswith("# Bench\n\nIntro.") and text.rstrip().endswith("Footer.")
     assert "old" not in text and "Latest full run: [2026-10-12 · #2]" in text
     assert f"[Benchmark v{cfg.version}](CHANGES.md)" in text and "| Stack fit |" in text
+    assert "Deploys without human" in text
     assert "[Cloudish](https://cloudish.ai) | 0/5" in text
+
+
+def test_deploy_falls_back_to_keyed_when_the_no_credentials_attempt_fails(tmp_path, monkeypatch):
+    """A cloud that needs a token: the no-credentials attempt can't deploy, so the harness provides
+    the credentials and the same session reruns. That keyed attempt is the deploy result."""
+    script = tmp_path / "fake-claude"
+    # On a deploy attempt (resume), only write a working deployment.json when the cloud token is present.
+    script.write_text(textwrap.dedent(f"""\
+        #!{sys.executable}
+        import json, os, sys
+        sys.stdin.read()
+        if "--resume" in sys.argv and os.environ.get("RENDER_API_KEY"):
+            json.dump({{"url": os.environ["FAKE_DEPLOY_URL"], "resources": [], "estimated_monthly_cost_usd": 0}},
+                      open("deployment.json", "w"))
+        stream = {str(FIXTURES)!r} + ("/phase2.jsonl" if "--resume" in sys.argv else "/phase1.jsonl")
+        for line in open(stream):
+            print(line.rstrip(), flush=True)
+        """))
+    script.chmod(0o755)
+    monkeypatch.setenv("BENCH_CLAUDE_BIN", str(script))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", SECRET)
+    monkeypatch.setenv("RENDER_API_KEY", "rnd_testtoken")
+    for name in ("GH_TOKEN", "GH_OWNER", "GITHUB_STEP_SUMMARY"):
+        monkeypatch.delenv(name, raising=False)
+
+    with Server(static_app()) as url:
+        monkeypatch.setenv("FAKE_DEPLOY_URL", url)
+        current = cell.prepare(tmp_path / "cell", tmp_path / "work", "9-1", "render", "opus-5-5", "static", 1)
+        cell.build(current)
+        deployed = cell.deploy(current)
+
+    # The no-credentials attempt is kept as its own phase; the keyed attempt is the deploy result.
+    assert current.phase("deploy_nohuman") is not None
+    assert deployed.status == "completed"
+    no_human = current.read("deploy/no_human.json")
+    assert no_human["used"] == "credentials" and no_human["url_answered"] is False
+    assert current.read("deployment.json")["url"] == url
+    # The no-credentials attempt's prompt tells the agent no credentials are provided.
+    assert "No credentials are provided for Render" in (current.dir / "prompts" / "deploy_nohuman.md").read_text()
+    assert "RENDER_API_KEY" in (current.dir / "prompts" / "deploy.md").read_text()
 
 
 def test_smoke_test_stub_runs_every_step(tmp_path, monkeypatch):

@@ -16,7 +16,7 @@ DigitalOcean's single container registry or Render's single free Postgres.
 |---|---|---|
 | prepare | Creates an empty workspace named after the cell's prefix and copies in `TASK.md` and fixtures. | none |
 | build | Claude Code builds the app and tests it locally ([prompt](../bench/templates/build.md)). | model key only |
-| deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
+| deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)), writing `deployment.json`; the harness times how long the URL takes to answer. Runs up to twice: first with **no credentials at all**, then — only if that didn't produce a working public URL — again with the cloud's credentials (see [Deploying without a human](#deploying-without-a-human)). | first attempt: model key only; second attempt: model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
 | inventory | Lists the cloud resources the cell created and prices them, including any created with credentials the agent saved in the workspace's `.env` files. | cloud credentials |
 | verify | Waits for the URL to answer, then runs the app's black-box checks. | none |
 | review | A separate Claude Code session reviews the security and compliance of the process, the code, the hosting plan and the live app, and rates the stack the agent chose ([prompt](../bench/templates/review.md)). | model key only |
@@ -132,6 +132,26 @@ adding credits 3, anything else 5). Replace the estimates with measured times as
 cloud, the summary counts each distinct step once across apps, because a person does it once per
 account.
 
+## Deploying without a human
+
+Human steps measure how much a person has to do; this measures the sharper question of whether the
+cloud needs a person at all. Every cell's deploy phase first runs with **no credentials provided** —
+no cloud token and no GitHub scratch account. The agent gets the same deploy prompt, which tells it
+to set up whatever it can on its own and to list anything only a person could do under `human_steps`.
+
+- If that no-credentials attempt produces a publicly answering URL and the agent reports no blocking
+  human step, it is kept as the cell's deployment, and the cell counts as **deployed without a
+  human**.
+- Otherwise the cloud's credentials are provided and the same Claude Code session reruns. That keyed
+  attempt is the cell's result, measured exactly as deploys were before this was added.
+
+The summary's **Deploys without human** column is, per cloud, the number of apps deployed with no
+credentials out of the apps attempted. Cloudish scores here because its agents mint their own key;
+clouds that need a browser signup and a dashboard token do not. The no-credentials attempt's time,
+tokens and cost are added to the cell's totals and also recorded on their own (`no_human`,
+`cost.agent_nohuman_deploy_usd`, `tokens.deploy_nohuman`, `timing.deploy_nohuman_s`), so the extra
+spend is visible rather than hidden.
+
 ## Security and compliance review
 
 After verification, while the deployment is still live, a separate Claude Code session reviews how
@@ -203,6 +223,7 @@ that would have to fix it: the `platform` (the cloud's own behavior or defaults)
 | Agent cost | Claude Code's own cost report. It is cumulative over a resumed session, so the deploy phase is the difference between the two phases' totals. It is estimated from token counts and `model_prices` only when a phase ended without a report (timeout or crash), and marked as estimated. |
 | Human steps | Distinct human steps the deployment needed or would need ([Human steps](#human-steps)). |
 | Human time | Estimated minutes for those steps, from the `human_steps` catalog. |
+| Deploys without human | Apps the agent deployed with no credentials provided, out of those attempted ([Deploying without a human](#deploying-without-a-human)). |
 | Security & compliance | 0–100 score from the independent review ([Security and compliance review](#security-and-compliance-review)). |
 | Stack fit | 0–100 rating of the stack the agent chose, from the same review ([Stack fit](#stack-fit)). From benchmark version 2. |
 | Hosting cost | The estimated monthly cost of the deployed resources with light use and when busy ([Hosting cost](#hosting-cost)), plus the agent's own estimate from `deployment.json` for comparison. |

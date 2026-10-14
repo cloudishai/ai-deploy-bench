@@ -4,7 +4,7 @@
 
 # The benchmark's version. Raise it when a change means results aren't comparable with earlier runs,
 # such as a different prompt or rubric, and describe the change in CHANGES.md.
-version: 2
+version: 3
 
 agent:
   name: Claude Code

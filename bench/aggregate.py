@@ -84,6 +84,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "dependencies": sum(((record.get("code") or {}).get("dependencies") or {}).values()),
         "deploy_config": (record.get("code") or {}).get("deploy_config") or [],
         "human_steps": [{"id": s["id"], "minutes": s["minutes"]} for s in (record.get("human") or {}).get("steps", [])],
+        "deploys_without_human": record.get("deploys_without_human", False),
         "security_score": (record.get("security") or {}).get("score"),
         "stack_fit_score": (record.get("stack_fit") or {}).get("score"),
         "screenshots": [Path(shot["file"]).name for shot in record.get("screenshots") or [] if shot.get("file")],
@@ -96,7 +97,8 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
             "hosting_monthly_usd": None, "hosting_usage_usd": {}, "hosting_usage_incomplete": [], "path": None,
             "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "technologies": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
-            "human_steps": [], "security_score": None, "stack_fit_score": None, "screenshots": []}
+            "human_steps": [], "deploys_without_human": False, "security_score": None, "stack_fit_score": None,
+            "screenshots": []}
 
 
 def mean(values: Iterable[float | None]) -> float | None:
@@ -129,6 +131,13 @@ def human_setup(cells: list[dict[str, Any]]) -> dict[str, float]:
     return {"count": len(steps), "minutes": sum(steps.values())}
 
 
+def no_human_deploys(cells: list[dict[str, Any]]) -> dict[str, int]:
+    """Apps the agent deployed with no credentials provided (any trial), out of the apps attempted."""
+    apps = sorted({c["app"] for c in cells if c["status"] != "missing"})
+    count = sum(any(c.get("deploys_without_human") for c in cells if c["app"] == app) for app in apps)
+    return {"count": count, "total": len(apps)}
+
+
 def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
     finished = [c for c in cells if c["status"] != "missing"]
     tokens, _ = per_app_total(cells, "tokens")
@@ -143,6 +152,7 @@ def aggregate_group(cells: list[dict[str, Any]]) -> dict[str, Any]:
         "failed": sum(c["status"] in ("failed", "error", "missing") for c in cells),
         "blocked_on_human": sum(c.get("failure_stage") == "human" for c in cells),
         "human_steps": human_setup(finished),
+        "deploys_without_human": no_human_deploys(cells),
         "security_score": mean(c.get("security_score") for c in finished),
         "stack_fit_score": mean(c.get("stack_fit_score") for c in finished),
         "success_rate": sum(c["status"] == "success" for c in cells) / len(cells) if cells else 0.0,
@@ -182,15 +192,17 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
         if len(models) > 1:
             lines += [f"**{model.name}**", ""]
         lines += [
-            "| Cloud | Success | Human steps | Human time | Security & compliance | Stack fit | Checks passed | Avg build "
-            "| Avg deploy | Tokens | Agent cost | " + " | ".join(hosting_headers(cfg)) + " |",
-            "|---|---|---|---|---|---|---|---|---|---|---|" + "---|" * len(cfg.hosting_usage),
+            "| Cloud | Success | Deploys without human | Human steps | Human time | Security & compliance | Stack fit "
+            "| Checks passed | Avg build | Avg deploy | Tokens | Agent cost | " + " | ".join(hosting_headers(cfg)) + " |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|" + "---|" * len(cfg.hosting_usage),
         ]
         for group in [g for g in summary["groups"] if g["model"] == model.id]:
             cloud = cfg.cloud(group["cloud"])
             people = group["human_steps"]
+            nohuman = group.get("deploys_without_human") or {"count": 0, "total": group["cells"]}
             lines.append(
                 f"| [{cloud.name}]({cloud.url}) | {group['success']}/{group['cells']} | "
+                f"{nohuman['count']}/{nohuman['total']} | "
                 f"{fmt.count(people['count'])} | {fmt.minutes(people['minutes'])} | {fmt.score(group['security_score'])} | "
                 f"{fmt.score(group.get('stack_fit_score'))} | {fmt.pct(group['mean_score'])} | "
                 f"{fmt.duration(group['mean_build_s'])} | {fmt.duration(group['mean_deploy_s'])} | "

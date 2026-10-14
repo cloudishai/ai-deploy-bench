@@ -28,7 +28,9 @@ def github_owner(env: Mapping[str, str]) -> str | None:
 
 
 def credential_lines(cloud: Cloud, env: Mapping[str, str]) -> str:
-    lines = [f"- `{c.env}`: {c.description}" for c in cloud.provided_credentials if not c.optional or env.get(c.env)]
+    # Only list credentials actually in the environment, so the no-human deploy attempt (run with the
+    # cloud's credentials withheld) correctly tells the agent that none are provided.
+    lines = [f"- `{c.env}`: {c.description}" for c in cloud.provided_credentials if env.get(c.env)]
     if owner := github_owner(env):
         lines.append(GITHUB_CREDENTIAL.format(owner=owner, cloud_name=cloud.name))
     return "\n".join(lines)
