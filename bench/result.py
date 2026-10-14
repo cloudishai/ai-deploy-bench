@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 SCREENSHOTS = "screenshots"  # the verifier's screenshots, under the cell directory
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
@@ -83,9 +83,11 @@ def build(cell: "Cell") -> dict[str, Any]:
     cloud_teardown = teardown.get("cloud") or {}
     outcomes = cloud_teardown.get("outcomes", []) + (teardown.get("github") or {}).get("outcomes", [])
 
+    security = cell.read("security.json") or {"status": "not_run"}
     cfg = cell.config
     return {
         "schema": SCHEMA_VERSION,
+        "benchmark_version": cfg.version,
         "names": {"cloud": cfg.cloud(info["cloud"]).name, "model": cfg.model(info["model"]).name,
                   "app": cfg.app(info["app"]).name},
         "run_id": info["run_id"],
@@ -105,7 +107,8 @@ def build(cell: "Cell") -> dict[str, Any]:
         "checks_total": verification.get("passed", 0) + verification.get("failed", 0),
         "required_failed": verification.get("required_failed", []),
         "human": people,
-        "security": cell.read("security.json") or {"status": "not_run"},
+        "security": {k: v for k, v in security.items() if k != "stack_fit"},
+        "stack_fit": security.get("stack_fit") or {"status": security.get("status", "not_run"), "detail": security.get("detail")},
         "timing": {
             "build_s": built.wall_time_s,
             "deploy_s": deployed.wall_time_s,
@@ -200,6 +203,10 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         *technology_lines(record),
         *architecture_lines(record.get("code") or {}),
         "",
+        "### Stack fit",
+        "",
+        *stack_fit_lines(record.get("stack_fit") or {}),
+        "",
         "## Human steps",
         "",
         *human_lines(record.get("human") or {}),
@@ -275,6 +282,16 @@ def security_lines(review: dict[str, Any]) -> list[str]:
     return lines
 
 
+def stack_fit_lines(fit: dict[str, Any]) -> list[str]:
+    if fit.get("status") != "completed":
+        return [f"Not rated: {fit.get('detail') or fit.get('status') or 'not run'}."]
+    lines = [f"**{fit['score']:.0f}/100**, from the same independent review, judged against the app's requirements "
+             "rather than a preferred stack.", "", fit.get("summary") or "", "",
+             "| Criterion | Weight | Score | Rationale |", "|---|---|---|---|"]
+    return lines + [f"| {fmt.cell(c['name'])} | {c['weight']} | {c['score']}/10 | {fmt.cell(c['rationale'])} |"
+                    for c in fit.get("criteria", [])]
+
+
 def human_lines(people: dict[str, Any]) -> list[str]:
     """What a person had to do, or would have to do, for this deployment."""
     if not people.get("steps"):
@@ -340,10 +357,11 @@ def render_step_summary(record: dict[str, Any]) -> str:
     people = record.get("human") or {}
     return (
         f"### {fmt.status(record['status'])} {record['app']} on {record['cloud']} ({record['model']}): {record['status']}\n\n"
-        "| Checks | Human steps | Human time | Security & compliance | Build | Deploy | Tokens | Agent cost | Hosting/month |\n"
-        "|---|---|---|---|---|---|---|---|---|\n"
+        "| Checks | Human steps | Human time | Security & compliance | Stack fit | Build | Deploy | Tokens | Agent cost | Hosting/month |\n"
+        "|---|---|---|---|---|---|---|---|---|---|\n"
         f"| {record['checks_passed']}/{record['checks_total']} | {fmt.count(people.get('count'))} | "
         f"{fmt.minutes(people.get('minutes'))} | {fmt.score((record.get('security') or {}).get('score'))} | "
+        f"{fmt.score((record.get('stack_fit') or {}).get('score'))} | "
         f"{fmt.duration(t['build_s'])} | {fmt.duration(t['deploy_s'])} | "
         f"{fmt.tokens(record['tokens']['total']['total'])} | {fmt.usd(cost['agent_usd'])} | "
         f"{hosting_summary(cost.get('hosting_usage') or {}) or fmt.usd(cost['hosting_monthly_usd'])} |\n\n"

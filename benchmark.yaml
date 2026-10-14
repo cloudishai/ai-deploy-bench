@@ -2,6 +2,10 @@
 # docs/clouds.md, docs/models.md and docs/apps.md are the human-readable lists;
 # tests/test_config.py fails if they drift apart.
 
+# The benchmark's version. Raise it when a change means results aren't comparable with earlier runs,
+# such as a different prompt or rubric, and describe the change in CHANGES.md.
+version: 2
+
 agent:
   name: Claude Code
   # Pinned so every cell runs the same agent build. Bump deliberately and note it in the results.
@@ -87,6 +91,31 @@ security_rubric:
     question: >-
       Does the app validate input, handle authentication and authorization correctly where it has
       them, avoid injection and XSS, and protect public endpoints against abuse?
+
+# The same reviewer also rates the stack the agent chose for the app, against the app's requirements
+# rather than a preferred stack, so any stack that fits well can score highly. Scored and weighted
+# like security_rubric, into a separate 0-100 score.
+stack_rubric:
+  - id: fit
+    name: Fit for the job
+    weight: 40
+    question: >-
+      Does each part of the stack suit its job: a durable data store for persistent data, a suitable
+      transport for realtime updates, static hosting for static content, and libraries that do what
+      the app needs?
+  - id: proportion
+    name: Proportion
+    weight: 30
+    question: >-
+      Is the stack as simple as the requirements allow? Penalize needless services, frameworks or
+      dependencies, and equally stand-ins that only appear to work, such as a file or blob store
+      used as a database.
+  - id: platform
+    name: Platform fit
+    weight: 30
+    question: >-
+      Does the stack use what the cloud does well, or work against it, for example a long-running
+      server where the platform scales functions, or an always-on container for static files?
 
 # Each deployment's hosting is priced for a month at two levels of traffic, since usage-billed and
 # free plans only compare fairly with fixed-price ones at a stated traffic level. See "Hosting cost"

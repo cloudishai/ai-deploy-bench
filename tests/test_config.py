@@ -62,4 +62,11 @@ def test_human_steps_are_in_the_catalog():
 def test_rubric_weights_add_up_and_every_app_has_a_use():
     cfg = config.load()
     assert sum(c["weight"] for c in cfg.security_rubric) == 100
+    assert sum(c["weight"] for c in cfg.stack_rubric) == 100
     assert {a.use for a in cfg.apps} == {"commercial", "personal"}
+
+
+def test_the_current_version_is_described_in_changes():
+    cfg = config.load()
+    assert cfg.version >= 2
+    assert f"## Version {cfg.version}\n" in (config.ROOT / "CHANGES.md").read_text()

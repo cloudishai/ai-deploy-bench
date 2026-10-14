@@ -34,6 +34,16 @@ def test_incomplete_reviews_are_rejected():
     assert security.score(rubric, {"summary": "no criteria"})[2] == ["no criteria object"]
 
 
+def test_stack_fit_is_scored_separately():
+    rubric = config.load().stack_rubric
+    rated = {"stack": {"criteria": {"fit": {"score": 10, "rationale": "ok"}, "proportion": {"score": 5, "rationale": "heavy"},
+                                    "platform": {"score": 10, "rationale": "ok"}}, "summary": "Fits."}}
+    fit = security.stack_fit(rubric, rated)
+    assert fit["status"] == "completed" and fit["score"] == pytest.approx(100 - 15) and fit["summary"] == "Fits."
+    missing = security.stack_fit(rubric, {"summary": "no stack"})
+    assert missing["status"] == "error" and missing["detail"] == "no criteria object"
+
+
 def test_findings_are_sorted_by_severity():
     assert [f["severity"] for f in security.findings(review(**ALL_TENS))] == ["critical", "low"]
 
@@ -83,14 +93,17 @@ def fake_reviewer(tmp_path, body: str) -> str:
 def test_review_step_scores_the_live_deployment(deployed_cell, tmp_path, monkeypatch):
     claude = fake_reviewer(tmp_path, f"""
         here = pathlib.Path(".")
-        assert "https://adb-x.vercel.app" in prompt and "`least_privilege`" in prompt
+        assert "https://adb-x.vercel.app" in prompt and "`least_privilege`" in prompt and "`proportion`" in prompt
         assert (here / "TASK.md").exists() and (here / "process" / "deploy.md").exists()
         assert "[REDACTED]" in (here / "app" / "server.js").read_text()   # secrets masked before review
         context = json.loads((here / "process" / "context.json").read_text())
         assert context["use"] == "commercial" and context["cloud"] == "Vercel"   # the static site is a company's
         criteria = {{c: {{"score": 8, "rationale": "ok"}} for c in
                     ("secrets", "provenance", "compliance", "least_privilege", "transport", "exposure", "application")}}
-        (here / "security-review.json").write_text(json.dumps({{"criteria": criteria, "findings": [], "summary": "Good."}}))
+        stack = {{"criteria": {{c: {{"score": 7, "rationale": "ok"}} for c in ("fit", "proportion", "platform")}},
+                 "summary": "Plain HTML suits it."}}
+        (here / "security-review.json").write_text(json.dumps({{"criteria": criteria, "findings": [], "summary": "Good.",
+                                                                 "stack": stack}}))
         """)
     monkeypatch.setenv("BENCH_CLAUDE_BIN", claude)
     report = cell.review(deployed_cell)
@@ -98,14 +111,17 @@ def test_review_step_scores_the_live_deployment(deployed_cell, tmp_path, monkeyp
     assert report["reviewer"]["model"] == "claude-opus-5-5" and report["reviewer"]["cost_usd"] == pytest.approx(0.42)
     record = result.build(deployed_cell)
     record["code"] = {}
-    assert record["security"]["score"] == 80
-    assert "**80/100**" in result.render_report(record, deployed_cell)
+    assert record["security"]["score"] == 80 and "stack_fit" not in record["security"]
+    assert record["stack_fit"]["score"] == 70 and record["benchmark_version"] == config.load().version
+    report_text = result.render_report(record, deployed_cell)
+    assert "**80/100**" in report_text and "**70/100**" in report_text and "Plain HTML suits it." in report_text
 
 
 def test_review_without_a_result_file_is_an_error(deployed_cell, tmp_path, monkeypatch):
     monkeypatch.setenv("BENCH_CLAUDE_BIN", fake_reviewer(tmp_path, "pass"))
     report = cell.review(deployed_cell)
     assert report["status"] == "error" and "security-review.json" in report["detail"]
+    assert result.build(deployed_cell)["stack_fit"]["status"] == "error"
 
 
 def test_nothing_to_review_without_a_deployment(deployed_cell):

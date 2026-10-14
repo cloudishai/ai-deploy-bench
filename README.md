@@ -49,6 +49,7 @@ For every cloud × model × app (a *cell*):
 | **Security & compliance** | A 0–100 score from an independent Claude Code review of how the app was built and deployed, whether its hosting plan fits how the app is used, and what is live, against a fixed rubric (secrets, provenance, terms compliance, least privilege, transport, attack surface, application security) |
 | **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables for a month of *light use* (a few visits a week) and a *busy* month (hit around the clock), next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
+| **Stack fit** | A 0–100 rating, by the same independent review, of the stack the agent chose for each app: whether it fits the job, is as simple as the requirements allow, and uses what the cloud does well. Judged against the app's requirements, not a preferred stack |
 | **Technologies** | What each app was built and run with: runtime, frameworks, data stores, libraries, packaging and the cloud services it used |
 
 Definitions and caveats are in [docs/methodology.md](docs/methodology.md).
@@ -73,13 +74,15 @@ flowchart LR
 1. **Plan**: [`benchmark.yml`](.github/workflows/benchmark.yml) expands
    [`benchmark.yaml`](benchmark.yaml) into one session per cloud
    ([`cloud.yml`](.github/workflows/cloud.yml)), each a matrix of cells.
-2. **Build**: Claude Code builds the app in an empty workspace and tests it locally. The step
+2. **Build**: Claude Code weighs the stacks that could suit the app, records its choice in
+   `STACK.md`, then builds the app in an empty workspace and tests it locally. The step
    holds only the model API key, so nothing can be deployed early.
 3. **Deploy**: the same session resumes with the cloud's credentials, deploys under a unique
    resource prefix and writes `deployment.json`.
 4. **Inventory, verify, review, tear down**: the harness lists and prices what was created, runs
    the app's checks against the public URL (HTTP, WebSocket/SSE and a headless browser), has a
-   separate Claude Code session review the deployment's security and compliance, then deletes everything.
+   separate Claude Code session review the deployment's security and compliance and rate its
+   stack, then deletes everything.
 5. **Collect**: per-cell results go to `results/runs/<run>/` and the summary table above is
    refreshed.
 
@@ -130,6 +133,10 @@ verification unless `keep_deployments` is checked. If anything is left behind, t
 [Cleanup](.github/workflows/cleanup.yml) workflow finds `adb-*` resources and deletes them.
 
 ## Changing the benchmark
+
+Changes that make results incomparable with earlier runs, such as a different prompt, rubric, app or
+check, raise `version` in [`benchmark.yaml`](benchmark.yaml) and are described in
+[CHANGES.md](CHANGES.md).
 
 - **Models**: add an entry under `models` in [`benchmark.yaml`](benchmark.yaml), with its prices
   under `model_prices`, and list it in [docs/models.md](docs/models.md).

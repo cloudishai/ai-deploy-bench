@@ -100,6 +100,7 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     assert runs["schema"] == summary["schema"] == result.SCHEMA_VERSION
     listed = runs["runs"][0]
     assert (listed["name"], listed["cells"], listed["success"]) == ("2026-10-12_1-1", 2, 0)
+    assert listed["benchmark_version"] == summary["run"]["benchmark_version"] == config.load().version
     on_disk = json.loads((tmp_path / "results" / listed["summary"]).read_text())
     assert (run_dir / on_disk["cells"][0]["path"]).exists() and (run_dir / on_disk["cells"][0]["report"]).exists()
     assert on_disk["cells"][1]["status"] == "missing" and on_disk["cells"][1]["path"] is None
@@ -112,6 +113,7 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     text = readme.read_text()
     assert text.startswith("# Bench\n\nIntro.") and text.rstrip().endswith("Footer.")
     assert "old" not in text and "Latest full run: [2026-10-12 · #2]" in text
+    assert f"[Benchmark v{cfg.version}](CHANGES.md)" in text and "| Stack fit |" in text
     assert "[Cloudish](https://cloudish.ai) | 0/5" in text
 
 

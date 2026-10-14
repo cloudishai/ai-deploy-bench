@@ -6,7 +6,7 @@
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><span>{{ run.label }}</span></nav>
 <header class="page-head">
   <h1>Run {{ run.label }}</h1>
-  <p class="muted">{{ run.scope }} · {% for m in run.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if run.info.get('agent_versions') %} · Claude Code {{ run.info.agent_versions | join(', ') }}{% endif %} · {{ run.info.get('trials', 1) }} {{ 'trial' if run.info.get('trials', 1) == 1 else 'trials' }} per cell</p>
+  <p class="muted">{{ run.scope }} · {% for m in run.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if run.info.get('benchmark_version') %} · <a href="{{ github }}/blob/main/CHANGES.md">benchmark v{{ run.info.benchmark_version }}</a>{% endif %}{% if run.info.get('agent_versions') %} · Claude Code {{ run.info.agent_versions | join(', ') }}{% endif %} · {{ run.info.get('trials', 1) }} {{ 'trial' if run.info.get('trials', 1) == 1 else 'trials' }} per cell</p>
   <p class="links">
 {% if run.info.get('url') %}<a href="{{ run.info.url }}">Workflow run</a>{% endif %}
     <a href="{{ github }}/blob/main/results/runs/{{ run.name }}/summary.md">Summary on GitHub</a>
@@ -43,7 +43,7 @@
   <div class="table-scroll">
   <table class="data">
     <thead>
-      <tr><th>Cloud</th><th>App</th>{% if run.info.models | length > 1 %}<th>Model</th>{% endif %}{% if run.info.get('trials', 1) > 1 %}<th class="num">Trial</th>{% endif %}<th>Result</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Tokens</th><th class="num">Agent cost</th><th>Hosting / month</th></tr>
+      <tr><th>Cloud</th><th>App</th>{% if run.info.models | length > 1 %}<th>Model</th>{% endif %}{% if run.info.get('trials', 1) > 1 %}<th class="num">Trial</th>{% endif %}<th>Result</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Stack fit</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Tokens</th><th class="num">Agent cost</th><th>Hosting / month</th></tr>
     </thead>
     <tbody>
 {% for cell in run.cells %}
@@ -56,6 +56,7 @@
         <td class="num">{{ cell.checks_passed }}/{{ cell.checks_total }}</td>
         <td class="num nowrap">{{ fmt.count(cell.human_steps | length if cell.human_steps is not none else None) }} · {{ fmt.minutes(cell.human_minutes) }}</td>
         <td class="num">{{ fmt.score(cell.security_score) }}</td>
+        <td class="num">{{ fmt.score(cell.stack_fit_score) }}</td>
         <td class="num">{{ fmt.duration(cell.build_s) }}</td>
         <td class="num">{{ fmt.duration(cell.deploy_s) }}</td>
         <td class="num">{{ fmt.tokens(cell.tokens) }}</td>
