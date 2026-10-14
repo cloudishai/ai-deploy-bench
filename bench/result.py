@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 SCREENSHOTS = "screenshots"  # the verifier's screenshots, under the cell directory
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
@@ -65,6 +65,10 @@ def build(cell: "Cell") -> dict[str, Any]:
     info = cell.info
     built = cell.phase("build") or agent.Phase("build")
     deployed = cell.phase("deploy") or agent.Phase("deploy")
+    # The no-human deploy attempt: present as a separate phase only when it didn't win and the keyed
+    # attempt took over. When it won, it *is* the deploy phase above.
+    nohuman = cell.phase("deploy_nohuman")
+    no_human = cell.read("deploy/no_human.json") or {}
     inventory = cell.read("inventory.json") or {}
     verification = cell.read("verify.json") or {}
     teardown = cell.read("teardown.json") or {}
@@ -74,8 +78,10 @@ def build(cell: "Cell") -> dict[str, Any]:
     people = human.assess(cell, inventory, deployment, succeeded=status == "success")
     if people["blocked"] and status != "success":
         stage = "human"  # it couldn't finish without something only a person can do
+    # Deployed with no human help: the no-credentials attempt won and the app passed its checks.
+    deploys_without_human = no_human.get("used") == "no_credentials" and status == "success"
 
-    costs = [c for c in (built.cost_usd, deployed.cost_usd) if c is not None]
+    costs = [c for c in (built.cost_usd, deployed.cost_usd, nohuman.cost_usd if nohuman else None) if c is not None]
     tool_calls: dict[str, int] = {}
     for phase in (built, deployed):
         for name, count in phase.tool_calls.items():
@@ -100,6 +106,15 @@ def build(cell: "Cell") -> dict[str, Any]:
                   or info.get("agent", {}).get("version")},
         "status": status,
         "failure_stage": stage,
+        "deploys_without_human": deploys_without_human,
+        "no_human": {
+            "attempted": no_human.get("attempted", False),
+            "used": no_human.get("used"),  # "no_credentials" (won) or "credentials" (fell back)
+            "url_answered": no_human.get("url_answered", False),
+            "deploy_s": nohuman.wall_time_s if nohuman else None,
+            "tokens": (nohuman.tokens if nohuman else {}).get("total", 0),
+            "agent_usd": nohuman.cost_usd if nohuman else None,
+        },
         "url": verification.get("url"),
         "url_source": verification.get("url_source"),
         "score": verification.get("score", 0.0),
@@ -112,16 +127,22 @@ def build(cell: "Cell") -> dict[str, Any]:
         "timing": {
             "build_s": built.wall_time_s,
             "deploy_s": deployed.wall_time_s,
-            "agent_s": round((built.wall_time_s or 0) + (deployed.wall_time_s or 0), 1),
+            "deploy_nohuman_s": nohuman.wall_time_s if nohuman else None,
+            "agent_s": round((built.wall_time_s or 0) + (deployed.wall_time_s or 0)
+                             + ((nohuman.wall_time_s or 0) if nohuman else 0), 1),
             "ready_after_deploy_s": ready_after_deploy(deployed, verification, cell.read("deploy/ready.json") or {}),
             "verify_s": verification.get("duration_s"),
         },
-        "tokens": {"build": built.tokens, "deploy": deployed.tokens, "total": add_tokens(built.tokens, deployed.tokens)},
+        "tokens": {"build": built.tokens, "deploy": deployed.tokens,
+                   "deploy_nohuman": nohuman.tokens if nohuman else {},
+                   "total": add_tokens(built.tokens, deployed.tokens, *([nohuman.tokens] if nohuman else []))},
         "cost": {
             "agent_usd": round(sum(costs), 6) if costs else None,
             "agent_build_usd": built.cost_usd,
             "agent_deploy_usd": deployed.cost_usd,
-            "agent_cost_estimated": "estimated" in (built.cost_source, deployed.cost_source),
+            "agent_nohuman_deploy_usd": nohuman.cost_usd if nohuman else None,
+            "agent_cost_estimated": "estimated" in (built.cost_source, deployed.cost_source,
+                                                    nohuman.cost_source if nohuman else None),
             "hosting_monthly_usd": cloud_inventory.get("monthly_usd"),
             # The deployment priced for a month at each traffic level in benchmark.yaml (hosting_usage).
             "hosting_usage": cloud_inventory.get("usage") or {},
@@ -164,6 +185,22 @@ def build(cell: "Cell") -> dict[str, Any]:
     }
 
 
+def no_human_lines(record: dict[str, Any]) -> list[str]:
+    """One line on the no-credentials deploy attempt that every cell now runs first."""
+    nh = record.get("no_human") or {}
+    if not nh.get("attempted"):
+        return []
+    if record.get("deploys_without_human"):
+        return ["**Deployed without a human:** the agent deployed with no credentials provided — "
+                "no human signup or token needed.", ""]
+    extra = ""
+    if nh.get("deploy_s") is not None:
+        extra = (f" (that attempt took {fmt.duration(nh['deploy_s'])}, {fmt.tokens(nh.get('tokens'))} tokens, "
+                 f"{fmt.usd(nh.get('agent_usd'))})")
+    return ["**Needed a human:** the no-credentials attempt didn't produce a working public URL, so the "
+            f"cloud's credentials were provided and the agent redeployed{extra}.", ""]
+
+
 def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
     t, tok, cost = record["timing"], record["tokens"], record["cost"]
     phases = record["phases"]
@@ -197,6 +234,7 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         "",
         f"App answered {fmt.duration(t['ready_after_deploy_s'])} after the agent finished deploying.",
         "",
+        *no_human_lines(record),
         *screenshot_lines(record.get("screenshots") or []),
         "## What was built",
         "",

@@ -84,7 +84,7 @@
   <h2>How a run works</h2>
   <ol class="steps">
     <li><h3>Build</h3><p>A fresh Claude Code session builds the app from its spec for the target cloud, without cloud credentials.</p></li>
-    <li><h3>Deploy</h3><p>The same session gets the cloud's credentials and deploys to a public URL on its own, listing anything only a person could do.</p></li>
+    <li><h3>Deploy</h3><p>The same session first tries to deploy with no credentials at all; only if that fails does it get the cloud's credentials and redeploy, listing anything only a person could do.</p></li>
     <li><h3>Verify</h3><p>Black-box checks test the live app over HTTP and in a browser, and screenshots record what it looks like.</p></li>
     <li><h3>Review</h3><p>A separate session scores how securely the app was built and deployed, and whether its hosting plan fits how it's used.</p></li>
     <li><h3>Tear down</h3><p>Everything the agent created is priced, then deleted, and the results are committed to the repository.</p></li>

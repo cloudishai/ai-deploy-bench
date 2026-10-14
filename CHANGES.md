@@ -9,6 +9,41 @@ version.
 Changes to the result files themselves are tracked separately, by the schema number described in
 [docs/methodology.md](docs/methodology.md#result-files).
 
+## Version 3
+
+**Every deploy is first attempted with no credentials, to measure whether a cloud needs a human at all.**
+
+### Why
+
+A core thing the benchmark measures is how much a person has to do for an agent to deploy. Until now
+that was inferred after the fact (prerequisites in `benchmark.yaml`, plus blockers the agent
+reported), while the agent was always handed the cloud's credentials up front. That hides the most
+basic question an autonomous-deploy benchmark should answer directly: *can the agent get onto the
+cloud by itself at all?* Cloudish stands out precisely because agents mint their own key with one
+unauthenticated call; DigitalOcean, Render and Vercel each need a human to sign up and create a
+token in a browser first. A proposal to add a bring-your-own-server platform (issue #2) made the
+distinction sharper still, so it is now measured head-on rather than assumed.
+
+### What changed
+
+- **Two-attempt deploy.** The deploy phase now runs up to twice. The first attempt is given **no
+  credentials** — no cloud token and no GitHub scratch account — so the agent must sign up and
+  obtain whatever it needs on its own. If that attempt produces a working public URL, it is the
+  cell's result. Only if it doesn't are the cloud's credentials provided and the same session rerun;
+  that keyed attempt then becomes the result, exactly as every deploy worked before.
+- **New measure: "Deploys without human".** Per cloud, the number of apps the agent deployed with no
+  credentials provided, out of the apps attempted. Shown as a column in the summary table, a metric
+  on the site, and `deploys_without_human` / `no_human` on each cell record.
+- **Honest spend.** When a cell falls back to the keyed attempt, the tokens, cost and time of the
+  no-credentials attempt are added to the cell's totals and recorded separately
+  (`no_human`, `cost.agent_nohuman_deploy_usd`, `tokens.deploy_nohuman`, `timing.deploy_nohuman_s`).
+
+### Comparability
+
+Not comparable with version 2: for clouds that need a human, each deploy now includes a failed
+no-credentials attempt before the keyed one, so deploy time, tokens and agent cost are higher. The
+checks, scores and hosting costs of the winning deployment are measured the same way as before.
+
 ## Version 2
 
 **Agents choose their stack deliberately, and the choice is rated.**

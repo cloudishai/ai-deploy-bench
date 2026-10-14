@@ -22,7 +22,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from bench import ROOT_PREFIX, agent, codestats, config, prompts, result, security, stack
+from bench import ROOT_PREFIX, agent, codestats, config, human, prompts, result, security, stack
 from bench.clouds import ADAPTERS, base
 from bench.clouds.github import GitHub
 from bench.redact import redact_tree, screen_screenshots, secret_values
@@ -177,28 +177,29 @@ def build(cell: Cell) -> agent.Phase:
     return phase
 
 
-def deploy(cell: Cell) -> agent.Phase:
+def run_deploy_attempt(cell: Cell, *, cloud: config.Cloud | None, name: str, out_dir: Path,
+                       resume: bool, session_id: str, previous: dict[str, Any] | None) -> agent.Phase:
+    """One deploy session. `cloud=None` withholds the cloud's credentials and the GitHub scratch
+    account, so the agent must deploy with no human-provided help."""
     cfg = cell.config
-    cloud, model, app = cfg.cloud(cell.info["cloud"]), cfg.model(cell.info["model"]), cfg.app(cell.info["app"])
-    built = cell.phase("build")
-    resume = bool(built and built.started)
-    extra = model.env
+    model, app = cfg.model(cell.info["model"]), cfg.app(cell.info["app"])
+    extra = dict(model.env)
     if keys := cell.info["inputs"].get("api_keys"):
         extra["BENCH_API_KEYS"] = ",".join(keys)
     env = agent_env(cfg, cloud, extra=extra)
-    prompt = prompts.deploy_prompt(cloud, app, cell.prefix, env, fresh_session=not resume)
-    (cell.dir / "prompts" / "deploy.md").write_text(prompt)
-    phase = agent.run_phase(
+    prompt = prompts.deploy_prompt(cfg.cloud(cell.info["cloud"]), app, cell.prefix, env, fresh_session=not resume)
+    (cell.dir / "prompts" / f"{name}.md").write_text(prompt)
+    return agent.run_phase(
         name="deploy",
         prompt=prompt,
         cwd=cell.workspace,
         model=model.model,
         effort=model.effort,
-        out_dir=cell.dir / "deploy",
+        out_dir=out_dir,
         timeout_s=cfg.defaults["deploy_timeout_minutes"] * 60,
-        session_id=cell.info["session_id"] if resume else str(uuid.uuid4()),
+        session_id=session_id,
         resume=resume,
-        previous=built.cumulative if built else None,
+        previous=previous,
         max_budget_usd=cfg.defaults.get("max_budget_usd_per_phase"),
         env=env,
         prices=cfg.model_prices,
@@ -206,12 +207,56 @@ def deploy(cell: Cell) -> agent.Phase:
         claude=claude_binary(),
         log=log,
     )
+
+
+def deployed_without_human(cell: Cell, manifest: dict[str, Any], ready: dict[str, Any]) -> bool:
+    """True when a no-credentials attempt produced a publicly answering app and the agent didn't
+    report anything only a person could do."""
+    blocking = any(step["blocking"] for step in human.reported(manifest))
+    return bool(ready.get("ready")) and not blocking
+
+
+def deploy(cell: Cell) -> agent.Phase:
+    """Deploys in up to two attempts. First with no credentials at all, to measure whether the agent
+    can deploy without any human help. If that doesn't yield a working public URL, the cloud's
+    credentials are provided and the same session reruns; that keyed attempt is the cell's result."""
+    cfg = cell.config
+    cloud = cfg.cloud(cell.info["cloud"])
+    built = cell.phase("build")
+    resume = bool(built and built.started)
+    session_id = cell.info["session_id"] if resume else str(uuid.uuid4())
+
+    nohuman = run_deploy_attempt(cell, cloud=None, name="deploy_nohuman", out_dir=cell.dir / "deploy",
+                                 resume=resume, session_id=session_id,
+                                 previous=built.cumulative if built else None)
+    manifest = read_manifest(cell.workspace / "deployment.json")
+    ready = probe_ready(cell, manifest, nohuman) if nohuman.status != "cancelled" else {"probed": False}
+    log(f"no-human deploy {nohuman.status} in {nohuman.wall_time_s}s, "
+        f"{nohuman.tokens.get('total', 0):,} tokens, ${nohuman.cost_usd or 0:.2f}")
+
+    if deployed_without_human(cell, manifest, ready):
+        cell.write("deployment.json", manifest)
+        cell.write("deploy/ready.json", ready)
+        cell.write("deploy/no_human.json", {"attempted": True, "used": "no_credentials", "url_answered": True})
+        # This attempt is the deploy result, so its prompt is the deploy prompt.
+        shutil.copyfile(cell.dir / "prompts" / "deploy_nohuman.md", cell.dir / "prompts" / "deploy.md")
+        log("deployed with no provided credentials: no human needed")
+        return nohuman
+
+    # The no-human attempt didn't deliver a working app. Keep its record, provide the credentials and
+    # rerun the same session ("rerun with a key"); the keyed attempt becomes the cell's deploy result.
+    shutil.move(str(cell.dir / "deploy"), str(cell.dir / "deploy_nohuman"))
+    keyed = run_deploy_attempt(cell, cloud=cloud, name="deploy", out_dir=cell.dir / "deploy",
+                               resume=True, session_id=session_id,
+                               previous=nohuman.cumulative or (built.cumulative if built else None))
     manifest = read_manifest(cell.workspace / "deployment.json")
     cell.write("deployment.json", manifest)
-    log(f"deploy {phase.status} in {phase.wall_time_s}s, {phase.tokens.get('total', 0):,} tokens, ${phase.cost_usd or 0:.2f}")
-    if phase.status != "cancelled":
-        cell.write("deploy/ready.json", probe_ready(cell, manifest, phase))
-    return phase
+    cell.write("deploy/no_human.json", {"attempted": True, "used": "credentials",
+                                        "url_answered": bool(ready.get("ready"))})
+    log(f"deploy {keyed.status} in {keyed.wall_time_s}s, {keyed.tokens.get('total', 0):,} tokens, ${keyed.cost_usd or 0:.2f}")
+    if keyed.status != "cancelled":
+        cell.write("deploy/ready.json", probe_ready(cell, manifest, keyed))
+    return keyed
 
 
 def manifest_url(manifest: dict[str, Any]) -> str | None:

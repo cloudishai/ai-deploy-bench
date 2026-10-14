@@ -8,9 +8,12 @@ deletes anything whose name starts with a cell's prefix and lists every resource
 cell was running.
 
 Once the accounts exist, store the keys with [`scripts/set-secrets.sh`](../scripts/set-secrets.sh)
-(see [`.env.example`](../.env.example)). During the deploy phase an agent receives exactly the
-provided credentials listed for its cloud in [`benchmark.yaml`](../benchmark.yaml), plus the
-optional GitHub scratch account. The build phase only gets the model API key.
+(see [`.env.example`](../.env.example)). The deploy phase first runs with **no credentials at all**,
+to measure whether the agent can deploy on its own (see
+[Deploying without a human](methodology.md#deploying-without-a-human)); only if that fails does the
+agent receive exactly the provided credentials listed for its cloud in
+[`benchmark.yaml`](../benchmark.yaml), plus the optional GitHub scratch account. The build phase only
+gets the model API key.
 
 | Secret or variable | Kind | Used by |
 |---|---|---|
