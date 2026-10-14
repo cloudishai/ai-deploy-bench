@@ -3,6 +3,7 @@
 List of cloud providers to evaluate in benchmark:
 - cloudish.ai
 - digitalocean.com
+- railway.com
 - render.com
 - vercel.com
 

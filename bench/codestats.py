@@ -34,6 +34,7 @@ CONFIG_ONLY = {"JSON", "YAML", "TOML", "Markdown"}
 DEPLOY_CONFIG = (
     "Dockerfile", "docker-compose.yml", "docker-compose.yaml", "compose.yaml", ".dockerignore", "Procfile",
     "vercel.json", "render.yaml", ".do/app.yaml", ".do/deploy.template.yaml", "app.yaml", "project.yml",
+    "railway.json", "railway.toml", "nixpacks.toml",
     "nginx.conf", "fly.toml", "netlify.toml",
 )
 FRAMEWORKS = {

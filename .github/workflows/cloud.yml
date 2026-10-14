@@ -116,6 +116,7 @@ jobs:
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ inputs.cloud == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
           GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
           GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
@@ -128,6 +129,7 @@ jobs:
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ inputs.cloud == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
           GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
           GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
@@ -157,6 +159,7 @@ jobs:
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ inputs.cloud == 'render' && vars.RENDER_OWNER_ID || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ inputs.cloud == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           VERCEL_TEAM_ID: ${{ inputs.cloud == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
           GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
           GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}
@@ -173,6 +176,7 @@ jobs:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ inputs.cloud == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
         run: '"$BENCH_PY" -m bench cell finalize --dir "$BENCH_CELL_DIR"'
 
@@ -184,6 +188,7 @@ jobs:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ inputs.cloud == 'digitalocean' && secrets.DIGITALOCEAN_ACCESS_TOKEN || '' }}
           RENDER_API_KEY: ${{ inputs.cloud == 'render' && secrets.RENDER_API_KEY || '' }}
           VERCEL_TOKEN: ${{ inputs.cloud == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ inputs.cloud == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           GH_TOKEN: ${{ secrets.BENCH_GITHUB_TOKEN }}
         run: |
           mkdir -p "$BENCH_CELL_DIR"

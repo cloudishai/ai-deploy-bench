@@ -75,6 +75,7 @@ ROLES = ("Framework", "Server", "UI", "Charts", "Realtime", "Database", "ORM", "
 IGNORED = re.compile(r"^@types/")  # type declarations say nothing about the stack
 CONFIG_NAMES = {
     "render.yaml": "Render Blueprint (render.yaml)", "vercel.json": "vercel.json", ".do/app.yaml": "App spec (.do/app.yaml)",
+    "railway.json": "railway.json", "railway.toml": "railway.toml", "nixpacks.toml": "Nixpacks (nixpacks.toml)",
     "app.yaml": "App spec (app.yaml)", "Procfile": "Procfile", "docker-compose.yml": "Docker Compose",
     "docker-compose.yaml": "Docker Compose", "compose.yaml": "Docker Compose", "fly.toml": "fly.toml",
     "netlify.toml": "netlify.toml", "nginx.conf": "nginx config",

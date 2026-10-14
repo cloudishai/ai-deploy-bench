@@ -21,6 +21,7 @@ gets the model API key.
 | `DIGITALOCEAN_ACCESS_TOKEN` | secret | DigitalOcean cells |
 | `RENDER_API_KEY` | secret | Render cells |
 | `VERCEL_TOKEN` | secret | Vercel cells |
+| `RAILWAY_API_TOKEN` | secret | Railway cells |
 | `BENCH_GITHUB_TOKEN` | secret, optional | All cells, exposed to the agent as `GH_TOKEN` |
 | `BENCH_GITHUB_OWNER` | variable, optional | All cells, exposed to the agent as `GH_OWNER` |
 | `VERCEL_TEAM_ID` | variable, optional | Vercel cells, when the token can see several teams |
@@ -79,6 +80,21 @@ claiming the key and adding prepaid credits.
 - A payment method is counted when a deployment uses paid resources.
 - CLI-created projects default to Vercel Authentication on deployment URLs; only the production
   domain is public. The verifier fails deployments whose URL redirects to a login page.
+
+## Railway
+
+- **Prerequisites:** sign up at [railway.com](https://railway.com) and create an **account or
+  workspace** API token (Account Settings → Tokens). A project-scoped token can only deploy to an
+  existing project, so it can't be used here. Set it as `RAILWAY_API_TOKEN`. Sign up with GitHub to
+  avoid the Limited Trial, which restricts outbound network access.
+- `railway up` uploads the local folder and builds it on Railway, so **no Git hosting is needed** —
+  agents don't need the GitHub scratch account.
+- The free trial ($5 of credit for 30 days, no card) covers a benchmark deployment. A payment method
+  is counted as a human step only when a deployment's usage would exceed it.
+- Railway bills actual usage per second, so hosting costs are estimated from an assumed per-service
+  size (see [`bench/clouds/pricing/railway.yaml`](../bench/clouds/pricing/railway.yaml)). Teardown
+  deletes each project the cell created (named with the cell prefix), which removes its services and
+  volumes.
 
 ## GitHub scratch account (optional)
 

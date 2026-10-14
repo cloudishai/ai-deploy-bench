@@ -111,6 +111,7 @@ integrations, and no Git hosting unless the optional GitHub scratch account is p
 | DigitalOcean | sign up, add a payment method, create an API token |
 | Render | sign up, create an API token |
 | Vercel | sign up, create an API token |
+| Railway | sign up, create an account or workspace API token |
 
 Each cell's human steps are collected from evidence by [`bench/human.py`](../bench/human.py):
 
