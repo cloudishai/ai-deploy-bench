@@ -2,7 +2,9 @@ name: Benchmark
 
 # Runs the benchmark matrix: one reusable-workflow call per cloud, each fanning out into one job
 # (and one fresh Claude Code session) per model x app x trial. A final job collects every cell's
-# result, commits it under results/ and refreshes the summary in README.md.
+# result and opens a pull request adding it under results/ and refreshing the summary in README.md,
+# so a person reviews each run before it lands on the default branch (cloud runs can fail for reasons
+# only a person can judge, such as a missing payment method).
 on:
   workflow_dispatch:
     inputs:
@@ -25,8 +27,8 @@ on:
         description: Leave deployments running after verification (you clean them up)
         type: boolean
         default: false
-      commit_results:
-        description: Commit results/ and README.md
+      open_results_pr:
+        description: Open a pull request with results/ and README.md (instead of committing to the branch)
         type: boolean
         default: true
       smoke_test:
@@ -107,7 +109,8 @@ jobs:
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write        # push the results branch
+      pull-requests: write   # open the results PR
     env:
       RUN_NAME: ${{ needs.plan.outputs.run_name }}
     steps:
@@ -136,18 +139,29 @@ jobs:
           --run-name "$RUN_NAME" --date "$DATE" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
           --run-url "$RUN_URL"
       - run: cat "results/runs/$RUN_NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
-      - name: Commit results
-        if: ${{ !inputs.smoke_test && (inputs.commit_results || github.event_name == 'schedule') && steps.aggregate.outputs.commit == 'true' }}
+      # A pull request rather than a direct commit, so a person reviews each run before it lands on the
+      # default branch. Cloud runs can fail for reasons only a person can judge (a missing payment
+      # method, an expired trial), and those shouldn't quietly overwrite the published results.
+      - name: Open results pull request
+        if: ${{ !inputs.smoke_test && (inputs.open_results_pr || github.event_name == 'schedule') && steps.aggregate.outputs.commit == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.ref_name }}
+          BRANCH: results/${{ needs.plan.outputs.run_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
           git add results README.md
           git commit --quiet -m "Benchmark results for run $RUN_NAME" || { echo "nothing to commit"; exit 0; }
-          for attempt in 1 2 3 4 5; do
-            if git pull --quiet --rebase origin "$GITHUB_REF_NAME" && git push --quiet origin "HEAD:$GITHUB_REF_NAME"; then
-              exit 0
-            fi
-            sleep $((attempt * 10))
-          done
-          echo "::error::could not push results; they are still attached to this run as artifacts"
-          exit 1
+          # The run name carries the run number and attempt, so distinct runs get distinct branches.
+          # Force only covers re-pushing the same branch; the first push of a new branch is enough.
+          git push --quiet origin "$BRANCH" || git push --quiet --force origin "$BRANCH"
+          body="Automated results for run **$RUN_NAME** ([workflow run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)).
+
+          Review before merging: a run can include cells that failed for reasons only a person can judge, such as a missing payment method or an expired trial. The run summary is in the job summary and in \`results/runs/$RUN_NAME/summary.md\`."
+          if ! gh pr create --base "$BASE" --head "$BRANCH" \
+                --title "Benchmark results for run $RUN_NAME" --body "$body"; then
+            echo "A pull request for $BRANCH already exists; its branch was updated."
+          fi
+          echo "::notice::Results are in pull request for branch $BRANCH (and attached to this run as artifacts)."
