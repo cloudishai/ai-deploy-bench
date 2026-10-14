@@ -210,6 +210,17 @@ clouds:
       - env: VERCEL_TEAM_ID
         description: ID of the Vercel team to deploy to
         optional: true
+  - id: railway
+    name: Railway
+    url: https://railway.com
+    # Deploys only from a logged-in context: sign up and create an account or workspace API token.
+    # `railway up` uploads a local folder, so no Git hosting is needed. The free trial covers a
+    # deployment; a payment method is only needed once usage exceeds it.
+    prerequisites: [signup, api_token]
+    when_paid: [payment_method]
+    credentials:
+      - env: RAILWAY_API_TOKEN
+        description: Railway account or workspace API token
 
 # `use` says who runs the app: a business (commercial) or a person or club (personal). TASK.md
 # only implies it; the security review checks the hosting plan against it.

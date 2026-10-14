@@ -3,7 +3,8 @@
 A benchmark of what it takes for an AI coding agent to build a web app and deploy it to a cloud.
 Claude Code builds five kinds of app from a written spec and deploys each one to
 [Cloudish](https://cloudish.ai), [DigitalOcean](https://www.digitalocean.com),
-[Render](https://render.com) and [Vercel](https://vercel.com). An independent verifier then tests
+[Railway](https://railway.com), [Render](https://render.com) and [Vercel](https://vercel.com). An
+independent verifier then tests
 the live deployment. Everything runs in GitHub Actions, and results are committed to
 [`results/`](results).
 
@@ -61,7 +62,7 @@ flowchart LR
   plan[Plan the matrix]
   subgraph clouds [One session per cloud]
     direction TB
-    c1[Cloudish] ~~~ c2[DigitalOcean] ~~~ c3[Render] ~~~ c4[Vercel]
+    c1[Cloudish] ~~~ c2[DigitalOcean] ~~~ c3[Railway] ~~~ c4[Render] ~~~ c5[Vercel]
   end
   subgraph cell [Each cell: fresh runner and Claude Code session]
     direction LR

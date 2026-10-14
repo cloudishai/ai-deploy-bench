@@ -1,0 +1,26 @@
+as_of: "2026-10-14"
+sources:
+  - https://railway.com/pricing
+  - https://docs.railway.com/reference/pricing/plans
+note: >
+  Railway bills actual usage, metered per second; there are no fixed instance sizes. Memory stays
+  allocated while a service runs, so it is billed for the whole month, while CPU is billed with
+  activity. Volumes are billed per GB-month and outbound transfer per GB. The API doesn't report a
+  service's CPU/memory, so the benchmark assumes a default size per service (below) for the list
+  price; the usage figures scale CPU by how long the app is awake. Workspace plans (Hobby $5/month
+  incl. $5 usage, Pro $20/month incl. $20) are account-level and not attributed to a project.
+
+compute:
+  cpu_per_vcpu_month: 20      # $0.000463 / vCPU / minute
+  memory_per_gb_month: 10     # $0.000231 / GB / minute
+egress_per_gb: 0.05
+volume_per_gb_month: 0.15
+
+# Assumed per-service allocation when the API doesn't report one.
+default_service:
+  vcpu: 1
+  memory_gb: 0.5
+
+plans:
+  hobby: {monthly: 5, included_usage: 5}
+  pro: {monthly: 20, included_usage: 20}

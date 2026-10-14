@@ -9,7 +9,7 @@ on:
       target:
         description: Cloud to sweep
         type: choice
-        options: [all, digitalocean, render, vercel, github]
+        options: [all, digitalocean, railway, render, vercel, github]
         default: all
       delete:
         description: Delete what is found (otherwise only list it)
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(inputs.target == 'all' && '["digitalocean","render","vercel","github"]' || format('["{0}"]', inputs.target)) }}
+        target: ${{ fromJSON(inputs.target == 'all' && '["digitalocean","railway","render","vercel","github"]' || format('["{0}"]', inputs.target)) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,6 +51,7 @@ jobs:
           RENDER_API_KEY: ${{ matrix.target == 'render' && secrets.RENDER_API_KEY || '' }}
           RENDER_OWNER_ID: ${{ matrix.target == 'render' && vars.RENDER_OWNER_ID || '' }}
           VERCEL_TOKEN: ${{ matrix.target == 'vercel' && secrets.VERCEL_TOKEN || '' }}
+          RAILWAY_API_TOKEN: ${{ matrix.target == 'railway' && secrets.RAILWAY_API_TOKEN || '' }}
           VERCEL_TEAM_ID: ${{ matrix.target == 'vercel' && vars.VERCEL_TEAM_ID || '' }}
           GH_TOKEN: ${{ matrix.target == 'github' && secrets.BENCH_GITHUB_TOKEN || '' }}
           GH_OWNER: ${{ vars.BENCH_GITHUB_OWNER }}

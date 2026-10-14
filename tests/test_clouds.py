@@ -5,6 +5,7 @@ import json
 import httpx
 import pytest
 
+from bench import config
 from bench.clouds import ADAPTERS, base, vercel
 from bench.clouds.base import Cloud, Resource
 from bench.clouds.github import GitHub
@@ -241,6 +242,44 @@ def test_digitalocean_prices_app_components(fake):
     assert resources["adb-k3x9f-crud"]["url"].endswith(".ondigitalocean.app")
     assert resources["adb-k3x9f-crud-site"]["monthly_usd"] == 0
     assert "default" not in resources
+
+
+def test_railway_prices_projects_and_deletes(fake):
+    deleted = []
+
+    def route(request):
+        body = json.loads(request.content)
+        if "projectDelete" in body["query"]:
+            deleted.append(body["variables"]["id"])
+            return {"data": {"projectDelete": True}}
+        return {"data": {"me": {"projects": {"edges": [
+            {"node": {"id": "p1", "name": "adb-k3x9f-crud", "createdAt": "2026-10-12T10:00:00Z",
+                      "services": {"edges": [{"node": {"id": "s1", "name": "web"}},
+                                             {"node": {"id": "s2", "name": "db"}}]},
+                      "volumes": {"edges": [{"node": {"id": "v1", "name": "data", "currentSizeMB": 1024}}]}}},
+            {"node": {"id": "p2", "name": "unrelated", "createdAt": "2026-10-12T10:00:00Z",
+                      "services": {"edges": []}, "volumes": {"edges": []}}},
+        ]}}}}
+
+    fake({("POST", "backboard.railway.com/graphql/v2"): route})
+    cloud = ADAPTERS["railway"]({"RAILWAY_API_TOKEN": "tok"})
+    usage = config.load().hosting_usage[0]
+    result = base.inventory(cloud, PREFIX, [], None, usages=[usage], use="commercial")
+    project = by_name(result)["adb-k3x9f-crud"]
+    # 2 services x (1 vCPU $20 + 0.5 GB $10/GB) + 1 GB volume at $0.15/GB.
+    assert project["monthly_usd"] == pytest.approx(50.15, abs=0.01)
+    assert set(by_name(result)) == {"adb-k3x9f-crud"}  # the unrelated project is left alone
+    assert result["usage"][usage.id]["usd"] is not None
+    base.teardown(cloud, result["resources"], retry_delay=0)
+    assert deleted == ["p1"]
+
+
+def test_railway_surfaces_api_errors(fake):
+    fake({("POST", "backboard.railway.com/graphql/v2"):
+          lambda request: {"errors": [{"message": "Not Authorized"}]}})
+    result = base.inventory(ADAPTERS["railway"]({"RAILWAY_API_TOKEN": "bad"}), PREFIX, [], None)
+    assert result["resources"] == []
+    assert any("Not Authorized" in e for e in result["errors"])
 
 
 def test_unmatched_resources_created_during_the_cell_are_reported_not_deleted(fake):

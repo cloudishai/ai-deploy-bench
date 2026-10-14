@@ -38,6 +38,8 @@ MODEL_SECRETS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 CONSOLE_HOSTS = {
     "github.com", "vercel.com", "api.vercel.com", "render.com", "dashboard.render.com", "api.render.com",
     "www.digitalocean.com", "cloud.digitalocean.com", "docs.digitalocean.com", "api.digitalocean.com",
+    # Not *.up.railway.app: that's where Railway serves the deployed app.
+    "railway.com", "www.railway.com", "backboard.railway.com",
     "cloudish.ai", "www.cloudish.ai", "do.cloudish.ai", "localhost", "127.0.0.1",
 }
 

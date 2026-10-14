@@ -11,7 +11,7 @@ set -euo pipefail
 repo="${1:-$(gh repo view --json nameWithOwner -q .nameWithOwner)}"
 env_file="${ENV_FILE:-.env}"
 # No Cloudish key: agents mint their own, and a pre-made one would hide that from the benchmark.
-secrets="ANTHROPIC_API_KEY DIGITALOCEAN_ACCESS_TOKEN RENDER_API_KEY VERCEL_TOKEN BENCH_GITHUB_TOKEN"
+secrets="ANTHROPIC_API_KEY DIGITALOCEAN_ACCESS_TOKEN RENDER_API_KEY VERCEL_TOKEN RAILWAY_API_TOKEN BENCH_GITHUB_TOKEN"
 variables="BENCH_GITHUB_OWNER VERCEL_TEAM_ID RENDER_OWNER_ID"
 
 if [ ! -f "$env_file" ]; then
