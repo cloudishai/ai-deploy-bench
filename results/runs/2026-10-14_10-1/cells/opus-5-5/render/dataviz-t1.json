@@ -1,0 +1,598 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-nkt5l-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-nkt5l-dataviz-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 81.1,
+      "tokens": 428960,
+      "cost_usd": 0.340544
+    },
+    "status": "completed",
+    "score": 76.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no credentials. The agent only used RENDER_API_KEY from the environment (masked when listed with `sed 's/=.*/=<set>/'`), and no secret appears in the source, the uploaded bundle, the logs or the deployed files."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "There are no npm dependencies and the uploaded tarball came straight from the built source. But production runs a floating `node:22-alpine` tag with no digest, the code is delivered as a base64 tarball in a Render secret file and unpacked at runtime instead of coming from a repository or a built image, and render.yaml doesn't describe what is actually deployed."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "A business's dashboard runs on Render's Free instance type. As far as I know Render's terms don't forbid commercial use there, but Render positions Free for hobby and testing use: it spins down after about 15 minutes idle (30\u201360 s cold starts), has a monthly hours cap and no SLA, which doesn't suit a company's working app."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There is a single public web service and no data stores or extra resources. However, the container runs the stock node:22-alpine image with its default root user, because the start command never switches to the image's `node` user."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP gets a 301 redirect to HTTPS. The app sets no HSTS, X-Content-Type-Options, frame-protection or CSP headers, though its own response code could easily add them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Requests for .env, .git/config, server.js, package.json, the data CSV, the secret-file path and traversal attempts all returned 404 or a Cloudflare 400. The server serves only an allowlist of public assets and its JSON API, with generic JSON errors and no stack traces."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Filters are validated: dates must be YYYY-MM-DD, repeated parameters are rejected, page size is capped at 500, and only GET/HEAD are allowed. The frontend renders data with textContent, so it is safe from XSS. The public endpoints have no rate limiting, a minor gap for a read-only dataset."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial dashboard hosted on Render Free plan that sleeps when idle",
+        "evidence": "process/context.json: \"use\": \"commercial\"; process/resources.json: \"plan\": \"free\"; process/deployment.json notes: \"Free instances spin down after ~15 minutes idle, so the first request after that can take 30-60 seconds (cold start).\"",
+        "recommendation": "Use a paid instance type (e.g. Starter) for a business's app, so it stays up without cold starts or monthly hours limits."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "App code shipped as a base64 tarball in a secret file and unpacked at runtime",
+        "evidence": "process/deploy.md line 87: service created with image docker.io/library/node:22-alpine and secretFiles app.b64 (tar czf of package.json server.js lib public data); app/scripts/render-start.sh: `base64 -d /etc/secrets/app.b64 | tar xz -C /tmp/app; exec node server.js`; autoDeploy \"no\", no repo connected.",
+        "recommendation": "Push the code to a repository the owner controls and deploy from it (render.yaml Blueprint or Dockerfile build), so each deploy maps to a reviewable commit and an immutable artifact."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image referenced by floating tag, not digest",
+        "evidence": "process/resources.json: \"source\": \"docker.io/library/node:22-alpine\" (no @sha256 digest)",
+        "recommendation": "Pin the image by digest (node:22-alpine@sha256:...) and update it deliberately."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "render.yaml does not match the live deployment",
+        "evidence": "app/render.yaml declares `runtime: node`, `name: sales-dashboard`, `startCommand: npm start`, while the live service is image runtime `adb-nkt5l-dataviz-web` with dockerCommand `sh /etc/secrets/start.sh` (process/deploy.md line 184).",
+        "recommendation": "Keep one source of truth for the infrastructure config and deploy from it."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "Stock node:22-alpine image (default user root) started with dockerCommand `sh /etc/secrets/start.sh` (process/deploy.md line 176), with no user switch.",
+        "recommendation": "Build a Dockerfile with `USER node`, or run the process as the image's unprivileged node user."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers set",
+        "evidence": "curl -sI https://adb-nkt5l-dataviz-web.onrender.com/ returns only content-type, cache-control, rndr-id, server, vary, cf-* headers, with no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy; app/server.js writeHead calls set only Content-Type and Cache-Control.",
+        "recommendation": "Add HSTS, X-Content-Type-Options: nosniff, a CSP with frame-ancestors 'none' (or X-Frame-Options: DENY) in the server's response headers."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public API endpoints",
+        "evidence": "app/server.js handle(): /api/summary and /api/orders run a full filter (and sort for orders) over the dataset on every request, with no throttling.",
+        "recommendation": "Add simple per-IP rate limiting or response caching. The dataset is small and read-only, so the risk is low."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "Health endpoint discloses row count",
+        "evidence": "GET /healthz -> 200 {\"status\":\"ok\",\"rows\":2400}",
+        "recommendation": "Acceptable. Optionally return only {\"status\":\"ok\"}."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Render API key used only from environment",
+        "evidence": "process/deploy.md line 4: `env | grep -iE \"github|gh_|render\" | sed 's/=.*/=<set>/'`; all API calls use `Bearer $RENDER_API_KEY`, and the key's value never appears in commands, files or outputs.",
+        "recommendation": "None needed."
+      }
+    ],
+    "summary": "The zero-dependency Node dashboard is well built: inputs are validated, the frontend avoids XSS, no secrets are involved or leaked, it's served only over HTTPS, and nothing beyond the app is exposed. The weaker parts are the deployment: a business's app runs on Render's Free plan, which sleeps when idle. The code ships as a base64 tarball in a secret file on an unpinned, root-running node:22-alpine image, with no source-control provenance. Security headers are also missing."
+  },
+  "timing": {
+    "build_s": 154.4,
+    "deploy_s": 155.6,
+    "agent_s": 310.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 5.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3832,
+      "output": 14857,
+      "cache_read": 509363,
+      "cache_write": 30939,
+      "total": 558991
+    },
+    "deploy": {
+      "input": 20637,
+      "output": 10169,
+      "cache_read": 752591,
+      "cache_write": 15763,
+      "total": 799160
+    },
+    "total": {
+      "input": 24469,
+      "output": 25026,
+      "cache_read": 1261954,
+      "cache_write": 46702,
+      "total": 1358151
+    }
+  },
+  "cost": {
+    "agent_usd": 0.998681,
+    "agent_build_usd": 0.569036,
+    "agent_deploy_usd": 0.429645,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 16,
+      "deploy": 13
+    },
+    "tool_calls": {
+      "Bash": 21,
+      "Read": 3,
+      "Skill": 1,
+      "WebSearch": 1
+    },
+    "shell_commands": {
+      "build": 11,
+      "deploy": 10
+    },
+    "tool_errors": 1,
+    "web_searches": 1,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T15:09:21+00:00",
+      "wall_time_s": 154.4,
+      "api_time_s": 144.0,
+      "turns": 16,
+      "tokens": {
+        "input": 3832,
+        "output": 14857,
+        "cache_read": 509363,
+        "cache_write": 30939,
+        "total": 558991
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.569036,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3832,
+          "output": 14857,
+          "cache_read": 509363,
+          "cache_write": 30939,
+          "cost_usd": 0.5690356,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11,
+        "Skill": 1,
+        "Read": 2
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T15:11:56+00:00",
+      "wall_time_s": 155.6,
+      "api_time_s": 100.3,
+      "turns": 13,
+      "tokens": {
+        "input": 20637,
+        "output": 10169,
+        "cache_read": 752591,
+        "cache_write": 15763,
+        "total": 799160
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.429645,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 665,
+          "output": 9260,
+          "cache_read": 752591,
+          "cache_write": 15763,
+          "cost_usd": 0.41719320000000004,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 19972,
+          "output": 909,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0124517,
+          "web_searches": 1
+        }
+      },
+      "tool_calls": {
+        "Bash": 10,
+        "WebSearch": 1,
+        "Read": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the sales dashboard and tested it locally; it works. The server I started is stopped now.\n\n**Stack:** Node.js with Express. The app loads `data/sales.csv` into memory when it starts, and the page is plain HTML, CSS and JavaScript with hand-drawn SVG charts, so there's no build step. That suits a Render Node web service (build with `npm ci`, start with `npm start`), and `render.yaml` already describes it. The server listens on `$PORT` (default 3000).\n\n**What it does:**\n- **`GET /`**: the dashboard, with:\n  - filters for region, category and a from/to date range;\n  - three tiles for total revenue, orders and units sold;\n  - a bar chart of revenue by month and a bar chart of revenue by category, both with hover tooltips;\n  - an orders table, 50 per page, newest first.\n\n  Changing a filter updates the tiles, charts and table without reloading the page.\n- **`GET /api/summary`**: returns the response format in `TASK.md`. Filters are combined with AND and both dates are inclusive. Revenue is summed in whole cents and then rounded to 2 decimals, so the totals don't pick up floating-point errors. When nothing matches it returns zeros and empty arrays.\n- **Extra endpoints I added:**\n  - `/api/orders`, which feeds the table;\n  - `/api/options`, which lists the regions, categories and date bounds;\n  - `/healthz`, which Render uses as its health check.\n\n**One choice to know about:** a badly formatted date such as `start=2025-13` gets a `400` error. The spec doesn't say what should happen in that case.\n\n**Checks:** 5 automated tests pass (`npm test`). They cover the unfiltered totals against the CSV, combined filters with inclusive dates, the no-match response, a bad date, and paging through orders. I also checked the API with curl: all 2,400 orders total $1,839,455.69 in revenue and 15,179 units. Screenshots of the page, unfiltered and with filters applied, show it rendering correctly.\n\n**To run it:**\n```bash\nnpm install\nnpm start   # http://localhost:3000\nnpm test\n```",
+    "deploy": "The dashboard is live at **https://adb-nkt5l-dataviz-web.onrender.com**, and every requirement in `TASK.md` works through that URL. It runs as one free Render web service (`adb-nkt5l-dataviz-web`, id `srv-db7pnrg473hc73e7na20`) and costs $0 a month.\n\n**How it's deployed:** Render normally builds from a Git repository, but there were no GitHub credentials here, and Render has no way to upload local code directly. So the service runs the public `node:22-alpine` image from Docker Hub. That image is only downloaded; nothing of ours is stored outside Render. The app itself is uploaded to Render as a \"secret file\" (a small encoded archive). On startup, `scripts/render-start.sh` unpacks it and runs `node server.js`.\n\nTo fit the app into that file, I removed the Express dependency and rewrote the server on Node's built-in `http` module. The 5 tests still pass.\n\n**Tested through the public URL:**\n- **Dashboard:** `GET /` returns 200, and the page's script and stylesheet load. A headless-browser screenshot with the category filter set shows the KPI tiles, both charts and the orders table updated to match.\n- **Summary API:**\n  - Unfiltered, it returns 2,400 orders, 15,179 units and $1,839,455.69 in revenue, the same as locally.\n  - Region, category and dates combine correctly, and a single-day range includes that day.\n  - A filter that matches nothing returns zeros and empty arrays.\n- **Redeploy:** `scripts/deploy-render.sh` re-uploads the app and triggers a new deploy. I ran it once and the new deploy went live.\n\n**Limitations:**\n- **Updates are manual.** Because the service isn't connected to a repository, it won't redeploy on its own; run `RENDER_API_KEY=\u2026 scripts/deploy-render.sh` after changes. Once the code is in a Git repo, it can be deployed from `render.yaml` instead and update automatically.\n- **Slow first request:** the free plan puts the service to sleep after about 15 minutes without traffic, so the next request can take 30\u201360 seconds.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty. I didn't create any credentials, so there's no `.env` file.\n\nSources:\n- [Deploying on Render \u2013 Render Docs](https://render.com/docs/deploys)\n- [Deploy without GitHub/GitLab | Feature Requests | Render](https://feedback.render.com/features/p/deploy-without-githubgitlab)"
+  },
+  "deployment_manifest": {
+    "url": "https://adb-nkt5l-dataviz-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (prebuilt image runtime, node:22-alpine)",
+        "name": "adb-nkt5l-dataviz-web",
+        "id": "srv-db7pnrg473hc73e7na20",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "No Git provider credentials were available, so the service isn't connected to a repository. It runs the public Docker Hub image node:22-alpine, which is only pulled, never pushed to. The app (zero-dependency Node.js; the CSV is held in memory) is supplied as a Render secret file (a base64 tarball). The start command sh /etc/secrets/start.sh unpacks it and runs node server.js. Redeploy with scripts/deploy-render.sh, or connect a Git repo and use render.yaml for auto-deploys. Free instances spin down after ~15 minutes idle, so the first request after that can take 30-60 seconds (cold start). No credentials were created, so no .env file was needed."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 132
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 99,
+      "p90_ms": 107
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 117
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 117
+      },
+      {
+        "id": "dashboard",
+        "description": "GET / serves the dashboard as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 80
+      },
+      {
+        "id": "summary_all",
+        "description": "GET /api/summary (no filters) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "summary_region",
+        "description": "GET /api/summary (region=West) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 103
+      },
+      {
+        "id": "summary_category",
+        "description": "GET /api/summary (category=Electronics) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 105
+      },
+      {
+        "id": "summary_combined",
+        "description": "GET /api/summary (region=East, category=Furniture, start=2025-03-01, end=2025-06-30) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 108
+      },
+      {
+        "id": "summary_empty",
+        "description": "GET /api/summary (region=Atlantis) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 102
+      },
+      {
+        "id": "browser_chart",
+        "description": "The dashboard renders a chart (SVG or canvas) in a browser",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1048
+      },
+      {
+        "id": "browser_two_charts",
+        "description": "The dashboard shows at least two charts",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1014
+      },
+      {
+        "id": "browser_filters",
+        "description": "The dashboard has filter controls",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1011
+      }
+    ],
+    "browser": true,
+    "duration_s": 5.5
+  },
+  "screenshots": [
+    {
+      "name": "dashboard",
+      "caption": "The dashboard",
+      "url": "https://adb-nkt5l-dataviz-web.onrender.com/",
+      "file": "dataviz-t1/dashboard.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7pnrg473hc73e7na20",
+      "name": "adb-nkt5l-dataviz-web",
+      "plan": "free",
+      "url": "https://adb-nkt5l-dataviz-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:12:46.293062Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:22-alpine"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 366,
+      "CSS": 66,
+      "HTML": 61,
+      "JSON": 22,
+      "Shell": 22,
+      "Markdown": 16,
+      "YAML": 11
+    },
+    "code_lines": 515,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "lib",
+      "public",
+      "scripts",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:22-alpine)"
+    ]
+  }
+}

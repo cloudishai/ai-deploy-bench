@@ -1,0 +1,600 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-cg693-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-cg693-realtime-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 13,
+  "checks_total": 13,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 77.1,
+      "tokens": 410588,
+      "cost_usd": 0.35335
+    },
+    "status": "completed",
+    "score": 76.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets. The Render API key was only used as $RENDER_API_KEY in curl headers and masked when environment variables were listed. No credentials appear in source, deploy scripts or the shipped tarball."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "Production runs a base64 tarball built on the agent's machine, stored in an env var and run via `node -e eval(process.env.BOOT)` on the floating `node:24-alpine` tag. No owner-controlled repo, no image digest, and the committed render.yaml doesn't describe what actually runs. Dependencies were at least installed from a lockfile with npm ci."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 8,
+        "rationale": "This is a personal hobby-club app, and Render's free web services allow hobby and non-commercial use. The service sleeps after about 15 minutes idle, which causes cold starts and dropped sockets. The agent documented this and noted the Starter upgrade."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There is one public web service and no data stores or extra resources. But the stock node image runs the app as root (no USER / non-root uid), and the boot script writes to /app and /tmp as root."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS has a valid Google Trust Services certificate, HTTP gets a 301 to HTTPS, and the socket runs over wss. The app sets none of HSTS, X-Content-Type-Options, frame protection or CSP, though it easily could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes for /.env, /.git/config, /server.js, /package.json, /public/ and path traversal all returned a generic JSON 404. Errors are generic with no stack traces, and only the app routes plus a harmless /healthz are exposed."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Input validation is solid: room regex, user and text lengths, 16 KB body and WS payload caps, and 400s for bad JSON. The UI renders with textContent, so there's no XSS. There is no rate limiting, no WebSocket Origin check, and rooms are created without bound and never evicted."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "App delivered as base64 tarball in env var, executed via eval",
+        "evidence": "process/deploy.md: service created with envVars APP_B64=<tarball> and dockerCommand 'node -e eval(process.env.BOOT)'; app/deploy/boot.js unpacks the tarball to /app and runs server.js; app/deploy/redeploy.sh builds the tarball from the local working tree",
+        "recommendation": "Deploy from a git repo the owner controls (Render native Node runtime or a Dockerfile build), or push a built image to an owner-controlled registry, so production can be traced to a commit."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image referenced by mutable tag, not digest",
+        "evidence": "process/resources.json source 'docker.io/library/node:24-alpine'; process/deploy.md create.json image.imagePath 'docker.io/library/node:24-alpine'",
+        "recommendation": "Pin the base image by digest (node:24-alpine@sha256:...) and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Committed render.yaml doesn't match the live deployment",
+        "evidence": "app/render.yaml declares service 'chat-rooms', runtime node, buildCommand 'npm ci'. The live service is 'adb-cg693-realtime-web', an image-backed runtime with an eval bootstrap",
+        "recommendation": "Keep a single source of truth for the deployment config (Blueprint or deploy script) that matches production."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "The stock docker.io/library/node:24-alpine image runs as root by default; app/deploy/boot.js runs as that user and writes to /app and /tmp, and no USER or non-root setting was configured",
+        "recommendation": "Use a Dockerfile with 'USER node' (and files owned by node), or start the process as the built-in node user."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "GET https://adb-cg693-realtime-web.onrender.com/?room=general -> 200 with only content-type, cache-control and Render/Cloudflare headers; no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy (server.js:112)",
+        "recommendation": "Set HSTS, X-Content-Type-Options: nosniff, a CSP with frame-ancestors 'none' and X-Frame-Options: DENY in server.js responses."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting and unbounded room creation",
+        "evidence": "server.js:16-23 getRoom creates a room for any valid name on WS connect or SSE subscribe, and rooms are never removed. POST /api/rooms/<room>/messages and WS messages have no per-client throttle (server.js:130-141, 203-217)",
+        "recommendation": "Add per-IP/per-connection rate limits, cap the number of rooms/connections, and evict empty rooms."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "WebSocket upgrade does not check Origin",
+        "evidence": "Upgrade request to /ws?room=reviewtest&user=probe with 'Origin: https://evil.example' -> 101 Switching Protocols (server.js:178-192 has no Origin check)",
+        "recommendation": "Reject upgrades whose Origin isn't the app's own host."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Free web service sleeps when idle",
+        "evidence": "process/resources.json plan 'free'; deployment.json notes the service spins down after about 15 min idle with a 30-60 s cold start",
+        "recommendation": "Acceptable for a personal club app. Move to the Starter plan if the chat must stay up all the time."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unauthenticated identity (anyone can use any display name)",
+        "evidence": "server.js:182 accepts any user query param; server.js:138 accepts any body.user",
+        "recommendation": "Fine for the spec's display-name model. Add light auth (e.g. a club join code) if impersonation becomes a concern."
+      }
+    ],
+    "summary": "The Render chat app handles secrets cleanly, exposes nothing beyond its routes, validates input well, and serves HTTPS with a redirect from HTTP. Its main weakness is provenance: the code runs as a locally built base64 tarball stored in an env var, executed with eval on a floating, unpinned node:24-alpine tag, as root, with no owner-controlled repo behind it. Smaller issues are missing security headers, no rate limiting, no WebSocket Origin check and unbounded room creation; the free plan suits this personal club app."
+  },
+  "timing": {
+    "build_s": 101.6,
+    "deploy_s": 134.5,
+    "agent_s": 236.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 15.4
+  },
+  "tokens": {
+    "build": {
+      "input": 3632,
+      "output": 11147,
+      "cache_read": 308481,
+      "cache_write": 18560,
+      "total": 341820
+    },
+    "deploy": {
+      "input": 574,
+      "output": 7844,
+      "cache_read": 476097,
+      "cache_write": 11379,
+      "total": 495894
+    },
+    "total": {
+      "input": 4206,
+      "output": 18991,
+      "cache_read": 784578,
+      "cache_write": 29939,
+      "total": 837714
+    }
+  },
+  "cost": {
+    "agent_usd": 0.703254,
+    "agent_build_usd": 0.391964,
+    "agent_deploy_usd": 0.31129,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 9,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 17
+    },
+    "shell_commands": {
+      "build": 8,
+      "deploy": 9
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T15:16:53+00:00",
+      "wall_time_s": 101.6,
+      "api_time_s": 97.3,
+      "turns": 9,
+      "tokens": {
+        "input": 3632,
+        "output": 11147,
+        "cache_read": 308481,
+        "cache_write": 18560,
+        "total": 341820
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.391964,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3632,
+          "output": 11147,
+          "cache_read": 308481,
+          "cache_write": 18560,
+          "cost_usd": 0.3919642000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T15:18:35+00:00",
+      "wall_time_s": 134.5,
+      "api_time_s": 86.5,
+      "turns": 10,
+      "tokens": {
+        "input": 574,
+        "output": 7844,
+        "cache_read": 476097,
+        "cache_write": 11379,
+        "total": 495894
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.31129,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 574,
+          "output": 7844,
+          "cache_read": 476097,
+          "cache_write": 11379,
+          "cost_usd": 0.31129039999999997,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The chat app is built and works locally, and the server I started for testing is stopped. All 4 automated tests pass, and I also checked the UI, posting, history and a WebSocket round-trip with curl and a small client script against a running server.\n\n**Stack:** Node.js 20+ using the built-in `http` module and the `ws` library for WebSockets. There's no build step and no database. The UI is a single page, `public/index.html`, in plain HTML/JS.\n\n**What it does:**\n- **Web UI (`GET /`):** you pick a display name and a room, either in the form or with `/?room=general`. It loads recent history and connects over WebSocket, using `wss://` automatically on https. It also shows who's online and reconnects on its own if the connection drops.\n- **WebSocket (`GET /ws?room=&user=`):** on connect the server sends the room's history and the list of online users. Sending `{\"type\":\"message\",\"text\":...}` broadcasts the message in the required shape (`id`, `room`, `user`, `text`, `ts`) to everyone in that room, including the sender. Invalid messages get a `{\"type\":\"error\",...}` reply.\n- **Server-Sent Events:** both endpoints from the spec work too. `GET /api/rooms/<room>/events` streams messages, and `POST /api/rooms/<room>/messages` returns `201`. Messages from either side reach both WebSocket and SSE clients.\n- **History (`GET /api/rooms/<room>/messages`):** returns up to the last 50 messages, oldest first.\n- **Validation:** text must be 1\u20131000 characters and not just spaces; names are 1\u201350 characters. Room names are limited to 1\u201364 letters, digits, `_`, `.` or `-`, which is my choice rather than part of the spec. Bad requests over HTTP get `400`.\n- `GET /healthz` is a health check for Render.\n\n**Tests (`test/server.test.js`):** they cover the WebSocket broadcast and room isolation, 4 clients sending 20 messages at once, invalid input, the 50-message history limit, the SSE stream and `POST` returning `201`.\n\n**One limitation:** messages are kept in memory only. They're lost when the server restarts and aren't shared between copies of it, so `render.yaml` sets it to run as a single instance. If history needs to survive restarts, Postgres or Redis would be the next step.\n\n**To run it:**\n```sh\nnpm install\nnpm start        # listens on $PORT, default 3000 \u2192 http://localhost:3000/?room=general\nnpm test\n```\n\n**For deploying:** `render.yaml` defines a Node web service on the free plan: `npm ci` to build, `npm start` to run, `/healthz` as the health check. I also set up a local git repo with one commit; nothing has been pushed.",
+    "deploy": "The chat app is live on Render's free plan at **https://adb-cg693-realtime-web.onrender.com**, and I tested every requirement through that public URL.\n\n**How it's deployed:** there was no GitHub account available, so I couldn't deploy from a git repo. Instead, the service (`srv-db7pqp0u01pc739ltang`) runs Render's free tier with the public `node:24-alpine` image. The app code is packed into an environment variable and unpacked when the service starts, with start command `node -e eval(process.env.BOOT)`. The first deploy failed because Render didn't accept the quoted shell start command I gave it; the second worked. To ship code changes, run `deploy/redeploy.sh`. Cost is $0/month, and nothing needed a person, so `human_steps` is empty.\n\n**Results through the public URL:**\n- The UI loads.\n- 15 messages sent at the same time by 3 WebSocket clients over `wss://` reached all 3 clients, including each sender, within about 160 ms.\n- A client in another room got none of them.\n- Invalid WebSocket messages got a `{\"type\":\"error\"}` reply.\n- Over HTTP, empty text, 1001-character text and missing text all got `400`; a 1000-character message got `201`.\n- A message sent with `POST` reached both the Server-Sent Events stream and the WebSocket clients.\n- History returns the latest 50 messages, oldest first.\n\n**Limitations (also in `deployment.json` notes):**\n- **Lost history:** messages are kept in memory only, so history disappears whenever the service restarts or is redeployed.\n- **Single instance:** it must run as one copy, because messages aren't shared between copies.\n- **Free-plan sleep:** the service sleeps after about 15 minutes with no traffic. The next visitor waits roughly 30\u201360 seconds, and open connections drop when it goes to sleep (the UI reconnects on its own). Render's Starter plan, about $7/month, keeps it always on.\n\n`deployment.json` lists the service with `realtime` set to `{\"transport\": \"websocket\", \"url\": \"wss://adb-cg693-realtime-web.onrender.com/ws\"}`. I didn't create any new credentials, so there's no `.env`. The deploy files and `deployment.json` are committed to the local git repo."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-cg693-realtime-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (image-backed, docker.io/library/node:24-alpine)",
+        "name": "adb-cg693-realtime-web",
+        "id": "srv-db7pqp0u01pc739ltang",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "realtime": {
+      "transport": "websocket",
+      "url": "wss://adb-cg693-realtime-web.onrender.com/ws"
+    },
+    "notes": "No GitHub/GitLab account was connected and no registry credentials were available, so the service runs the public node:24-alpine image on Render; the app (server.js, UI, node_modules) is shipped as a base64 tarball in the APP_B64 env var and unpacked at boot by a small BOOT script (start command: node -e eval(process.env.BOOT)). Redeploy with deploy/redeploy.sh. SSE endpoints (/api/rooms/<room>/events + POST) also work. Limitations: message history is in memory (last 50 per room) and is lost on restart/redeploy; single instance only. Free plan spins down after ~15 min idle, so the first request after idle takes ~30-60s (cold start) and open WebSockets are dropped on spin-down (the UI auto-reconnects). For always-on, switch to the Starter plan (~$7/mo). Verified through the public URL: UI 200, wss broadcast to all room clients incl. sender (15 concurrent messages to 3 clients in ~160 ms), room isolation, invalid WS messages get type=error, HTTP 400 for empty/1001-char/missing text, 201 for 1000 chars, SSE delivery, history capped at 50 oldest-first."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 119
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 90,
+      "p90_ms": 476,
+      "delivery_latency_ms": 77
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 90
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 101
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 94
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over websocket",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1905
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 101
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2108
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 148
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 730
+      }
+    ],
+    "browser": true,
+    "duration_s": 15.4
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The room the verifier's clients chatted in, with its history",
+      "url": "https://adb-cg693-realtime-web.onrender.com/?room=bench-de792e22",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7pqp0u01pc739ltang",
+      "name": "adb-cg693-realtime-web",
+      "plan": "free",
+      "url": "https://adb-cg693-realtime-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:19:00.782007Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:24-alpine"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 10,
+    "lines": {
+      "JavaScript": 331,
+      "HTML": 129,
+      "JSON": 27,
+      "Markdown": 14,
+      "Shell": 12,
+      "YAML": 9
+    },
+    "code_lines": 472,
+    "dependencies": {
+      "npm": 1,
+      "python": 0
+    },
+    "frameworks": [
+      "ws"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": true,
+    "packages": {
+      "npm": [
+        "ws"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "deploy",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Libraries": [
+      "ws"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:24-alpine)"
+    ]
+  }
+}

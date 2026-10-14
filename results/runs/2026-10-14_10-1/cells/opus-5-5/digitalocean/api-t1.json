@@ -1,0 +1,689 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-eeen0-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-eeen0-api-x7cct.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 61.9,
+      "tokens": 290556,
+      "cost_usd": 0.338351
+    },
+    "status": "completed",
+    "score": 81.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS is stored as an encrypted App Platform SECRET and DB credentials come from bindable variables, so nothing is baked into the image or source. The only small issue is that the deploy step wrote the real keys into a temporary spec file in /tmp (deleted right after) and left a 30-day registry login on the runner."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "The image was built from the agent's local workspace and pushed to a registry the account owns, with npm ci against a lockfile. But there is no git source, the base image node:22-alpine and the deployed tag v1 are mutable rather than pinned by digest, and doctl was downloaded without verifying its checksum."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 9,
+        "rationale": "This is a personal project on paid App Platform Basic plus a dev Postgres database, which fits DigitalOcean's standard terms; nothing sleeps or expires. The dev database has no backups and DigitalOcean doesn't recommend it for production, which is acceptable here. The account plan couldn't be read, so this is judged from standard terms."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 8,
+        "rationale": "The container runs as the non-root node user, there is one public service, and DB TLS is verified against the CA. The App Platform dev database can't be restricted to trusted sources, so it is reachable from the internet with credentials (as I understand the platform)."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP gets a 301 redirect to HTTPS. Neither the app nor the spec sets HSTS, X-Content-Type-Options, frame protection or CSP."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Probes for .env, .git, source files, admin and debug paths all return a JSON 404. Errors don't include stack traces, and only the endpoints the spec requires are public. The platform adds an x-do-app-origin header."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 9,
+        "rationale": "Queries are parameterized, each note is scoped to a SHA-256 hash of its owner's key, input types and lengths are checked, docs output is HTML-escaped, and the per-key rate limit works. Minor gaps: key lookup isn't constant-time, and failed-auth and public endpoints aren't throttled by the app."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Image built from local workspace with mutable tags, no source-controlled pipeline",
+        "evidence": "process/deploy.md: `docker build -q -t registry.digitalocean.com/adb-eeen0-api/adb-eeen0-api-web:v1 . && docker push ...`; resources.json image tag \"v1\" (no digest); no github/git source in the spec",
+        "recommendation": "Deploy from a git repository the owner controls (App Platform github source or CI), and reference the image by digest or use immutable, unique tags."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned by digest",
+        "evidence": "app/Dockerfile:1 `FROM node:22-alpine`",
+        "recommendation": "Pin the base image, e.g. `FROM node:22-alpine@sha256:<digest>`, and update it deliberately."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deploy tool downloaded without checksum verification",
+        "evidence": "process/deploy.md: `curl -sL https://github.com/digitalocean/doctl/releases/download/v1.146.0/doctl-1.146.0-linux-amd64.tar.gz | tar xz && sudo mv doctl /usr/local/bin/`",
+        "recommendation": "Check the release checksum file (or use a pinned, verified action or package) before installing."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Real API keys written to a temporary spec file; long-lived registry login",
+        "evidence": "process/deploy.md: heredoc writes `value: \"$BENCH_API_KEYS\"` into /tmp/adb-spec.yaml (removed after `doctl apps create`); `doctl registry login` -> 'Login valid for 30 days'",
+        "recommendation": "Set the secret after creation via a placeholder plus `doctl apps update` from a protected file, or use a short-lived spec with restrictive permissions, and use `--expiry-seconds` for the registry login."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "platform",
+        "title": "Dev database can't be locked to trusted sources",
+        "evidence": "resources.json: databases [{name: adb-eeen0-api-db, engine: PG}] with no production cluster; App Platform dev databases don't support trusted sources/VPC restriction",
+        "recommendation": "If the data matters, move to a managed PostgreSQL cluster with trusted sources limited to the app (plus backups)."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "curl -sD - https://adb-eeen0-api-x7cct.ondigitalocean.app/health and /docs: no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy",
+        "recommendation": "Add helmet (or set the headers manually) in src/app.js, at least HSTS, nosniff, frame-ancestors 'none' and a restrictive CSP for /docs."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Dev database has no backups or standby",
+        "evidence": "process/deployment.json notes: 'It has no backups or standby node'",
+        "recommendation": "Accept for a personal project, or upgrade to a managed cluster with daily backups if the notes need protecting."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Non-constant-time key check; failed auth not throttled",
+        "evidence": "app/src/app.js: `if (!key || !keys.has(key)) return next(new HttpError(401, ...))` runs before the limiter, which only counts valid keys",
+        "recommendation": "Compare hashed keys and add a lightweight per-IP limit on 401 responses and the public endpoints."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "Platform adds an origin identifier header",
+        "evidence": "GET /health response header `x-do-app-origin: a729f523-3b2d-41bb-aaf6-a3724a89d61c`",
+        "recommendation": "No action needed; this is App Platform's default behavior."
+      }
+    ],
+    "summary": "The Notes API is well built: secrets come from App Platform's encrypted secret mechanism, the container runs as non-root, the database connection uses verified TLS, queries are parameterized, ownership is enforced, and the live site exposes nothing beyond the API, with HTTPS enforced. The main weakness is provenance: the image was built locally and pushed under the mutable tag v1, from an unpinned base image, with no source-controlled pipeline. Smaller gaps are missing security headers and a dev database that can't be firewalled and has no backups."
+  },
+  "timing": {
+    "build_s": 161.4,
+    "deploy_s": 591.5,
+    "agent_s": 752.9,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 64.6
+  },
+  "tokens": {
+    "build": {
+      "input": 3733,
+      "output": 15527,
+      "cache_read": 416962,
+      "cache_write": 24442,
+      "total": 460664
+    },
+    "deploy": {
+      "input": 513,
+      "output": 5088,
+      "cache_read": 441061,
+      "cache_write": 36034,
+      "total": 482696
+    },
+    "total": {
+      "input": 4246,
+      "output": 20615,
+      "cache_read": 858023,
+      "cache_write": 60476,
+      "total": 943360
+    }
+  },
+  "cost": {
+    "agent_usd": 0.903268,
+    "agent_build_usd": 0.531074,
+    "agent_deploy_usd": 0.372194,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 12.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 12
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 9
+    },
+    "tool_calls": {
+      "Bash": 18
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 8
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T15:03:56+00:00",
+      "wall_time_s": 161.4,
+      "api_time_s": 137.9,
+      "turns": 11,
+      "tokens": {
+        "input": 3733,
+        "output": 15527,
+        "cache_read": 416962,
+        "cache_write": 24442,
+        "total": 460664
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.531074,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3733,
+          "output": 15527,
+          "cache_read": 416962,
+          "cache_write": 24442,
+          "cost_usd": 0.5310744,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T15:06:38+00:00",
+      "wall_time_s": 591.5,
+      "api_time_s": 58.8,
+      "turns": 9,
+      "tokens": {
+        "input": 513,
+        "output": 5088,
+        "cache_read": 441061,
+        "cache_write": 36034,
+        "total": 482696
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.372194,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 513,
+          "output": 5088,
+          "cache_read": 441061,
+          "cache_write": 36034,
+          "cost_usd": 0.3721941999999999,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Notes API is built and every requirement in TASK.md works locally. The automated tests pass against a real Postgres, and I also checked each endpoint with curl against the Docker image. Notes were still there after restarting the container.\n\n**Stack:** Node.js 22, Express 5 and PostgreSQL (through the `pg` library). The plan for DigitalOcean is App Platform, built from the `Dockerfile`, with a DigitalOcean-managed Postgres database. The database tables are created automatically when the app starts.\n\n**Layout:**\n- `src/server.js` starts the app.\n- `src/app.js` holds the routes, input checks, API key check and error handling.\n- `src/db.js` handles the database connection and table setup.\n- `src/rateLimit.js` is the per-key limit of 60 requests per minute.\n- `src/openapi.js` produces both `/openapi.json` and the `/docs` HTML page.\n- `test/api.test.js` is the automated test suite.\n- `.do/app.yaml` is the App Platform config for step 2.\n\n**Things to know before deploying:**\n- **One instance only.** The rate-limit counters are kept in the app's memory, so running more than one copy would give each key more than 60 requests per minute. `app.yaml` is set to one instance.\n- **`app.yaml` needs two edits:** it has no git source yet, and `API_KEYS` holds placeholder values that must be replaced.\n- **Encrypted database connections weren't tested.** Local runs used plain connections, so the TLS setup for DigitalOcean's database will first be exercised in step 2.\n- **Extra fields in request bodies are ignored**, not rejected.\n- **Notes are linked to a hash of the API key**, not the key itself, so the raw keys never land in the database.\n\n**Run locally:**\n```sh\ndocker run -d --name notes-pg -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=notes -p 5432:5432 postgres:16\nnpm install\nDATABASE_URL=postgres://postgres:[REDACTED]@localhost:5432/notes API_KEYS=key-one,key-two npm start   # port 8080\nTEST_DATABASE_URL=postgres://postgres:[REDACTED]@localhost:5432/notes npm test\n```\n\nThe app reads these settings: `DATABASE_URL` (adding `?sslmode=require` turns on encryption), `DATABASE_CA_CERT` (optional, checks the database's certificate), `API_KEYS` and `PORT`. I've stopped and removed all the containers I started.",
+    "deploy": "The API is live at **https://adb-eeen0-api-x7cct.ondigitalocean.app**, and every requirement in TASK.md worked when I tested it through that URL.\n\n**What's deployed:**\n- **Web service:** a DigitalOcean App Platform app (`adb-eeen0-api`) running one Basic instance (`apps-s-1vcpu-0.5gb`), about $5/month. It runs the Docker image I built and pushed to a free DigitalOcean Container Registry (`adb-eeen0-api`).\n- **Database:** a PostgreSQL 16 dev database (`adb-eeen0-api-db`) attached to the app, about $7/month. The app connects to it over an encrypted, certificate-checked connection.\n- **API keys:** `API_KEYS` is set to the keys from `BENCH_API_KEYS` and stored as an encrypted secret in the app.\n\nThe total is about **$12/month**.\n\n**What I tested through the public URL:**\n- `/health`, `/openapi.json` and `/docs` return 200.\n- A missing or wrong API key gets 401.\n- Create, list, tag filter, get, update and delete all return the right responses. Bad input gets 400.\n- Another key gets 404 on a note it doesn't own.\n- After 60 requests in a minute, one key gets 429 with a `Retry-After` header, while the other key still gets 200.\n- A note I created was still there after a forced redeploy, so the data persists.\n\n**Limitations:**\n- **Rate limiting:** the counters are kept in the app's memory. The app has to stay at one instance, and the counters reset whenever it restarts or redeploys.\n- **Database:** the dev database has no backups or standby copy. A full managed PostgreSQL database (about $15/month) would add those.\n- **Updates:** deploys don't run automatically from git. To change the app, push a new image to the registry and redeploy.\n\nNothing needed a person, so `human_steps` is empty. I didn't create any credentials, so there's no `.env`. The resource IDs and these notes are in `deployment.json`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-eeen0-api-x7cct.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app (web service, Docker image)",
+        "name": "adb-eeen0-api / service adb-eeen0-api-web",
+        "id": "b85230d2-4a0d-43d6-ad4c-59f2c2186f26",
+        "plan": "apps-s-1vcpu-0.5gb (Basic, 1 instance)",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "PostgreSQL database (App Platform dev database, PG 16)",
+        "name": "adb-eeen0-api-db",
+        "id": "",
+        "plan": "App Platform dev database (512 MB)",
+        "monthly_cost_usd": 7
+      },
+      {
+        "type": "Container Registry",
+        "name": "adb-eeen0-api",
+        "id": "adb-eeen0-api",
+        "plan": "starter (free, 500 MB)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 12,
+    "human_steps": [],
+    "notes": "Image registry.digitalocean.com/adb-eeen0-api/adb-eeen0-api-web:v1 is built from the local Dockerfile and pushed to DOCR. To update the app, push a new tag and update the app spec, or create a new deployment. API_KEYS is stored as an encrypted App Platform secret set to BENCH_API_KEYS. The app connects to Postgres over TLS and verifies the certificate against the database's CA cert. Notes persisted across a forced redeploy. The rate limiter keeps its counters in memory, so the service must stay at 1 instance, and counters reset when the app restarts or redeploys. The dev database is managed by App Platform, so it doesn't appear in `doctl databases list`. It has no backups or standby node; a managed PostgreSQL cluster (~$15/mo) would add them."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 60
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 32,
+      "p90_ms": 53
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 35
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 37
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 32
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 51
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 73
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 57
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 252
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 83
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 63
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 114
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 44
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 36
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 126
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 77
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59579
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2065
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 31
+      }
+    ],
+    "browser": true,
+    "duration_s": 64.6
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-eeen0-api-x7cct.ondigitalocean.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "b85230d2-4a0d-43d6-ad4c-59f2c2186f26",
+      "name": "adb-eeen0-api",
+      "plan": "adb-eeen0-api-web: apps-s-1vcpu-0.5gb x 1, adb-eeen0-api-db: dev database",
+      "url": "https://adb-eeen0-api-x7cct.ondigitalocean.app",
+      "monthly_usd": 12.0,
+      "pricing": "adb-eeen0-api-web: apps-s-1vcpu-0.5gb x 1; adb-eeen0-api-db: dev database",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:07:25Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-eeen0-api",
+      "name": "adb-eeen0-api",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:07:01Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 512,
+      "JSON": 33,
+      "YAML": 31,
+      "Markdown": 26,
+      "Docker": 10
+    },
+    "code_lines": 522,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      ".do/app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "express",
+        "pg"
+      ],
+      "npm_dev": [
+        "supertest"
+      ],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      ".do",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Data": [
+      "PostgreSQL (App Platform dev database)"
+    ],
+    "Libraries": [
+      "node-postgres"
+    ],
+    "Dev tools": [
+      "SuperTest"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)",
+      "App spec (.do/app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}

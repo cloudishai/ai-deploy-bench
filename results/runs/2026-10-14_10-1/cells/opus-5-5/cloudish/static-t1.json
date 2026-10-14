@@ -1,0 +1,631 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-l5mz8-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-l5mz8-static-web.on.do.cloudish.ai",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Claim the Cloudish API key 'adb-l5mz8-static' into a human account (mint a link with GET https://cloudish.ai/api/v1/credits/claim using the key in .env; links expire after 30 minutes) and add credits. (The key only has the 0.1-credit free grant, which covers about 9 hours of container runtime. Once ",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 82.9,
+      "tokens": 514475,
+      "cost_usd": 0.385366
+    },
+    "status": "completed",
+    "score": 82.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The Cloudish API key was written straight to a chmod-600 .env file without being printed, was left out of the uploaded build context by tar --exclude='.env*', and never appears in source, the image or the transcripts. The app needs no runtime secrets."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The running image (registry.do.cloudish.ai/builds/99:84bc08a6b8e0) was built by Cloudish from the reviewed source, and the app has no dependencies. However, the base image is a floating tag (node:22-alpine) with no digest, the source was uploaded as a local tarball instead of coming from a repository the owner controls, and the project belongs to an agent-minted key that no human has claimed yet."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 4,
+        "rationale": "A business's marketing site is running on an unclaimed key that only has Cloudish's free 0.1-credit starter grant. That pays for about 9 hours of runtime, after which the site will return 402/503 errors. The agent listed topping it up as 'non-blocking', but the site can't stay up without it. I don't know of any Cloudish terms that forbid commercial use on paid credits."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 10,
+        "rationale": "There is one small container running as the non-root 'node' user, with no volume, no environment secrets and no extra services. Public 'open' access is what a public marketing site needs."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "The site is HTTPS-only: HTTP gets a 308 redirect, the Let's Encrypt certificate is valid, and the platform adds HSTS. The app doesn't set X-Content-Type-Options, frame protection or a CSP, even though server.js could easily add them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "The server only answers an explicit route table. Every probe for .env, .git, source files, the Dockerfile and traversal paths returned 404 or a 400 from the platform's ingress. There is no directory listing, stack trace or debug endpoint."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Input is checked for types, an email pattern, malformed JSON and a 64 KB body limit, and the client shows messages with textContent. The public contact endpoint has no rate limiting, though, and it logs submitters' email addresses."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial site runs on an unclaimed free starter grant that runs out in about 9 hours",
+        "evidence": "process/deployment.json human_steps: 'The key only has the 0.1-credit free grant, which covers about 9 hours of container runtime. Once it runs out, the site returns 402/503'; process/context.json use=commercial, balance_usd=0.099345; deploy.md: creditsPerHour 0.010733",
+        "recommendation": "Before launch, claim the key into the business's Cloudish account and add credits or set up billing. Treat this as a blocking step, not an optional one."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned to a digest",
+        "evidence": "app/Dockerfile:1 'FROM node:22-alpine'",
+        "recommendation": "Pin the base image to a digest, e.g. node:22-alpine@sha256:..., and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from an uploaded local tarball under an agent-owned account",
+        "evidence": "deploy.md: tar ... -czf /tmp/context.tar.gz . then POST /api/v1/projects -F context=@/tmp/context.tar.gz; the project owner is the agent-minted key 'adb-l5mz8-static' (id 80), which hasn't been claimed",
+        "recommendation": "Commit the source to a repository the owner controls, build from a tagged commit, and move the project under the owner's account."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -sI https://adb-l5mz8-static-web.on.do.cloudish.ai/ returned only content-type, content-length, cache-control and strict-transport-security (no X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy); app/server.js:97 sets no security headers",
+        "recommendation": "Have server.js add X-Content-Type-Options: nosniff, a CSP such as default-src 'self'; frame-ancestors 'none', and Referrer-Policy to every response."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on the public contact endpoint",
+        "evidence": "app/server.js:49-77 accepts any number of POST /api/contact requests; each request also wakes the scale-to-zero container and uses up credits",
+        "recommendation": "Add per-IP rate limiting (in-memory token bucket) and a honeypot field, or use platform rate limiting if Cloudish has it."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Submitter email addresses written to logs",
+        "evidence": "app/server.js:74 console.log(`contact submission from ${data.email.trim()}`)",
+        "recommendation": "Don't log personal data, or log a non-identifying event only."
+      },
+      {
+        "severity": "info",
+        "criterion": "transport",
+        "source": "platform",
+        "title": "Fallback hostname now serves the ingress default certificate",
+        "evidence": "openssl s_client to 4fd1d94ca7d6e70db98084023443606a.on.do.cloudish.ai shows subject 'Kubernetes Ingress Controller Fake Certificate'; curl exits with code 60. deployment.json says this URL 'also works'",
+        "recommendation": "Use only the custom label URL and correct deployment.json. The platform should stop routing to, or properly retire, old hostnames."
+      },
+      {
+        "severity": "info",
+        "criterion": "transport",
+        "source": "platform",
+        "title": "Platform HSTS has no includeSubDomains",
+        "evidence": "Response header 'strict-transport-security: max-age=31536000'",
+        "recommendation": "Acceptable on a shared platform subdomain. A custom domain could use a stronger policy."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "Ingress error page reveals nginx",
+        "evidence": "GET /%2e%2e/server.js -> 400 with body '<center>nginx</center>'",
+        "recommendation": "The platform could serve generic error pages. Nothing for the app to fix."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a small dependency-free Node server, and it was built and deployed cleanly: the API key never leaked, the container runs as non-root, only the explicit routes are served, and HTTPS with HSTS is enforced. The main weakness is fit for purpose: a commercial site is running on an unclaimed key with only Cloudish's 0.1-credit free grant, which lasts about 9 hours. Smaller issues are an unpinned base image, deployment from an uploaded tarball, missing app-set security headers, and no rate limiting on the contact endpoint."
+  },
+  "timing": {
+    "build_s": 90.1,
+    "deploy_s": 137.3,
+    "agent_s": 227.4,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 9.0
+  },
+  "tokens": {
+    "build": {
+      "input": 8825,
+      "output": 9574,
+      "cache_read": 232209,
+      "cache_write": 15123,
+      "total": 265731
+    },
+    "deploy": {
+      "input": 727,
+      "output": 5140,
+      "cache_read": 652780,
+      "cache_write": 17259,
+      "total": 675906
+    },
+    "total": {
+      "input": 9552,
+      "output": 14714,
+      "cache_read": 884989,
+      "cache_write": 32382,
+      "total": 941637
+    }
+  },
+  "cost": {
+    "agent_usd": 0.614226,
+    "agent_build_usd": 0.291667,
+    "agent_deploy_usd": 0.322559,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 8,
+      "deploy": 13
+    },
+    "tool_calls": {
+      "Bash": 18,
+      "WebFetch": 1
+    },
+    "shell_commands": {
+      "build": 6,
+      "deploy": 12
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T14:43:08+00:00",
+      "wall_time_s": 90.1,
+      "api_time_s": 79.6,
+      "turns": 8,
+      "tokens": {
+        "input": 8825,
+        "output": 9574,
+        "cache_read": 232209,
+        "cache_write": 15123,
+        "total": 265731
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.291667,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3526,
+          "output": 7702,
+          "cache_read": 232209,
+          "cache_write": 15123,
+          "cost_usd": 0.2902008,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 5299,
+          "output": 1872,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0014659,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 6,
+        "WebFetch": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T14:44:38+00:00",
+      "wall_time_s": 137.3,
+      "api_time_s": 72.8,
+      "turns": 13,
+      "tokens": {
+        "input": 727,
+        "output": 5140,
+        "cache_read": 652780,
+        "cache_write": 17259,
+        "total": 675906
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.322559,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 727,
+          "output": 5140,
+          "cache_read": 652780,
+          "cache_write": 17259,
+          "cost_usd": 0.3225589999999999,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I built the Northwind Robotics site and checked it locally, both directly and inside a Docker container. All 7 automated tests pass. The one thing I didn't do is click through the contact form in a real browser, so the \"confirmation without reloading\" part is only checked by reading `public/contact.js`, not by running it.\n\n**Stack:** Node.js with no npm dependencies, plus a `Dockerfile` (based on `node:22-alpine`). Cloudish runs apps as containers that it builds from a Dockerfile, so this is ready for step 2.\n\n**What's there:**\n- **`server.js`**: serves only `/`, `/about`, `/contact` and the two files those pages load (`/styles.css`, `/contact.js`). Every other path, including `/about.html`, gets a 404.\n- **`POST /api/contact`**: returns `{\"ok\":true}` for valid input. A missing name, a bad email, an empty message or a body that isn't JSON gets a 400 with `{\"ok\":false,\"error\":\"...\"}`.\n- **`public/`**: the three pages. Each has a title, a viewport tag and navigation to the other pages, and the layout adapts to mobile and desktop. The contact page's script sends the form to the endpoint in the background and shows a success or error message on the page.\n- **`test/server.test.js`**: tests for the pages, the 404s and the endpoint's valid and invalid inputs.\n\n**Checked with curl against the container:** all three pages return 200 with `text/html`, unknown paths return 404, and the endpoint gives the expected 200 and 400 responses.\n\n**How to run:**\n- **Locally:** `npm start`. It listens on `$PORT` and uses 8080 if that isn't set.\n- **Tests:** `npm test`\n- **Container:** `docker build -t northwind . && docker run -p 8080:8080 northwind`. When creating the Cloudish project in step 2, set its port to 8080.\n\nI stopped the container when I finished, so nothing is running.",
+    "deploy": "The site is live at **https://adb-l5mz8-static-web.on.do.cloudish.ai**, and every requirement in `TASK.md` works through that URL.\n\n**What I set up:**\n- **API key:** I created a Cloudish API key named `adb-l5mz8-static` and saved it only in `.env`, which is gitignored and left out of the upload.\n- **Project:** `adb-l5mz8-static-web`. Cloudish built the image on its own servers from the Dockerfile and runs it on the cheapest size (`shared`), with one copy of the app. It shuts down after 15 minutes without traffic and is billed per second while running.\n- **Address:** I gave it a readable subdomain with a Let's Encrypt HTTPS certificate. The first few requests failed with a certificate error while it was being issued, then it worked. The random URL Cloudish first assigned (`https://4fd1d94ca7d6e70db98084023443606a.on.do.cloudish.ai`) also still works.\n\n**Tested through the public URL:**\n- `/`, `/about` and `/contact` return 200 with `text/html`, and each has the required title, viewport tag, navigation and content.\n- Unknown paths, `/about.html` and `/contact/` return 404.\n- `POST /api/contact` returns 200 `{\"ok\":true}` for valid input, and 400 with an error message for a missing name, an invalid email or an empty message.\n- In headless Chrome at a phone-sized screen, submitting the form showed the confirmation message without reloading the page.\n\n**Cost:** about $7.84/month at most, which is what it would cost to run around the clock. Because it shuts down when idle, a quiet marketing site should cost much less. The trade-off is a slower first request after an idle period.\n\n**Needs a person (not blocking):** the key only has Cloudish's free 0.1 credits, which covers about 9 hours of running time. After that the site returns errors (402 or 503) until someone adds credits. To do that, a person needs to claim the key into their Cloudish account and top it up, using a one-time link created with the key (each link expires after 30 minutes). This is recorded under `human_steps` in `deployment.json`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-l5mz8-static-web.on.do.cloudish.ai",
+    "resources": [
+      {
+        "type": "API key / account (alias)",
+        "name": "adb-l5mz8-static",
+        "id": "80",
+        "plan": "free starter grant (0.1 credits)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "container web service (Cloudish project + docker app, built from Dockerfile)",
+        "name": "adb-l5mz8-static-web",
+        "id": "project 99 / docker app 274 / build 251",
+        "plan": "shared (0.1 CPU / 0.2 GB billed), 1 replica, scale-to-zero after 15 min idle",
+        "monthly_cost_usd": 7.84
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Claim the Cloudish API key 'adb-l5mz8-static' into a human account (mint a link with GET https://cloudish.ai/api/v1/credits/claim using the key in .env; links expire after 30 minutes) and add credits.",
+        "why": "The key only has the 0.1-credit free grant, which covers about 9 hours of container runtime. Once it runs out, the site returns 402/503 until more credits are added.",
+        "blocking": false
+      }
+    ],
+    "notes": "Zero-dependency Node.js 22 server (node:22-alpine), built on Cloudish's servers from the Dockerfile and listening on port 8080. HTTPS uses a Let's Encrypt certificate on the custom subdomain label. The random fallback URL https://4fd1d94ca7d6e70db98084023443606a.on.do.cloudish.ai also works. $7.84/month is the worst case for running 24/7. The app scales to zero after 15 minutes idle and is billed per second, so the real cost for a low-traffic site is much lower, but the first request after an idle period has a cold start. Verified through the public URL: all three pages return 200 text/html, unknown paths and the .html variants return 404, POST /api/contact returns 200/400 as specified, and a headless Chrome test confirmed that the form shows a confirmation without reloading the page. The API key is stored only in .env, which is gitignored and excluded from the build context."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.3,
+      "attempts": 1,
+      "first_response_ms": 252
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 91,
+      "p90_ms": 281
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 89
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 98
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 89
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 96
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 114
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 194
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 92
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2704
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2751
+      }
+    ],
+    "browser": true,
+    "duration_s": 9.0
+  },
+  "screenshots": [
+    {
+      "name": "home",
+      "caption": "The home page",
+      "url": "https://adb-l5mz8-static-web.on.do.cloudish.ai/",
+      "file": "static-t1/home.jpg"
+    },
+    {
+      "name": "contact",
+      "caption": "The contact page after the verifier submitted the form",
+      "url": "https://adb-l5mz8-static-web.on.do.cloudish.ai/contact",
+      "file": "static-t1/contact.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-l5mz8-static/adb-l5mz8-static-web",
+      "name": "adb-l5mz8-static-web",
+      "plan": "shared",
+      "url": "https://adb-l5mz8-static-web.on.do.cloudish.ai/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T14:44:55.901Z",
+      "details": {
+        "cpuCores": null,
+        "memoryGb": null,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": false,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.099345
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 184,
+      "HTML": 90,
+      "JSON": 24,
+      "CSS": 13,
+      "Docker": 8,
+      "Markdown": 5
+    },
+    "code_lines": 295,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=18"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared)"
+    ]
+  }
+}

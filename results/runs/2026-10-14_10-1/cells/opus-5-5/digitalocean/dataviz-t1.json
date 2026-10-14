@@ -1,0 +1,603 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-wqhai-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-wqhai-dataviz-ja39g.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 45.7,
+      "tokens": 249649,
+      "cost_usd": 0.256103
+    },
+    "status": "completed",
+    "score": 86.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets. The DigitalOcean token was only used through the $DIGITALOCEAN_ACCESS_TOKEN environment variable and doctl's credential helper, and never got into source, the image, the logs or the deployed files."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "The image was built locally from the reviewed source and pushed to a registry the owner controls. But the base image is a floating tag with no digest, the deployed image tag v1 is mutable, doctl was downloaded with no checksum check, and Chart.js loads from a CDN without Subresource Integrity."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 10,
+        "rationale": "This is a commercial app on a paid App Platform Basic instance, which is always on and doesn't sleep. DigitalOcean's standard terms allow business use, and the DOCR starter tier is a supported free tier with no expiry."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "There is a single public web service and no database. The container runs as the non-root node user and the data is read-only inside the image. The only minor gap is that the spec doesn't make the read-only intent explicit, and that has little effect here."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTP redirects to HTTPS with a 301 and the certificate is valid (Google Trust Services, expires Dec 2026). The app sets none of HSTS, X-Content-Type-Options, X-Frame-Options/frame-ancestors or CSP, even though its own send() helper could easily add them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes for .env, .git/config, package.json, source files, the CSV, the Dockerfile and app.yaml all return a JSON 404. Errors are generic JSON with no stack traces, and the only extra endpoints are the harmless /health and /api/options."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Date parameters are checked against a regex, limit and page are clamped (limit at most 500), non-GET methods get a 405, and the orders table escapes every string field. The app has no rate limiting of its own; for public read-only aggregate data that is a minor gap, partly covered by the platform's Cloudflare edge."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned by digest",
+        "evidence": "app/Dockerfile:1 `FROM node:22-alpine` (floating tag, no @sha256 digest)",
+        "recommendation": "Pin the base image to a specific version and digest, e.g. node:22.x-alpine3.xx@sha256:..., and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed image referenced by mutable tag",
+        "evidence": "app/app.yaml:7 `tag: v1`; process/resources.json shows spec image tag v1, with no digest, although the push printed sha256:624826e5...",
+        "recommendation": "Use unique immutable tags (e.g. the git SHA) or deploy by digest, so a re-push can't silently change what runs."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "doctl binary downloaded without checksum verification",
+        "evidence": "process/deploy.md: `curl -sL https://github.com/digitalocean/doctl/releases/download/v1.115.0/doctl-1.115.0-linux-amd64.tar.gz | tar xz && sudo mv doctl /usr/local/bin/` (version pinned, but there is no sha256 check)",
+        "recommendation": "Check the release checksum file before installing, or use a trusted package source."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "app",
+        "title": "Third-party CDN script loaded without Subresource Integrity",
+        "evidence": "app/public/index.html:7 `<script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js\"></script>` with no integrity or crossorigin attribute",
+        "recommendation": "Add an integrity hash and crossorigin=\"anonymous\", or bundle Chart.js and serve it from the app."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Security headers missing",
+        "evidence": "curl -sI https://adb-wqhai-dataviz-ja39g.ondigitalocean.app/ returns only content-type, cache-control and Cloudflare/DO headers, with no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy; app/src/server.js:15 sets only Content-Type and Cache-Control",
+        "recommendation": "Add HSTS, X-Content-Type-Options: nosniff, a CSP with frame-ancestors 'none' (allowing cdn.jsdelivr.net for scripts) and X-Frame-Options: DENY in send()."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "No application-level rate limiting on public API",
+        "evidence": "app/src/server.js:31-60 has no throttling; every /api/orders request filters and sorts all 2,400 rows",
+        "recommendation": "Fine for this dataset size. Add basic per-IP rate limiting, or rely on and configure edge protections, if the data or traffic grows."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Input validation and output escaping are in place",
+        "evidence": "GET /api/summary?start=bad -> 400 {\"error\":\"start must be YYYY-MM-DD\"}; GET /api/orders?limit=99999&page=-5 -> 200 with limit 500, page 1; POST /api/summary -> 405; index.html:109-112 escapes fields with esc()",
+        "recommendation": "No action needed."
+      }
+    ],
+    "summary": "This small, dependency-free Node.js dashboard runs as a non-root container on a paid, always-on DigitalOcean App Platform instance, which suits commercial use. It handles no secrets, exposes no files beyond the app, and redirects HTTP to HTTPS with a valid certificate. The weaknesses are mostly in provenance: a base image with no digest, a mutable v1 image tag, doctl installed without a checksum check, and a CDN script with no SRI. The app also sends none of the standard security headers."
+  },
+  "timing": {
+    "build_s": 101.6,
+    "deploy_s": 104.7,
+    "agent_s": 206.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 4.3
+  },
+  "tokens": {
+    "build": {
+      "input": 3630,
+      "output": 9327,
+      "cache_read": 305720,
+      "cache_write": 16576,
+      "total": 335253
+    },
+    "deploy": {
+      "input": 566,
+      "output": 3554,
+      "cache_read": 436573,
+      "cache_write": 5831,
+      "total": 446524
+    },
+    "total": {
+      "input": 4196,
+      "output": 12881,
+      "cache_read": 742293,
+      "cache_write": 22407,
+      "total": 781777
+    }
+  },
+  "cost": {
+    "agent_usd": 0.534898,
+    "agent_build_usd": 0.345084,
+    "agent_deploy_usd": 0.189814,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 5.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 5
+  },
+  "activity": {
+    "turns": {
+      "build": 9,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 17
+    },
+    "shell_commands": {
+      "build": 8,
+      "deploy": 9
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T15:19:36+00:00",
+      "wall_time_s": 101.6,
+      "api_time_s": 82.9,
+      "turns": 9,
+      "tokens": {
+        "input": 3630,
+        "output": 9327,
+        "cache_read": 305720,
+        "cache_write": 16576,
+        "total": 335253
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.345084,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3630,
+          "output": 9327,
+          "cache_read": 305720,
+          "cache_write": 16576,
+          "cost_usd": 0.345084,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T15:21:18+00:00",
+      "wall_time_s": 104.7,
+      "api_time_s": 46.3,
+      "turns": 10,
+      "tokens": {
+        "input": 566,
+        "output": 3554,
+        "cache_read": 436573,
+        "cache_write": 5831,
+        "total": 446524
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.189814,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 566,
+          "output": 3554,
+          "cache_read": 436573,
+          "cache_write": 5831,
+          "cost_usd": 0.18981359999999997,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the sales dashboard, and it works locally. The 5 automated tests pass, and I checked the API endpoints with curl, both run directly with Node and inside the Docker image. I didn't open the dashboard page in a browser, so I haven't seen the charts and filters in action \u2014 I only confirmed the page returns 200. All the servers and containers I started are stopped.\n\n**Stack:** Node.js using only its built-in web server, so there are no packages to install. The app reads `data/sales.csv` into memory at startup. The dashboard is a single page in `public/index.html`, and it loads Chart.js from the jsDelivr CDN in the browser. There's a `Dockerfile` (Node 22, listens on `$PORT`, default 8080), which suits DigitalOcean App Platform or a Droplet.\n\n**What it serves:**\n- **`GET /`** \u2013 the dashboard: filters for region, category and date range, three KPI tiles, a line chart of revenue by month, a bar chart of revenue by category, and a table of matching orders, 50 per page with newest first. Changing a filter updates everything without reloading the page.\n- **`GET /api/summary`** \u2013 matches the spec, with the four optional filters combined with AND.\n  - Revenue is added up in whole cents so totals round exactly to 2 decimals.\n  - With no matches it returns zeros and empty arrays.\n  - A badly formatted date gets a `400` error.\n- **Extra endpoints I added:** `GET /api/orders` (paginated order list behind the table), `GET /api/options` (values for the filter dropdowns) and `GET /health` (health check for the deploy step).\n\n**To run it:**\n- **Start:** `npm start`, or `PORT=3000 npm start` for another port.\n- **Test:** `npm test`. The tests cover totals, combined filters, inclusive dates, the no-match case, rounding, the orders endpoint and the dashboard page.\n- **Docker:** `docker build -t sales-dash . && docker run -p 8080:8080 sales-dash`\n\nAs a spot check, the full dataset returns 2,400 orders, 15,179 units and $1,839,455.69 in revenue.",
+    "deploy": "The dashboard is live over HTTPS at **https://adb-wqhai-dataviz-ja39g.ondigitalocean.app**. Every API requirement checked out through that public URL. I didn't open the page in a browser, so the charts and filters in the actual page are untested.\n\n**What I deployed:**\n- **Container registry** `adb-wqhai-dataviz`, on the free starter tier. It holds the app's Docker image, `adb-wqhai-dataviz-web:v1`.\n- **App Platform app** `adb-wqhai-dataviz` with one web service, `adb-wqhai-dataviz-web`. It runs on the smallest basic instance (1 vCPU, 0.5 GB) in the NYC region. HTTPS comes from DigitalOcean's default `ondigitalocean.app` address, and it uses `/health` as its health check.\n- **Cost:** about $5/month in total; the registry is free.\n\n**What I tested through the public URL:**\n- `GET /` returns 200 and the dashboard page.\n- `/api/summary` with no filters returns all 2,400 orders, 15,179 units and $1,839,455.69 in revenue, the same totals as locally.\n- With region, category and date filters all set, the API returns only orders matching all of them.\n- With no matches, it returns zeros and empty arrays.\n- `/api/orders` returns the filtered orders, newest first.\n- The Chart.js file the page loads from the jsDelivr CDN is reachable.\n\n**Live test suite:** I changed the tests so they can run against the live site with `BASE_URL=<url> npm test`. The first run had one failure that I didn't capture. Three runs straight after that all passed, so it was probably a one-off on a newly started instance, but I don't know the cause.\n\n**Other notes:**\n- The order data is built into the image, so there's no database.\n- The deployment settings are in `app.yaml`. To redeploy, push a new image tag to the registry and point `app.yaml` at it.\n- No step needed a person, and I didn't create any credentials, so `.env` is empty. I added it to `.gitignore` and `.dockerignore` anyway.\n- Everything is recorded in `deployment.json`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-wqhai-dataviz-ja39g.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app (web service, container image)",
+        "name": "adb-wqhai-dataviz",
+        "id": "51ddc21a-f435-4df0-b8da-deeb1848e0de",
+        "plan": "basic apps-s-1vcpu-0.5gb, 1 instance, region nyc",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "App Platform service",
+        "name": "adb-wqhai-dataviz-web",
+        "id": "51ddc21a-f435-4df0-b8da-deeb1848e0de/adb-wqhai-dataviz-web",
+        "plan": "included in app above",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Container Registry (DOCR)",
+        "name": "adb-wqhai-dataviz",
+        "id": "registry.digitalocean.com/adb-wqhai-dataviz",
+        "plan": "starter (free, 500 MB)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Container image repository",
+        "name": "adb-wqhai-dataviz-web",
+        "id": "registry.digitalocean.com/adb-wqhai-dataviz/adb-wqhai-dataviz-web:v1",
+        "plan": "starter",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 5,
+    "human_steps": [],
+    "notes": "Zero-dependency Node.js server; CSV loaded into memory from the image (no database). HTTPS via App Platform's default ondigitalocean.app domain. App spec in app.yaml; redeploy by pushing a new tag to DOCR and updating the spec. The dashboard loads Chart.js from the jsDelivr CDN in the browser. Verified via public URL: GET / (200), /api/summary unfiltered, combined filters, no-match zeros, /api/orders; the test suite also passes against the live URL (BASE_URL=<url> npm test)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 58
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 58,
+      "p90_ms": 75
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 36
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 42
+      },
+      {
+        "id": "dashboard",
+        "description": "GET / serves the dashboard as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 33
+      },
+      {
+        "id": "summary_all",
+        "description": "GET /api/summary (no filters) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 38
+      },
+      {
+        "id": "summary_region",
+        "description": "GET /api/summary (region=West) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "summary_category",
+        "description": "GET /api/summary (category=Electronics) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 54
+      },
+      {
+        "id": "summary_combined",
+        "description": "GET /api/summary (region=East, category=Furniture, start=2025-03-01, end=2025-06-30) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 69
+      },
+      {
+        "id": "summary_empty",
+        "description": "GET /api/summary (region=Atlantis) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 53
+      },
+      {
+        "id": "browser_chart",
+        "description": "The dashboard renders a chart (SVG or canvas) in a browser",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 977
+      },
+      {
+        "id": "browser_two_charts",
+        "description": "The dashboard shows at least two charts",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 806
+      },
+      {
+        "id": "browser_filters",
+        "description": "The dashboard has filter controls",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 805
+      }
+    ],
+    "browser": true,
+    "duration_s": 4.3
+  },
+  "screenshots": [
+    {
+      "name": "dashboard",
+      "caption": "The dashboard",
+      "url": "https://adb-wqhai-dataviz-ja39g.ondigitalocean.app/",
+      "file": "dataviz-t1/dashboard.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "51ddc21a-f435-4df0-b8da-deeb1848e0de",
+      "name": "adb-wqhai-dataviz",
+      "plan": "adb-wqhai-dataviz-web: apps-s-1vcpu-0.5gb x 1",
+      "url": "https://adb-wqhai-dataviz-ja39g.ondigitalocean.app",
+      "monthly_usd": 5.0,
+      "pricing": "adb-wqhai-dataviz-web: apps-s-1vcpu-0.5gb x 1",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:21:53Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-wqhai-dataviz",
+      "name": "adb-wqhai-dataviz",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:21:36Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 11,
+    "lines": {
+      "JavaScript": 155,
+      "HTML": 144,
+      "JSON": 24,
+      "YAML": 16,
+      "Docker": 10,
+      "Markdown": 8
+    },
+    "code_lines": 309,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      "app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=18"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "public",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)",
+      "App spec (app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}

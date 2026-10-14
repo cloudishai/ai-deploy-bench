@@ -1,0 +1,626 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-6gtad-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-6gtad-static-7z8zf.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 50.9,
+      "tokens": 237319,
+      "cost_usd": 0.244745
+    },
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets and contains none. The DigitalOcean token was only used through the $DIGITALOCEAN_ACCESS_TOKEN environment variable and never printed, and no .env or credential file was created or copied into the image."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "A zero-dependency image was built from the reviewed source and pushed to a private DOCR registry the owner controls. But the base image is an unpinned floating tag (node:22-alpine), the app spec deploys the mutable tag v1 rather than a digest, and the doctl binary was installed with curl | tar without checksum verification."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 10,
+        "rationale": "For commercial use the app runs on a paid, always-on App Platform Basic instance ($5/month) plus the free Starter registry. DigitalOcean's standard terms allow commercial use, and nothing here expires or sleeps."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 10,
+        "rationale": "The container runs as the non-root node user. There is no data store, the registry is private, and the only public surface is the App Platform HTTPS ingress to the one service."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP returns a 301 redirect to HTTPS. However, the app sends none of HSTS, X-Content-Type-Options, frame protection or CSP, and it could easily have set them in server.js."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Only the whitelisted pages, assets, /healthz and /api/contact are served. Probes for .env, .git, server.js, package.json, Dockerfile, app.yaml and path traversal all returned 404 or 400, with no stack traces or directory listings."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Input is type-checked and validated, the body is capped at 64 KB (413 above that), malformed JSON gets a clean 400, and the client renders server messages with textContent, so there is no XSS. The public POST endpoint has no rate limiting or anti-spam control of its own."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned to a digest",
+        "evidence": "app/Dockerfile:1 `FROM node:22-alpine`",
+        "recommendation": "Pin the base image by digest (node:22-alpine@sha256:...) and update it deliberately."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "App deploys a mutable image tag",
+        "evidence": "app/app.yaml lines 6-9 and process/resources.json: image tag `v1`, while the push printed digest sha256:1025a225...e804 (process/deploy.md line 43)",
+        "recommendation": "Reference the pushed image by digest in the App Platform spec, or use immutable unique tags, so production can't silently change."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "doctl installed without checksum verification",
+        "evidence": "process/deploy.md line 19: `curl -sL https://github.com/digitalocean/doctl/releases/download/v1.146.0/doctl-1.146.0-linux-amd64.tar.gz | tar xz && sudo mv doctl /usr/local/bin/`",
+        "recommendation": "Verify the release's published SHA-256 checksum before installing it, or use a package source that verifies signatures."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "`curl -sI https://adb-6gtad-static-7z8zf.ondigitalocean.app/` returns only content-type, cache-control and platform/Cloudflare headers, with no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy; server.js:31 and :83 set no such headers",
+        "recommendation": "Set HSTS, X-Content-Type-Options: nosniff, a frame-ancestors/X-Frame-Options policy and a restrictive CSP (default-src 'self') on all responses in server.js."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Contact endpoint has no rate limiting",
+        "evidence": "app/server.js:39-63: handleContact accepts any number of valid POSTs and logs each one (line 61), with no throttling or anti-spam check",
+        "recommendation": "Add per-IP rate limiting (in-process or at the edge) and a honeypot field to curb spam and log flooding."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Registry login stored on the build host for 30 days",
+        "evidence": "process/deploy.md line 36: `doctl registry login` printed 'Login valid for 30 days'",
+        "recommendation": "Use `doctl registry login --expiry-seconds` with a short lifetime on shared or CI hosts."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "Unknown paths and sensitive files are not served",
+        "evidence": "GET /.env, /.git/config, /server.js, /package.json, /Dockerfile, /app.yaml, /index.html -> 404; /..%2fserver.js -> 400; server.js:7-11 serves only an explicit allowlist from an in-memory cache",
+        "recommendation": "None needed."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a zero-dependency Node.js server, built into a non-root container and run on a paid, always-on DigitalOcean App Platform Basic plan, which fits commercial use. It has no secrets, serves HTTPS only, and exposes nothing beyond the allowlisted routes. The weaknesses are minor: unpinned build inputs (floating base image tag, the mutable `v1` image tag, a doctl download with no checksum check), no security headers, and no rate limiting on the contact endpoint."
+  },
+  "timing": {
+    "build_s": 88.5,
+    "deploy_s": 127.8,
+    "agent_s": 216.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 5.7
+  },
+  "tokens": {
+    "build": {
+      "input": 3693,
+      "output": 8596,
+      "cache_read": 243886,
+      "cache_write": 39789,
+      "total": 295964
+    },
+    "deploy": {
+      "input": 508,
+      "output": 3379,
+      "cache_read": 382827,
+      "cache_write": 5779,
+      "total": 392493
+    },
+    "total": {
+      "input": 4201,
+      "output": 11975,
+      "cache_read": 626713,
+      "cache_write": 45568,
+      "total": 688457
+    }
+  },
+  "cost": {
+    "agent_usd": 0.609486,
+    "agent_build_usd": 0.434414,
+    "agent_deploy_usd": 0.175072,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 5.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 5
+  },
+  "activity": {
+    "turns": {
+      "build": 8,
+      "deploy": 9
+    },
+    "tool_calls": {
+      "Bash": 15
+    },
+    "shell_commands": {
+      "build": 7,
+      "deploy": 8
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T14:42:43+00:00",
+      "wall_time_s": 88.5,
+      "api_time_s": 85.7,
+      "turns": 8,
+      "tokens": {
+        "input": 3693,
+        "output": 8596,
+        "cache_read": 243886,
+        "cache_write": 39789,
+        "total": 295964
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.434414,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3693,
+          "output": 8596,
+          "cache_read": 243886,
+          "cache_write": 39789,
+          "cost_usd": 0.43441420000000003,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 7
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T14:44:12+00:00",
+      "wall_time_s": 127.8,
+      "api_time_s": 40.3,
+      "turns": 9,
+      "tokens": {
+        "input": 508,
+        "output": 3379,
+        "cache_read": 382827,
+        "cache_write": 5779,
+        "total": 392493
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.175072,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 508,
+          "output": 3379,
+          "cache_read": 382827,
+          "cache_write": 5779,
+          "cost_usd": 0.17507240000000007,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and works locally. All 7 automated tests pass, and I checked every route with curl against the running server. That server is now stopped. The browser part of the contact form (sending without a page reload and showing the confirmation) was not tested in a real browser, because no headless browser was set up.\n\n**Stack:** a Node.js (version 20 or later) server using only the built-in `http` module, so there is nothing to install. The HTML, CSS and the small contact-form script are in `public/`, and `server.js` loads them into memory when it starts. This fits DigitalOcean App Platform's Node.js setup: it finds `package.json`, runs `npm start` and passes in `PORT`. There is also a `Dockerfile` if you'd rather deploy a container.\n\n**What it does:**\n- **Pages:** `/`, `/about` and `/contact` return 200 as `text/html`. Each has a title, the viewport tag, navigation links and a layout that adjusts for mobile.\n- **Unknown paths:** these return a 404 page, and that includes `/index.html` and `/about.html`.\n- **Contact endpoint:** `POST /api/contact` returns `{\"ok\":true}` for valid input. For a missing name, a bad email, an empty message or malformed JSON it returns 400 with `{\"ok\":false,\"error\":\"...\"}`. Request bodies over 64 KB are rejected with 413.\n- **Contact form:** the script in `public/contact.js` sends the form to `/api/contact` with `fetch` and shows a confirmation or the error message on the page.\n- **Health check:** I added `/healthz`, which returns 200, for use by the platform's health check.\n\n**To run it:**\n```sh\nnpm start      # listens on $PORT, default 8080\nnpm test       # runs the tests with Node's built-in test runner\n# or: docker build -t northwind . && docker run -p 8080:8080 northwind\n```",
+    "deploy": "The site is live at **https://adb-6gtad-static-7z8zf.ondigitalocean.app**, and every requirement in `TASK.md` passed when I tested it through that URL.\n\n**What I deployed:**\n- **Container registry** `adb-6gtad-static` (free starter tier): the app's Docker image is stored there as `adb-6gtad-static-web:v1`.\n- **App Platform app** `adb-6gtad-static` (ID `dd8c3ea9-fd28-417d-bcc1-1a4c58189fcb`): it runs that image as one small instance (`apps-s-1vcpu-0.5gb`, about $5/month). DigitalOcean provides HTTPS on its default `ondigitalocean.app` address, and the platform checks `/healthz` to confirm the app is up.\n- **Total cost:** about $5/month.\n\n**Tested on the public URL:**\n- `/`, `/about` and `/contact` return 200 as `text/html`, with the required headings, title, viewport tag, navigation and form fields.\n- Unknown paths and `.html` versions of the pages, like `/about.html`, return 404.\n- `POST /api/contact` returns 200 with `{\"ok\":true}` for valid input. A missing name, a bad email or an empty message each return 400 with an error message.\n- In headless Chrome, submitting the form showed the confirmation message without reloading the page.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty. I didn't create any credentials, so there's no `.env`. The app's deployment settings are in `app.yaml`. To redeploy, push a new image tag, update `app.yaml`, then run `doctl apps update <id> --spec app.yaml`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-6gtad-static-7z8zf.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app (web service, container image)",
+        "name": "adb-6gtad-static",
+        "id": "dd8c3ea9-fd28-417d-bcc1-1a4c58189fcb",
+        "plan": "apps-s-1vcpu-0.5gb (Basic, 1 instance)",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "Container Registry",
+        "name": "adb-6gtad-static",
+        "id": "registry.digitalocean.com/adb-6gtad-static",
+        "plan": "starter (free, 500 MB)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 5,
+    "human_steps": [],
+    "notes": "Zero-dependency Node.js server (server.js) built into a Docker image, pushed to DOCR repository adb-6gtad-static-web:v1 and run as an App Platform service (spec in app.yaml) in region nyc, with HTTPS on the default ondigitalocean.app domain. The health check is /healthz. Verified through the public URL: /, /about and /contact return 200 text/html; unknown paths and *.html paths return 404; POST /api/contact returns 200 or 400 as specified; a headless Chrome test confirmed the form submits without a page reload. To redeploy: build and push a new tag, update app.yaml, then run doctl apps update <id> --spec app.yaml."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.0,
+      "attempts": 1,
+      "first_response_ms": 49
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 17,
+      "p90_ms": 22
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 22
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 17
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 19
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 42
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 18
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 52
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 109
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 83
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2291
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1815
+      }
+    ],
+    "browser": true,
+    "duration_s": 5.7
+  },
+  "screenshots": [
+    {
+      "name": "home",
+      "caption": "The home page",
+      "url": "https://adb-6gtad-static-7z8zf.ondigitalocean.app/",
+      "file": "static-t1/home.jpg"
+    },
+    {
+      "name": "contact",
+      "caption": "The contact page after the verifier submitted the form",
+      "url": "https://adb-6gtad-static-7z8zf.ondigitalocean.app/contact",
+      "file": "static-t1/contact.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "dd8c3ea9-fd28-417d-bcc1-1a4c58189fcb",
+      "name": "adb-6gtad-static",
+      "plan": "adb-6gtad-static-web: apps-s-1vcpu-0.5gb x 1",
+      "url": "https://adb-6gtad-static-7z8zf.ondigitalocean.app",
+      "monthly_usd": 5.0,
+      "pricing": "adb-6gtad-static-web: apps-s-1vcpu-0.5gb x 1",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T14:45:13Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-6gtad-static",
+      "name": "adb-6gtad-static",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T14:44:33Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 15,
+    "lines": {
+      "JavaScript": 198,
+      "HTML": 160,
+      "CSS": 35,
+      "JSON": 24,
+      "YAML": 16,
+      "Markdown": 10,
+      "Docker": 9
+    },
+    "code_lines": 402,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      "app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)",
+      "App spec (app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}

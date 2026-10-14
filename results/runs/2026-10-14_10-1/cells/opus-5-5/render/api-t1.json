@@ -1,0 +1,708 @@
+{
+  "schema": 6,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38582810085-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-olgy9-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-olgy9-api-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "payment_method",
+        "source": "agent",
+        "detail": "Add a payment method at https://dashboard.render.com/billing, then upgrade adb-olgy9-api-db to basic-256mb (~$6/mo) and optionally adb-olgy9-api-web to starter ($7/mo) (Render free Postgres expires on 2026-11-13 (30 days after creation) and is deleted after a grace period; paid plans were rejected b",
+        "blocking": false
+      },
+      {
+        "id": "git_hosting",
+        "source": "agent",
+        "detail": "Optionally connect a GitHub/GitLab account to Render in the dashboard and push this repo, then switch the service to a Git-backed Node service using render.yaml (No Git provider credentials were available, so the code is delivered as a bundled JS file in a Render secret file; a Git-backed service gi",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 66.5,
+      "tokens": 347717,
+      "cost_usd": 0.365138
+    },
+    "status": "completed",
+    "score": 66.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "No credentials appear in source, transcripts or the deployed bundle. API_KEYS and DATABASE_URL are set as Render service env vars, and the agent filtered postgres:// URLs out of the logs it read. One small extra: the agent also fetched the external DB connection string and saved it to a local .env file, which the app never needed."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "Production runs a minified esbuild bundle that was built on the agent's machine, gzipped, base64-encoded and uploaded as a Render secret file. It isn't tied to any repo or commit the owner controls. The base image is the floating tag node:24-alpine with no digest, and esbuild was pulled with `npx -y esbuild@0.25`, which floats within 0.25.x."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "Render's free tier allows a personal hobby project, and spin-down while idle is acceptable for a few friends' scripts. But the free Postgres expires on 2026-11-13 and is then deleted, while the spec requires notes to survive restarts and redeploys. The agent recorded the upgrade as a human step but marked it non-blocking."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 5,
+        "rationale": "The container runs as root, which is the default for node:24-alpine (no non-root user or dockerCommand change). The Postgres was created through the API without an ipAllowList, so its external endpoint is most likely reachable from any IP (Render's default). The app connects as the database owner role."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTP returns a 301 redirect to HTTPS, and the certificate is valid (Google Trust Services, expires Dec 2026). No HSTS, X-Content-Type-Options, frame-protection or CSP headers are sent. Render web services don't add them, but the app could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Only the spec'd endpoints respond. Probes for .env, .git, package.json and the bundle paths return a clean JSON 404, TRACE is blocked at the edge, and errors return no stack traces. The broader issue is the publicly reachable database endpoint, which is scored under least_privilege."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "All SQL is parameterized, input types are validated, ownership is enforced in every query, keys are stored only as hashes, the docs HTML is escaped and the body limit is 1mb. Minor gaps: requests with unknown keys aren't rate-limited, there are no limits on field length or note count, and the rate limiter lives in process memory and resets on restart."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Free Postgres expires in 30 days; notes will be deleted",
+        "evidence": "process/resources.json: postgres plan \"free\", expires_at \"2026-11-13T15:01:29Z\"; deploy.md POST /v1/postgres with plan basic_256mb returned 'Payment information is required', so the agent fell back to plan \"free\"; deployment.json human_steps marks the upgrade \"blocking\": false",
+        "recommendation": "Upgrade the database to a paid plan (e.g. basic-256mb) before expiry, or treat it as a blocking step. Until then, set up regular pg_dump backups."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "App code delivered as an opaque bundle in a secret file, not from source control",
+        "evidence": "deploy.md line ~75: `npx -y esbuild@0.25 src/server.js --bundle ... | gzip | base64 > app.js.gz.b64`; line ~142: secretFiles [{name:\"app.js.gz.b64\"}], dockerCommand decodes it to /tmp/server.js; line ~215: start.sh launcher also uploaded as a secret file",
+        "recommendation": "Push the code to a Git repo the owner controls and deploy it as a Git-backed service (render.yaml already exists), or build a Docker image in CI and push it to a registry referenced by digest, so production can be traced to a commit."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres external endpoint likely open to all IPs",
+        "evidence": "deploy.md POST https://api.render.com/v1/postgres body has no ipAllowList (Render defaults to 0.0.0.0/0); connection-info returned an externalConnectionString, which the agent saved to .env (deploy.md line ~168); the app only needs the internal URL",
+        "recommendation": "Set ipAllowList to [] (or to specific admin IPs) so the database is reachable only over Render's private network."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image and build tool versions not pinned",
+        "evidence": "process/resources.json source \"docker.io/library/node:24-alpine\" (tag, no digest); deploy.md `npx -y esbuild@0.25` (floats within 0.25.x)",
+        "recommendation": "Reference the image as node:24-alpine@sha256:<digest> and pin esbuild to an exact version in devDependencies with a lockfile."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "Image node:24-alpine defaults to root; dockerCommand `sh /etc/secrets/start.sh` (deploy.md line ~215) writes /tmp/server.js and runs node without dropping privileges",
+        "recommendation": "Run as the image's built-in `node` user (a Dockerfile with USER node, or `su-exec node node /tmp/server.js`)."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security response headers",
+        "evidence": "curl -D- https://adb-olgy9-api-web.onrender.com/docs: no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy headers",
+        "recommendation": "Add helmet (or set the headers manually) in app.js, at least HSTS and nosniff. Add a CSP on /docs."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unknown-key requests and payload sizes not limited",
+        "evidence": "app/src/app.js lines 76-79: 401 is returned before rateLimiter.check, so invalid-key attempts are never throttled; validateNote (lines 34-61) has no maximum length for title/content/tags and there is no cap on notes per key; GET with X-API-Key: bogus -> 401 {\"error\":\"Invalid API key\"}",
+        "recommendation": "Rate-limit by client IP for failed auth, cap field lengths and tag count, and limit notes per key."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Free web service spins down when idle",
+        "evidence": "process/resources.json plan \"free\"; deployment.json notes: 'spins down after 15 min idle ... ~30-60s' cold start",
+        "recommendation": "Acceptable for a personal project. Upgrade to Starter if callers need consistent latency."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "External DB credentials saved locally without need",
+        "evidence": "deploy.md line ~168 writes RENDER_DATABASE_EXTERNAL_URL into .env (chmod 600, git-ignored)",
+        "recommendation": "Fetch only the internal connection string the service needs, and remove local copies after deploy."
+      }
+    ],
+    "summary": "The Notes API code is solid: queries are parameterized, ownership is enforced on every query, keys are stored only as hashes, errors are clean and HTTPS is enforced, and no secrets leaked. The deployment is weaker. Production runs a locally built bundle uploaded as a Render secret file, with no source-control provenance and an unpinned node:24-alpine image running as root. The free Postgres is likely reachable from any IP and expires on 2026-11-13, which conflicts with the requirement that notes persist."
+  },
+  "timing": {
+    "build_s": 147.7,
+    "deploy_s": 347.1,
+    "agent_s": 494.8,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 69.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3892,
+      "output": 14324,
+      "cache_read": 501071,
+      "cache_write": 23105,
+      "total": 542392
+    },
+    "deploy": {
+      "input": 21954,
+      "output": 12580,
+      "cache_read": 951046,
+      "cache_write": 17283,
+      "total": 1002863
+    },
+    "total": {
+      "input": 25846,
+      "output": 26904,
+      "cache_read": 1452117,
+      "cache_write": 40388,
+      "total": 1545255
+    }
+  },
+  "cost": {
+    "agent_usd": 1.047119,
+    "agent_build_usd": 0.517787,
+    "agent_deploy_usd": 0.529332,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 13,
+      "deploy": 17
+    },
+    "tool_calls": {
+      "Bash": 27,
+      "WebSearch": 1
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 15
+    },
+    "tool_errors": 1,
+    "web_searches": 1,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T14:57:57+00:00",
+      "wall_time_s": 147.7,
+      "api_time_s": 129.3,
+      "turns": 13,
+      "tokens": {
+        "input": 3892,
+        "output": 14324,
+        "cache_read": 501071,
+        "cache_write": 23105,
+        "total": 542392
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.517787,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3892,
+          "output": 14324,
+          "cache_read": 501071,
+          "cache_write": 23105,
+          "cost_usd": 0.5177872000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T15:00:26+00:00",
+      "wall_time_s": 347.1,
+      "api_time_s": 129.3,
+      "turns": 17,
+      "tokens": {
+        "input": 21954,
+        "output": 12580,
+        "cache_read": 951046,
+        "cache_write": 17283,
+        "total": 1002863
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.529332,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 1442,
+          "output": 11723,
+          "cache_read": 951046,
+          "cache_write": 17283,
+          "cost_usd": 0.5168522,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 20512,
+          "output": 857,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0124797,
+          "web_searches": 1
+        }
+      },
+      "tool_calls": {
+        "Bash": 15,
+        "WebSearch": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Notes API is built and every requirement works locally: the automated tests pass (4 of 4), and I also checked each requirement by hand with curl against the running server. A note created before a server restart could still be read afterwards, so the data persists. I've stopped the server and removed the local Postgres container.\n\n**Stack:** Node.js 24, Express 5 and PostgreSQL (through the `pg` library). It uses no other dependencies.\n\n**Layout**\n- `src/server.js` is the entry point. It reads `PORT`, `DATABASE_URL` and `API_KEYS`, creates the notes table on startup if it doesn't exist, and shuts down cleanly when stopped.\n- `src/app.js` holds the routes, the API-key check, input validation, JSON errors and the per-key data separation.\n- `src/rateLimit.js` limits each key to 60 requests in any rolling 60 seconds and sets `Retry-After` on `429`s.\n- `src/openapi.js` produces the OpenAPI 3 document and the HTML page at `/docs`.\n- `test/api.test.js` runs tests against a real Postgres.\n- `render.yaml` is a Render Blueprint that creates the web service (health check on `/health`) and a Render Postgres database, and connects them automatically. You enter `API_KEYS` yourself in the Render dashboard.\n\n**Choices worth knowing about**\n- **Rate limits** are kept in the server's memory, so they are only correct with one instance and reset when it restarts. I set the web service to the paid `starter` plan so it stays awake. The free plan would also work.\n- **Note ownership** is recorded as a hash of the key rather than the key itself.\n- **Note IDs** are UUIDs. A malformed ID returns `404`, the same as one that doesn't exist.\n- **Validation:** a title made only of spaces counts as empty and gets `400`. `content` is required when creating a note but may be an empty string. A `PATCH` with none of `title`, `content` or `tags` gets `400`.\n\n**Run locally**\n```sh\ndocker run -d --name notes-pg -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=notes -p 5432:5432 postgres:16\nnpm install\nDATABASE_URL=postgres://postgres:pg@localhost:5432/notes API_KEYS=key-one,key-two npm start   # port 3000\nDATABASE_URL=postgres://postgres:pg@localhost:5432/notes npm test\n```\n\nOn Render, the build command is `npm ci` and the start command is `npm start`.",
+    "deploy": "The Notes API is live at **https://adb-olgy9-api-web.onrender.com**, and every requirement in `TASK.md` passed when I tested it through that URL.\n\n**What's running** (both on Render's free plan, $0/month):\n- **Web service `adb-olgy9-api-web`** (`srv-db7pitd9fdbs73f2vj2g`). `API_KEYS` contains exactly the keys in `BENCH_API_KEYS`.\n- **Postgres 16 database `adb-olgy9-api-db`** (`dpg-db7piiaj9qps73d9noe0-a`). The web service connects to it over Render's internal network. Both connection strings are saved in `.env`, which is git-ignored.\n\n**How the code gets there:** Render only builds from a connected Git repo or a container image, and no Git credentials were available. So the service runs the official public `node:24-alpine` image, and the app is packed into a single JavaScript file stored as a Render secret file, unpacked by a small start script when the service starts. To ship new code, you rebuild that file, upload it again, and trigger a deploy.\n\n**Tested through the public URL:**\n- `/health`, `/openapi.json` and `/docs` respond without a key.\n- A missing or unknown key gets `401`.\n- Create, list (newest first, with the `tag` filter), get, update and delete all work, and bad input gets `400`.\n- Another key gets `404` on someone else's notes.\n- The 61st request in a minute gets `429` with `Retry-After`, while a second key is unaffected.\n- A note was still there after a redeploy.\n\nI deleted the test notes afterwards. The first key will be rate-limited for a minute or so after my test, which should have cleared by now.\n\n**Limitations:**\n- **The database expires on 2026-11-13.** Render deletes free Postgres databases 30 days after creation. Paid plans were refused because the account has no payment method.\n- **First request after idle is slow.** The free web service sleeps after 15 idle minutes, and the first request after that can take about 30\u201360 seconds.\n- **Rate-limit counts reset when the service restarts or sleeps.** They're kept in the server's memory, which is fine for this single instance.\n\nTwo optional steps for a person are listed in `deployment.json` under `human_steps`, neither of them blocking:\n- Add a card and move the database to `basic-256mb` (about $6/month), and optionally the web service to `starter` ($7/month) so it stops sleeping.\n- Connect a GitHub or GitLab account so Render can deploy from the repo with the existing `render.yaml`.\n\nSources:\n- [Deploying on Render \u2013 Render Docs](https://render.com/docs/deploys)\n- [Deploy without GitHub/GitLab \u2013 Render feature request](https://feedback.render.com/features/p/deploy-without-githubgitlab)"
+  },
+  "deployment_manifest": {
+    "url": "https://adb-olgy9-api-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (image-backed, node:24-alpine)",
+        "name": "adb-olgy9-api-web",
+        "id": "srv-db7pitd9fdbs73f2vj2g",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database (v16)",
+        "name": "adb-olgy9-api-db",
+        "id": "dpg-db7piiaj9qps73d9noe0-a",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Add a payment method at https://dashboard.render.com/billing, then upgrade adb-olgy9-api-db to basic-256mb (~$6/mo) and optionally adb-olgy9-api-web to starter ($7/mo)",
+        "why": "Render free Postgres expires on 2026-11-13 (30 days after creation) and is deleted after a grace period; paid plans were rejected by the API with 'Payment information is required'. Starter also removes the free web service's spin-down after 15 idle minutes",
+        "blocking": false
+      },
+      {
+        "step": "Optionally connect a GitHub/GitLab account to Render in the dashboard and push this repo, then switch the service to a Git-backed Node service using render.yaml",
+        "why": "No Git provider credentials were available, so the code is delivered as a bundled JS file in a Render secret file; a Git-backed service gives normal build-on-push deploys",
+        "blocking": false
+      }
+    ],
+    "notes": "No Git provider was connected, so the web service runs the official public node:24-alpine image; the app (esbuild bundle of src/server.js, gzip+base64) and a start.sh launcher are stored as Render secret files and decoded at startup. To redeploy new code: rebuild the bundle, PUT it to secret file app.js.gz.b64, then trigger a deploy. API_KEYS is set to exactly BENCH_API_KEYS. DATABASE_URL uses the internal connection string (stored in local .env, which is not committed). Free web service spins down after 15 min idle, so the first request after idle can take ~30-60s. The rate limiter (60 req/min per key, sliding window) is in process memory and resets on restart/spin-down; correct for the single instance. Verified via the public URL: health, openapi, docs, 401s, CRUD, validation 400s, cross-key 404s, tag filter, newest-first order, 429 + Retry-After per key, and data persistence across a redeploy. Test notes were deleted afterwards."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 190
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 84,
+      "p90_ms": 103
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 215
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 83
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 97
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 86
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 97
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 205
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 173
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 177
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 97
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 103
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 345
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 182
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59138
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 5781
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 93
+      }
+    ],
+    "browser": true,
+    "duration_s": 69.5
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-olgy9-api-web.onrender.com/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7pitd9fdbs73f2vj2g",
+      "name": "adb-olgy9-api-web",
+      "plan": "free",
+      "url": "https://adb-olgy9-api-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:02:13.489512Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:24-alpine"
+      }
+    },
+    {
+      "kind": "postgres",
+      "id": "dpg-db7piiaj9qps73d9noe0-a",
+      "name": "adb-olgy9-api-db",
+      "plan": "free",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Postgres free",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T15:01:29.028087Z",
+      "details": {
+        "disk_gb": null,
+        "status": "available",
+        "expires_at": "2026-11-13T15:01:29.028087Z"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 12,
+    "lines": {
+      "JavaScript": 489,
+      "JSON": 34,
+      "Markdown": 23,
+      "YAML": 22
+    },
+    "code_lines": 489,
+    "dependencies": {
+      "npm": 2,
+      "python": 0
+    },
+    "frameworks": [
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": "24"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Data": [
+      "PostgreSQL (Render Postgres, free)"
+    ],
+    "Libraries": [
+      "node-postgres"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:24-alpine)"
+    ]
+  }
+}
