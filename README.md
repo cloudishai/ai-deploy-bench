@@ -4,9 +4,8 @@ A benchmark of what it takes for an AI coding agent to build a web app and deplo
 Claude Code builds five kinds of app from a written spec and deploys each one to
 [Cloudish](https://cloudish.ai), [DigitalOcean](https://www.digitalocean.com),
 [Railway](https://railway.com), [Render](https://render.com) and [Vercel](https://vercel.com). An
-independent verifier then tests
-the live deployment. Everything runs in GitHub Actions, and results are committed to
-[`results/`](results).
+independent verifier then tests the live deployment. Everything runs in GitHub Actions, and each run
+opens a pull request adding its results to [`results/`](results) for review before they're merged.
 
 Browse the results at **[aideploybench.com](https://aideploybench.com)**: every run, each app's
 checks, security review, costs and screenshots, and how each metric changes over runs. The site is
@@ -122,10 +121,10 @@ test whatever stack the agent picks:
    gh workflow run benchmark.yml -f clouds=vercel -f apps=static,api     # a subset
    gh workflow run benchmark.yml -f trials=3                             # repeated trials
    ```
-5. **Read the results**: when the run finishes, the collect job commits
+5. **Read the results**: when the run finishes, the collect job opens a pull request adding
    `results/runs/<date>_<run>/` (a summary with a screenshot gallery, `summary.json`, and per cell a
    JSON record, a report and screenshots of the live app)
-   and `results/index.json`, and updates the table above. The JSON layout is described in
+   and `results/index.json`, and updating the table above. Review and merge it. The JSON layout is described in
    [docs/methodology.md](docs/methodology.md#result-files). Full agent transcripts and the generated source code are attached
    to the workflow run as artifacts for 30 days.
 

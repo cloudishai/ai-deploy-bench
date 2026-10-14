@@ -116,9 +116,12 @@ contain known token formats. Keep it enabled on the scratch account.
 
 ## This repository
 
-- **Workflow permissions:** the collect job pushes results with `GITHUB_TOKEN` and
-  `contents: write`. If `main` is protected, allow GitHub Actions to push, or run without
-  committing (`commit_results: false`) and download the artifacts instead.
+- **Results as a pull request:** the collect job opens a PR with `results/` and `README.md` rather
+  than committing to the default branch, so a person reviews each run first (a run can include cells
+  that failed for reasons only a person can judge, such as a missing payment method). Enable
+  **Settings → Actions → General → Allow GitHub Actions to create and approve pull requests** so
+  `GITHUB_TOKEN` can open it. To skip the PR and only keep the artifacts, run with
+  `open_results_pr: false`.
 - **Runner minutes:** each cell is one job of up to about 3 hours, mostly waiting on the agent and
   the cloud. A full run is 20 cells.
 - **Leftovers:** if a teardown fails, run the *Cleanup* workflow. It lists `adb-*` resources older
