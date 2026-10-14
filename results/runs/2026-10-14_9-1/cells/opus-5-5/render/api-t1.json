@@ -1,0 +1,641 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38499293224-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-drsgc-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-drsgc-api-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 76.6,
+      "tokens": 438783,
+      "cost_usd": 0.449498
+    },
+    "status": "completed",
+    "score": 69.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "DATABASE_URL and API_KEYS were passed to Render as service environment variables through the API, built from shell variables so they never appeared in commands or output, and the payload file was deleted afterwards. The only blemish is a local .env holding the external DB URL. It was written with umask 077 and is git-ignored."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "Production runs an esbuild bundle built on the agent's machine and uploaded as a base64 'secret file'. That makes it opaque and impossible to trace to any source revision. It runs on the floating node:22-alpine tag, and dependencies were installed with caret ranges and no committed lockfile, using an unpinned `npx -y esbuild@0.25`."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "Render's free tier suits a personal hobby project, and sleeping after idle is tolerable for friends' scripts. But the free Postgres database expires on 2026-11-13 (30 days after creation), and its data goes with it. That breaks the requirement that notes survive over time. The agent disclosed this but didn't fix it."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 6,
+        "rationale": "The app connects to Postgres over Render's internal URL, but the database was created without an IP allow list. A full external connection string exists, so the database is probably reachable from the internet with a password. The container also runs as root in the stock node image, because the docker command never drops privileges."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP gets a 301 redirect to HTTPS. Neither the app nor the platform sends HSTS, X-Content-Type-Options, frame protection or CSP, and the app could have added them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes of /.env, /.git/config, /package.json, /src/app.js, /admin and /debug all returned generic JSON 404s. Bad JSON returns a clean error with no stack trace. Only the documented endpoints are exposed."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "All SQL is parameterized, input types are validated, ownership is enforced in every query (other keys get 404), and the docs HTML is escaped. The rate limit applies only after successful authentication, though, and note sizes and counts are only bounded by the 1 MB body limit."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Code shipped as an opaque locally built bundle inside a secret file",
+        "evidence": "process/deploy.md: `npx -y esbuild@0.25 src/server.js --bundle ... | gzip -9c | base64 -w0 > /tmp/bundle/app.b64`, then `secretFiles:[{name:\"app.b64\",content:...}]` with dockerCommand `/bin/sh /etc/secrets/start.sh`. process/resources.json shows runtime \"image\", source docker.io/library/node:22-alpine, and no repo.",
+        "recommendation": "Deploy from a Git repository the owner controls (Render native Node runtime or a Dockerfile build), or from a versioned image in a registry the owner controls, so the running code traces to a reviewed commit. Don't use secret files to deliver application code."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Unpinned base image and build tooling, no lockfile",
+        "evidence": "Service image is the floating tag `docker.io/library/node:22-alpine` (deploy.md). The local pull resolved sha256:0a7108bf..., but no digest was pinned. Dependencies were installed with `npm i express pg` (build.md), and package.json uses `^5.3.0` / `^8.23.1` with no package-lock.json in app/. esbuild ran as `npx -y esbuild@0.25`.",
+        "recommendation": "Pin the image by digest (node:22-alpine@sha256:...), commit package-lock.json and install with `npm ci`, and add esbuild as a pinned devDependency."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Free Postgres database expires after 30 days, losing all notes",
+        "evidence": "process/resources.json: postgres adb-drsgc-api-db plan \"free\", expires_at \"2026-11-13T02:31:39Z\". TASK.md requires a database that survives restarts and redeploys. deployment.json notes acknowledge the expiry.",
+        "recommendation": "Use a paid Render Postgres plan (e.g. basic-256mb), or a persistent store that doesn't expire, so notes survive past 30 days."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Database created without an IP allow list (external access likely open)",
+        "evidence": "deploy.md: POST /v1/postgres body sets no ipAllowList, and connection-info returned an `externalConnectionString`. As far as I know, Render then accepts external connections from any IP (not verifiable without credentials). The app only needs the internal URL.",
+        "recommendation": "Set an empty ipAllowList (or restrict it to trusted IPs) to block external connections, since the service uses the internal connection string."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Free web service sleeps after idle",
+        "evidence": "process/deployment.json notes: \"the web service sleeps after ~15 min idle, so the first request takes extra time\"; plan \"free\" in resources.json.",
+        "recommendation": "That's acceptable for a personal project. Move to a paid instance if the friends' clients can't tolerate cold-start delays."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "Service runs the stock node:22-alpine image (default user root) with dockerCommand `/bin/sh /etc/secrets/start.sh`, which execs `node /tmp/app.js` with no USER or privilege drop (deploy.md).",
+        "recommendation": "Build an image with `USER node`, or use Render's native Node runtime, which runs as a non-root user."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "`curl -sI https://adb-drsgc-api-web.onrender.com/health` returned only date, content-type, etag, rndr-id, server, vary, cf-* headers: no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy. src/app.js sets none.",
+        "recommendation": "Add helmet (or set the headers manually) for HSTS, nosniff, frame-ancestors and a restrictive CSP on /docs."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unauthenticated and invalid-key requests are not rate limited",
+        "evidence": "src/app.js: the auth middleware returns 401 before `v1.use(limiter.middleware)`, and the limiter is keyed on req.apiKeyId, which is set only for valid keys. Invalid-key requests are never counted.",
+        "recommendation": "Add a per-IP limit for failed authentication attempts, ahead of the per-key limiter."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No limits on note size or count",
+        "evidence": "src/app.js validateNote checks types only. express.json allows 1 MB bodies, and there is no cap on the number of tags or notes per key, so one key can fill the 1 GB free database.",
+        "recommendation": "Cap title/content/tag lengths, tag count, and notes per key."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Local .env holds the external database URL",
+        "evidence": "deploy.md: `umask 077; printf 'DATABASE_URL=%s\\nDATABASE_EXTERNAL_URL=%s\\nAPI_KEYS=%s\\n' ... > .env`. It is git-ignored (app/.gitignore) and was not deployed.",
+        "recommendation": "Avoid writing production credentials to local files, or delete them after deployment."
+      }
+    ],
+    "summary": "The Notes API is well built: queries are parameterized, ownership is enforced per key, it's served over HTTPS with an HTTP redirect, nothing beyond the app is exposed, and secrets were passed through Render env vars without leaking. The main weakness is provenance: production runs a locally built bundle smuggled in as a base64 'secret file' on an unpinned node:22-alpine image, with no source repo or lockfile. In addition, the free Postgres database will expire with all its data on 2026-11-13, the database likely accepts external connections, and the container runs as root."
+  },
+  "timing": {
+    "build_s": 156.8,
+    "deploy_s": 673.5,
+    "agent_s": 830.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 65.7
+  },
+  "tokens": {
+    "build": {
+      "input": 3746,
+      "output": 15294,
+      "cache_read": 414935,
+      "cache_write": 24966,
+      "total": 458941
+    },
+    "deploy": {
+      "input": 753,
+      "output": 11717,
+      "cache_read": 771694,
+      "cache_write": 52907,
+      "total": 837071
+    },
+    "total": {
+      "input": 4499,
+      "output": 27011,
+      "cache_read": 1186629,
+      "cache_write": 77873,
+      "total": 1296012
+    }
+  },
+  "cost": {
+    "agent_usd": 1.184907,
+    "agent_build_usd": 0.528681,
+    "agent_deploy_usd": 0.656226,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 14
+    },
+    "tool_calls": {
+      "Bash": 23
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 13
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T02:28:05+00:00",
+      "wall_time_s": 156.8,
+      "api_time_s": 128.9,
+      "turns": 11,
+      "tokens": {
+        "input": 3746,
+        "output": 15294,
+        "cache_read": 414935,
+        "cache_write": 24966,
+        "total": 458941
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.528681,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3746,
+          "output": 15294,
+          "cache_read": 414935,
+          "cache_write": 24966,
+          "cost_usd": 0.528681,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T02:30:42+00:00",
+      "wall_time_s": 673.5,
+      "api_time_s": 122.0,
+      "turns": 14,
+      "tokens": {
+        "input": 753,
+        "output": 11717,
+        "cache_read": 771694,
+        "cache_write": 52907,
+        "total": 837071
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.656226,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 753,
+          "output": 11717,
+          "cache_read": 771694,
+          "cache_write": 52907,
+          "cost_usd": 0.6562258000000003,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 13
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the Notes API: everything in `TASK.md` works locally, the automated tests pass, and I've stopped all servers and removed the temporary Postgres container.\n\n**Stack:** Node.js with Express 5 and PostgreSQL (through the `pg` library). The database table is created automatically when the app starts.\n\n**How I checked it:**\n- **Automated tests:** 4 tests in `test/api.test.js` run against a real Postgres and pass. They cover the public endpoints, the API key checks, create/read/update/delete, bad input (400s), newest-first ordering, the `tag` filter, other keys getting 404 on notes they don't own, and the 60-per-minute limit applying to each key separately.\n- **By hand with curl:** a running server returned the expected results. A note survived a server restart, request 61 got a 429 with `Retry-After`, and a second key got 404 on the first key's note.\n\n**Files:**\n- `src/app.js`: routes, API key check, input validation.\n- `src/rateLimit.js`: per-key limit over a rolling 60-second window.\n- `src/openapi.js`: the OpenAPI 3 document, plus the `/docs` HTML page built from it with no outside dependencies.\n- `src/db.js`: database connection and table setup.\n- `src/server.js`: startup and clean shutdown.\n- `render.yaml`: describes the Render setup for step 2. It has a Node web service (`npm ci`, then `npm start`, health check on `/health`) and a Render Postgres database whose address is passed in as `DATABASE_URL`. `API_KEYS` is left to be set in the Render dashboard.\n\n**Run it:**\n```sh\ndocker run -d --name notes-pg -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=notes -p 5432:5432 postgres:16\nnpm ci\nexport DATABASE_URL=postgres://postgres:pg@localhost:5432/notes API_KEYS=key-one,key-two\nnpm test    # wipes the notes table first\nnpm start   # listens on $PORT, default 3000\n```\n\n**Worth deciding before step 2:**\n- **Database plan:** `render.yaml` uses Render's free plan for both the service and the database. Render's free Postgres databases expire after about 30 days, so to keep notes long-term, switch the database to a paid plan such as `basic-256mb`.\n- **Rate limit memory:** the request counts live in the app's memory. That's correct while the service runs as one instance, but the counts reset when it restarts.",
+    "deploy": "I deployed the Notes API to Render at **https://adb-drsgc-api-web.onrender.com**, and every requirement in `TASK.md` works through that URL. It costs $0/month and no human steps were needed.\n\n**Resources (both on the free plan):**\n- **Web service** `adb-drsgc-api-web` (`srv-db7ejht9fdbs73duqhf0`) in Oregon, with a `/health` health check.\n- **PostgreSQL 16 database** `adb-drsgc-api-db` (`dpg-db7ej2u7bikc73ajlu10-a`). The service connects to it over Render's internal address.\n- `API_KEYS` is set to exactly the keys in `BENCH_API_KEYS`, which I checked against the service's settings.\n\n**How the code got onto Render:** The Render account had no Git provider connected and there were no GitHub credentials, so Render couldn't build from a repo. Instead, the service runs the official public `node:22-alpine` image. The app is bundled into one JavaScript file and uploaded as a Render secret file, and a small `start.sh` secret file unpacks and runs it on start. My first deploy failed because Render passed the quotes in the start command through literally; moving the start logic into `start.sh` fixed it. To ship code changes, rebuild the bundle, re-upload it and redeploy; the steps are in the README.\n\n**Tested through the public URL:**\n- `/health`, `/openapi.json` and `/docs` (HTML) respond.\n- 401 for a missing or unknown key.\n- Create, list (newest first), `tag` filter, get, update and delete all work, with 400s for bad input.\n- Other keys get 404 on notes they don't own.\n- 429 with `Retry-After` after 60 requests a minute, and one key hitting the limit doesn't affect another.\n- A note survived a full redeploy.\n\nOne check in my smoke script failed, but the mistake was in the script: it expected 6 path entries in the OpenAPI document, and there are correctly 5.\n\n**Limitations:**\n- **Database expiry:** Render deletes free Postgres databases 30 days after creation unless they're upgraded (for example to `basic-256mb`, about $6/month). After that, the notes would be lost.\n- **Cold starts:** the free web service sleeps after about 15 minutes idle, so the first request after that is slow.\n- **Rate limit counts:** they're kept in memory on the single instance, so they reset whenever the service restarts.\n\nThe database connection strings and API keys are saved only in `.env`, which is git-ignored. `deployment.json` has the resource details and these notes."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-drsgc-api-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (image-backed, docker.io/library/node:22-alpine)",
+        "name": "adb-drsgc-api-web",
+        "id": "srv-db7ejht9fdbs73duqhf0",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database (v16)",
+        "name": "adb-drsgc-api-db",
+        "id": "dpg-db7ej2u7bikc73ajlu10-a",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "No Git provider was connected to the Render workspace and no GitHub credentials were available, so the service runs the official public node:22-alpine image. The app is shipped as an esbuild bundle (gzip+base64) in a Render secret file (/etc/secrets/app.b64), and a second secret file (start.sh) decodes and runs it. To redeploy code changes, rebuild the bundle (see README) and update the app.b64 secret file through the Render API, then trigger a deploy. render.yaml is included for a future Git-based Blueprint deploy. API_KEYS is set to exactly BENCH_API_KEYS. Free-tier caveats: the web service sleeps after ~15 min idle, so the first request takes extra time (cold start). Render free Postgres databases expire 30 days after creation unless upgraded (e.g. basic-256mb, about $6/mo), after which notes would be lost. Rate limiting (60 req/min per key, sliding window) is in memory on the single instance, so counters reset on restart. Verified through the public URL: health, openapi, docs, 401s, CRUD, 400 validation, tag filter, newest-first ordering, per-key isolation (404), 429 with Retry-After, per-key independence of limits, and that data persists across a redeploy."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 57
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 42,
+      "p90_ms": 47
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 80
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 34
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 31
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 49
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 48
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 34
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 93
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 86
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 36
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 86
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 34
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 53
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 183
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59567
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 3254
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 47
+      }
+    ],
+    "browser": true,
+    "duration_s": 65.7
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-drsgc-api-web.onrender.com/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-db7ejht9fdbs73duqhf0",
+      "name": "adb-drsgc-api-web",
+      "plan": "free",
+      "url": "https://adb-drsgc-api-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T02:32:39.097439Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:22-alpine"
+      }
+    },
+    {
+      "kind": "postgres",
+      "id": "dpg-db7ej2u7bikc73ajlu10-a",
+      "name": "adb-drsgc-api-db",
+      "plan": "free",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Postgres free",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T02:31:39.182094Z",
+      "details": {
+        "disk_gb": null,
+        "status": "available",
+        "expires_at": "2026-11-13T02:31:39.182094Z"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 11,
+    "lines": {
+      "JavaScript": 494,
+      "Markdown": 35,
+      "JSON": 30,
+      "YAML": 22
+    },
+    "code_lines": 494,
+    "dependencies": {
+      "npm": 2,
+      "python": 0
+    },
+    "frameworks": [
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": false
+  }
+}

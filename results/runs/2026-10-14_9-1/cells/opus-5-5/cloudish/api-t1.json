@@ -1,0 +1,627 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38499293224-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-hcgq7-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-hcgq7-api.on.do.cloudish.ai",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Claim the Cloudish key adb-hcgq7-api and add credits (mint a fresh link with GET https://cloudish.ai/api/v1/credits/claim using CLOUDISH_API_KEY from .env; links expire after 30 minutes) (The free grant (~0.1 credits) only covers about 9 running hours at the shared size. When the balance reaches zer",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 78.9,
+      "tokens": 447960,
+      "cost_usd": 0.374769
+    },
+    "status": "completed",
+    "score": 77.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS is stored as a Cloudish project secret and read from the environment. The Cloudish API key stayed in a local .env that was left out of the build context and never printed. One small issue: the raw API key is stored in plaintext as the note owner in SQLite."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 8,
+        "rationale": "Cloudish built the image server-side from a context the agent uploaded, and the running app uses that build's image (builds/95:f01db1a3752a). The app has no dependencies, but the base image node:24-slim is a floating tag and isn't pinned by digest."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "Personal use fits an unclaimed free Cloudish key, as far as I know its terms, but I'm not certain of them. The 0.1 credit grant covers only about 9 running hours. After that the app returns 402 until a person claims the key and adds credit, so a service friends rely on won't stay up. The agent disclosed this but marked it non-blocking."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 6,
+        "rationale": "The container runs as root: the agent deliberately removed `USER node` from the Dockerfile. The SQLite database is on a private volume, and the only public resource is the HTTPS endpoint the app needs."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "Served over TLS 1.3 with a valid Let's Encrypt certificate. HTTP gets a 308 redirect to HTTPS, and the platform adds HSTS. The app sets no X-Content-Type-Options, frame protection or CSP, which it could have done."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes for .env, .git, source files, the Dockerfile, debug and admin paths, and path traversal all got a JSON 404. Malformed input got clean JSON errors with no stack traces."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Input is validated strictly, every query is parameterized and scoped to the owner, other keys get 404s, and the per-key rate limit works. Requests with invalid keys aren't rate-limited, and nothing caps note count or total storage per key."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "App runs on an unclaimed free credit grant that runs out in about 9 hours",
+        "evidence": "process/deployment.json human_steps: 'The free grant (~0.1 credits) only covers about 9 running hours ... When the balance reaches zero the app stops serving (402)'; deploy.md line 281 runway: runningHoursLeft 9.2; context.json balance_usd 0.098476",
+        "recommendation": "Have the owner claim the key and fund it, or set up auto top-up, before the API is handed to the friends who will call it. Treat this as a blocking step."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "process/build.md line 100: sed -i '/chown/d;/USER node/d' Dockerfile; app/Dockerfile has no USER directive",
+        "recommendation": "Restore `RUN mkdir -p /data && chown node:node /data` and `USER node`, or use the platform's volume fsGroup/ownership options."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned by digest",
+        "evidence": "app/Dockerfile line 1: FROM node:24-slim",
+        "recommendation": "Pin the base image as node:24-slim@sha256:<digest> and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -sI https://adb-hcgq7-api.on.do.cloudish.ai/health returns only content-type, content-length and strict-transport-security (HSTS comes from the platform); no X-Content-Type-Options, X-Frame-Options or CSP. app/src/app.js send() sets only Content-Type and Content-Length",
+        "recommendation": "Send X-Content-Type-Options: nosniff, a restrictive CSP and frame-ancestors 'none' on every response, especially /docs."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "Raw API keys stored in plaintext as the note owner",
+        "evidence": "app/src/db.js line 55: stmts.insert.run(id, owner, ...) with owner = the X-API-Key value (app/src/app.js line 111: store.create(key, input))",
+        "recommendation": "Store an HMAC or SHA-256 hash of the key, or a key ID, as the owner, so a leaked database file doesn't reveal valid credentials."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Invalid-key requests aren't rate-limited and storage per key is unbounded",
+        "evidence": "app/src/app.js lines 87-90: the 401 for an unknown key is returned before limiter.hit(); MAX_BODY_BYTES is 1 MiB (line 5), and there is no cap on note count or field length, against a 1 GB volume",
+        "recommendation": "Add a per-IP limit for failed authentication, and cap field lengths and notes per key."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "No sensitive files or debug endpoints exposed",
+        "evidence": "GET /.env, /.git/config, /package.json, /src/app.js, /Dockerfile, /debug and /admin all return 404 {\"error\":\"Not found\"}; POST /v1/notes with malformed JSON and a bad key returns 401 {\"error\":\"Invalid API key\"}",
+        "recommendation": "None."
+      },
+      {
+        "severity": "info",
+        "criterion": "transport",
+        "source": "platform",
+        "title": "HTTPS enforced with a valid certificate",
+        "evidence": "curl -I http://adb-hcgq7-api.on.do.cloudish.ai/health -> 308 to https; TLSv1.3, CN=adb-hcgq7-api.on.do.cloudish.ai, issuer Let's Encrypt YR2, expires Jan 12 2027; strict-transport-security: max-age=31536000",
+        "recommendation": "None."
+      }
+    ],
+    "summary": "The Notes API is built and deployed cleanly. API_KEYS is held as a Cloudish secret, the Cloudish credential never left the local .env, the image Cloudish built from the uploaded code is what runs, the code has no dependencies, HTTPS is enforced, and nothing beyond the API is exposed. The main weaknesses: the container runs as root, the base image tag isn't pinned, and the app runs on an unclaimed free credit grant that lasts only about 9 running hours before it stops serving, which doesn't fit an API friends need to stay up. There are also minor gaps in security headers and abuse controls."
+  },
+  "timing": {
+    "build_s": 188.6,
+    "deploy_s": 233.8,
+    "agent_s": 422.4,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 67.5
+  },
+  "tokens": {
+    "build": {
+      "input": 17124,
+      "output": 21680,
+      "cache_read": 676991,
+      "cache_write": 28230,
+      "total": 744025
+    },
+    "deploy": {
+      "input": 1166,
+      "output": 8540,
+      "cache_read": 1066240,
+      "cache_write": 25494,
+      "total": 1101440
+    },
+    "total": {
+      "input": 18290,
+      "output": 30220,
+      "cache_read": 1743231,
+      "cache_write": 53724,
+      "total": 1845465
+    }
+  },
+  "cost": {
+    "agent_usd": 1.17471,
+    "agent_build_usd": 0.658528,
+    "agent_deploy_usd": 0.516182,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 20,
+      "deploy": 16
+    },
+    "tool_calls": {
+      "Bash": 26,
+      "Write": 6,
+      "WebFetch": 2
+    },
+    "shell_commands": {
+      "build": 11,
+      "deploy": 15
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 2,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T02:26:41+00:00",
+      "wall_time_s": 188.6,
+      "api_time_s": 173.2,
+      "turns": 20,
+      "tokens": {
+        "input": 17124,
+        "output": 21680,
+        "cache_read": 676991,
+        "cache_write": 28230,
+        "total": 744025
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.658528,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 4325,
+          "output": 18080,
+          "cache_read": 676991,
+          "cache_write": 28230,
+          "cost_usd": 0.6554482,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 12799,
+          "output": 3600,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0030799,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11,
+        "WebFetch": 2,
+        "Write": 6
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T02:29:50+00:00",
+      "wall_time_s": 233.8,
+      "api_time_s": 90.5,
+      "turns": 16,
+      "tokens": {
+        "input": 1166,
+        "output": 8540,
+        "cache_read": 1066240,
+        "cache_write": 25494,
+        "total": 1101440
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.516182,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 1166,
+          "output": 8540,
+          "cache_read": 1066240,
+          "cache_write": 25494,
+          "cost_usd": 0.5161819999999998,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 15
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the Notes API and it works locally. All 8 automated tests pass, and I ran every endpoint with curl against the Docker image. All servers and containers are stopped and cleaned up.\n\n**Stack:** Node.js 24 with no npm dependencies. It uses Node's built-in HTTP server and its built-in SQLite module. Notes are stored in a SQLite file at `$DATA_DIR/notes.db`, which is `/data/notes.db` in the container. I chose SQLite because the only database option Cloudish describes is SQLite on a persistent disk.\n\n**Layout:**\n- `src/server.js`: entry point. Reads `PORT` (default 8080), `API_KEYS` and `DATA_DIR`, and binds to `0.0.0.0`.\n- `src/app.js`: routes, API-key check, input validation and JSON errors.\n- `src/db.js`: the SQLite storage.\n- `src/ratelimit.js`: 60 requests per minute for each key, with a `Retry-After` header on 429.\n- `src/openapi.js`: the OpenAPI 3 document and the HTML docs page.\n- `test/api.test.js`: the tests.\n- `Dockerfile` (based on `node:24-slim`), `.dockerignore` and `README.md`.\n\n**What was checked:**\n- **Public endpoints:** `/health`, `/openapi.json` and `/docs` respond without a key.\n- **Auth:** a missing or unknown key gets 401. Another key's notes return 404 for read, update and delete, and don't appear in its list.\n- **Notes:** create, read, update and delete work. The list is newest first and the `?tag=` filter works.\n- **Validation:** bad input gets 400, including an empty title, wrong types and invalid JSON.\n- **Rate limit:** the 61st request in a minute gets 429 with `Retry-After`, and other keys are unaffected.\n- **Persistence:** notes survived a container restart with the volume mounted.\n\n**Decisions where the spec was open:**\n- `content` is optional on create and defaults to `\"\"`, because the spec only lists a missing title as an error. It must be a string if sent.\n- A PATCH with no recognised fields gets 400.\n- Duplicate tags are removed.\n- The rate limiter keeps its counts in memory, so they reset when the app restarts. That's fine here because an app with a persistent volume always runs as one instance on Cloudish.\n\n**Run it:**\n```bash\nAPI_KEYS=key-one,key-two npm start     # http://localhost:8080\nnpm test\n# or with Docker:\ndocker build -t notes-api . && docker run -p 8080:8080 -e API_KEYS=key-one -v notesdata:/data notes-api\n```\n\n**For step 2 (Cloudish):** deploy from the Dockerfile with port 8080. Turn on a persistent volume mounted at `/data`, and set `API_KEYS` as a secret rather than a plain environment variable.",
+    "deploy": "The Notes API is live on Cloudish at **https://adb-hcgq7-api.on.do.cloudish.ai**, over HTTPS with a valid certificate. I tested every requirement in `TASK.md` through that URL and all of them passed.\n\n**What's deployed**\n- **Cloudish account:** I created a Cloudish API key named `adb-hcgq7-api` myself, which needed no sign-up. It's saved in `.env`, which was left out of the upload.\n- **App:** a project named `adb-hcgq7-api`, built by Cloudish from the Dockerfile. It runs on the cheapest size (`shared`) as a single instance on port 8080.\n- **Database:** SQLite in a 1 GB persistent volume mounted at `/data`. Volumes are free.\n- **API keys:** `API_KEYS` is set as an encrypted Cloudish secret, equal to `BENCH_API_KEYS` (2 keys).\n- **Cost:** about $7.84/month if it ran all the time. It's billed only while running, and I set it to sleep after 1 hour without requests, so the real cost will be lower.\n\n**Tested through the public URL**\n- **No-auth endpoints:** `/health`, `/openapi.json` and `/docs` all return 200 without a key.\n- **Auth:** missing and wrong keys both get 401.\n- **Notes:** create, read, update and delete all work.\n- **Validation:** an empty title, wrong types and invalid JSON each get 400.\n- **Ownership and listing:** one key can't see or change another key's notes (404), the list is newest first, and `?tag=` filtering works.\n- **Rate limit:** past 60 requests a minute, one key got 429 with a `Retry-After` header while the other key kept working.\n\n**Not fully verified or limited**\n- **Persistence on Cloudish:** I couldn't force a real container restart there. Redeploying the same image left the running container alone, and an environment-variable change I sent wasn't applied. Notes are written to the persistent volume, and surviving a restart was confirmed locally with Docker.\n- **Wake-up delay:** after an hour without requests, the first request gets a \"starting up\" page with status 503 for about 10\u201320 seconds while the app wakes.\n- **Rate-limit counters** are kept in memory, so they reset whenever the app restarts or wakes up.\n\n**Needs a person, but nothing is blocked yet:** the free credit covers only about 9 running hours. When it runs out, the app stops serving until someone claims the key and adds credit. This is listed under `human_steps` in `deployment.json`, with how to get a claim link (each link expires after 30 minutes)."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-hcgq7-api.on.do.cloudish.ai",
+    "resources": [
+      {
+        "type": "Cloudish API key / account (alias)",
+        "name": "adb-hcgq7-api",
+        "id": "76",
+        "plan": "unclaimed key, free 0.1 credit grant",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Cloudish project + docker app (web service, built from Dockerfile)",
+        "name": "adb-hcgq7-api",
+        "id": "project 95 / docker app 265 (adb-hcgq7-api-adb-hcgq7-api)",
+        "plan": "shared (0.1 CPU / 0.2 GB billed), 1 replica, scale-to-zero after 3600s idle",
+        "monthly_cost_usd": 7.84
+      },
+      {
+        "type": "Persistent volume (SQLite database at /data/notes.db)",
+        "name": "adb-hcgq7-api volume",
+        "id": "pvc-44cdcd19-016e-4e47-b61f-d96edf7b6c89",
+        "plan": "1 GB",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Container image (Cloudish registry)",
+        "name": "builds/95:f01db1a3752a",
+        "id": "build 243",
+        "plan": "server-side build",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Claim the Cloudish key adb-hcgq7-api and add credits (mint a fresh link with GET https://cloudish.ai/api/v1/credits/claim using CLOUDISH_API_KEY from .env; links expire after 30 minutes)",
+        "why": "The free grant (~0.1 credits) only covers about 9 running hours at the shared size. When the balance reaches zero the app stops serving (402) until credits are added.",
+        "blocking": false
+      }
+    ],
+    "notes": "Zero-dependency Node 24 app (node:http + built-in node:sqlite), built server-side by Cloudish from the Dockerfile. API_KEYS is set as an encrypted Cloudish project secret, equal to BENCH_API_KEYS. Every requirement was verified through the public HTTPS URL (Let's Encrypt cert): health, openapi, docs, 401s, CRUD, validation 400s, cross-key 404s, tag filter, and 60/min per-key rate limit with Retry-After. The app scales to zero after 1 hour idle: the first request after that may get a short 503 'starting up' page (about 10-20s cold start) before it serves. Rate-limit counters are in memory, which suits the single replica a volume-backed app always runs as, but they reset when the container restarts. The $7.84/month estimate assumes the app runs all the time; actual cost is lower because it is billed only while running."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 186
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 54,
+      "p90_ms": 69
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 56
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 46
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 47
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 52
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 56
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 49
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 126
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 98
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 51
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 135
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 49
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 197
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 115
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59536
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 3431
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      }
+    ],
+    "browser": true,
+    "duration_s": 67.5
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-hcgq7-api.on.do.cloudish.ai/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-hcgq7-api/adb-hcgq7-api",
+      "name": "adb-hcgq7-api",
+      "plan": "shared",
+      "url": "https://adb-hcgq7-api.on.do.cloudish.ai/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T02:30:03.454Z",
+      "details": {
+        "cpuCores": null,
+        "memoryGb": null,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": true,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.098476
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 12,
+    "lines": {
+      "JavaScript": 664,
+      "JSON": 27,
+      "Markdown": 20,
+      "Docker": 8
+    },
+    "code_lines": 672,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false
+  }
+}

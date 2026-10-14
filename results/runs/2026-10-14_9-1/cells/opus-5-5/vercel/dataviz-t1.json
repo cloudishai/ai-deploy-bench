@@ -1,0 +1,528 @@
+{
+  "schema": 5,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "38499293224-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-9eaes-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "url": "https://adb-9eaes-dataviz-web.vercel.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 64.3,
+      "tokens": 313279,
+      "cost_usd": 0.315596
+    },
+    "status": "completed",
+    "score": 74.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "The app needs no secrets. The Vercel token was read from environment variables ($VERCEL_TOKEN) and never written to files or printed. One minor gap: `vercel link` created a .env.local (probably holding a VERCEL_OIDC_TOKEN), and the first production deploy ran before .env.local was added to .vercelignore. The CLI's default ignore list most likely excluded it, and it was never publicly reachable."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The CLI uploaded the deployment from the agent's local working directory. Nothing goes through a git repository the owner controls, so production can't be traced to a commit. The app has zero npm dependencies, but the Vercel CLI was installed as vercel@latest without a pinned version, and the Node runtime is only bounded by engines \">=20\"."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 2,
+        "rationale": "This is a commercial app (a company's sales dashboard), but the Vercel team is on the Hobby plan. Vercel's Hobby terms allow only personal, non-commercial use, so this hosting breaks the provider's terms. The agent also didn't notice or flag the plan."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "The setup has no database or other public resources. The CSV ships inside the function bundles and isn't served statically. Per-deployment URLs stay behind Vercel's default Deployment Protection, and only the production alias is public. The company's order-level sales data can be read by anyone, but the task's spec requires that."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "The site is HTTPS-only: HTTP returns a 308 redirect to HTTPS, and the platform sends HSTS with preload. The app doesn't set X-Content-Type-Options, frame protection or a CSP, which it could have done through vercel.json headers."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Requests for source files, .env, .env.local, .git, .vercel, the CSV, package.json and tests all return 404, and there are no debug endpoints. /_src redirects to Vercel's source viewer, which requires authentication."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Filters use exact matching on in-memory data, so there is nothing to inject into. Dates are checked against a regex, and limit/offset are clamped to 1..200. All dynamic HTML is escaped. Minor issues: invalid calendar dates such as 2025-02-31 are accepted, any HTTP method is accepted, and only Vercel's platform defaults protect the endpoints from abuse."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial app hosted on Vercel Hobby (non-commercial) plan",
+        "evidence": "process/context.json: use=commercial, team_plans.team_U2tHOV4fpUx18nl9EpcRQ4hO=hobby. app/deployment.json lists the plan only as \"Vercel team's current plan\" and doesn't mention the restriction.",
+        "recommendation": "Move the project to a Vercel Pro (or Enterprise) team before it is used commercially, or host it with a provider or plan that allows commercial use. Record the plan and its terms in deployment.json."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from local directory via CLI; CLI installed unpinned",
+        "evidence": "process/deploy.md: `npm i -g vercel@latest` followed by `vercel deploy --prod --yes` from the working directory. There is no git remote or commit linkage, and the files were untracked (`git status` shows ?? for all of them).",
+        "recommendation": "Deploy from a git repository the owner controls through Vercel's Git integration or CI, pin the CLI version, and pin the Node major version (for example \"engines\": {\"node\": \"20.x\"})."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": ".env.local created by vercel link was not in .vercelignore for the first deploy",
+        "evidence": "process/deploy.md: `vercel link` printed \"Created .env.local file\", the same command ran `vercel deploy --prod`, and only afterwards did the agent run `printf '.env.local\\n.env*\\n' >> .vercelignore` and redeploy. GET /.env.local returns 404.",
+        "recommendation": "Add .env* to .vercelignore before the first deploy. Check the first deployment's source in the Vercel dashboard, and delete that deployment if the file was uploaded."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing app-level security headers",
+        "evidence": "curl -sI https://adb-9eaes-dataviz-web.vercel.app/ returns only strict-transport-security and cache headers. There is no content-security-policy, x-content-type-options, x-frame-options or frame-ancestors, and app/vercel.json has no headers block.",
+        "recommendation": "Add a `headers` block to vercel.json that sets Content-Security-Policy (default-src 'self'; frame-ancestors 'none'), X-Content-Type-Options: nosniff and Referrer-Policy."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public API",
+        "evidence": "app/api/summary.js and app/api/orders.js have no throttling. Each call filters and sorts the whole dataset, so a client can page through all 2,400 orders in 12 requests (limit capped at 200).",
+        "recommendation": "Turn on the Vercel Firewall or WAF rate-limit rules, or add caching (s-maxage) for the read-only aggregates."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Lenient date validation and any HTTP method accepted",
+        "evidence": "GET /api/summary?start=2025-02-31 returns 200 with filtered data. POST and OPTIONS /api/summary return 200 (app/lib/sales.js parseFilters relies on Date.parse).",
+        "recommendation": "Check that a date round-trips through toISOString, and return 405 for methods other than GET/HEAD."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "/_src redirects to Vercel source viewer",
+        "evidence": "curl -sI https://adb-9eaes-dataviz-web.vercel.app/_src returns 307 to https://vercel.com/deployments/adb-9eaes-dataviz-web.vercel.app/source, which requires team login.",
+        "recommendation": "No action needed. The viewer is behind authentication."
+      }
+    ],
+    "summary": "The zero-dependency Node dashboard on Vercel is well built: it needs no secrets, serves only public/ (source, .env, .git and the raw CSV all return 404), escapes all dynamic HTML, and validates its query parameters. It is served over HTTPS with HSTS. The main problem is compliance: a company's commercial app is hosted on a Vercel Hobby team, and Hobby allows only personal, non-commercial use. Smaller issues are a CLI deploy from a local directory with no git provenance, an unpinned CLI, missing CSP and frame headers, a .env.local the agent didn't add to .vercelignore until after the first deploy, and no rate limiting."
+  },
+  "timing": {
+    "build_s": 149.9,
+    "deploy_s": 82.6,
+    "agent_s": 232.5,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 3.4
+  },
+  "tokens": {
+    "build": {
+      "input": 4093,
+      "output": 16173,
+      "cache_read": 689548,
+      "cache_write": 32326,
+      "total": 742140
+    },
+    "deploy": {
+      "input": 649,
+      "output": 3228,
+      "cache_read": 535084,
+      "cache_write": 5970,
+      "total": 544931
+    },
+    "total": {
+      "input": 4742,
+      "output": 19401,
+      "cache_read": 1224632,
+      "cache_write": 38296,
+      "total": 1287071
+    }
+  },
+  "cost": {
+    "agent_usd": 0.843395,
+    "agent_build_usd": 0.639372,
+    "agent_deploy_usd": 0.204023,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "Hobby is for non-commercial use only, so priced on Pro: $20 platform fee including $20 of usage credit, $0.00 of usage"
+      },
+      "busy": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "Hobby is for non-commercial use only, so priced on Pro: $20 platform fee including $20 of usage credit, $5.75 of usage"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 17,
+      "deploy": 9
+    },
+    "tool_calls": {
+      "Bash": 20,
+      "Skill": 1,
+      "Write": 1,
+      "Read": 1
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 8
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T02:34:07+00:00",
+      "wall_time_s": 149.9,
+      "api_time_s": 141.7,
+      "turns": 17,
+      "tokens": {
+        "input": 4093,
+        "output": 16173,
+        "cache_read": 689548,
+        "cache_write": 32326,
+        "total": 742140
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.639372,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 4093,
+          "output": 16173,
+          "cache_read": 689548,
+          "cache_write": 32326,
+          "cost_usd": 0.6393715999999999,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12,
+        "Skill": 1,
+        "Write": 1,
+        "Read": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T02:36:37+00:00",
+      "wall_time_s": 82.6,
+      "api_time_s": 42.3,
+      "turns": 9,
+      "tokens": {
+        "input": 649,
+        "output": 3228,
+        "cache_read": 535084,
+        "cache_write": 5970,
+        "total": 544931
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.204023,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 649,
+          "output": 3228,
+          "cache_read": 535084,
+          "cache_write": 5970,
+          "cost_usd": 0.20402280000000006,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The sales dashboard is built and working locally; nothing has been deployed yet. All 5 automated tests pass, every requirement was checked with curl, and a headless-browser run confirmed that changing filters updates the tiles, charts and table without a page reload, with no console errors. The local server is stopped.\n\n**Stack:** plain Node.js with no dependencies, laid out the way Vercel expects without any configuration:\n- **`public/index.html`** is the dashboard at `/`. It has:\n  - region and category dropdowns plus start and end dates\n  - three tiles: total revenue, orders and units sold\n  - a monthly revenue bar chart and a category revenue bar chart, drawn as SVG with hover tooltips\n  - a table of matching orders, newest first, 50 per page with Newer/Older buttons\n  \n  It supports dark mode, and the current filters are kept in the URL.\n- **`api/summary.js`** is `GET /api/summary` as specified. Filters are combined with AND and dates are inclusive. Revenue is rounded to 2 decimals, months are listed in ascending order and categories by revenue, highest first. When nothing matches it returns zeros and empty arrays.\n  - One addition you didn't ask for: a badly formatted `start` or `end` date gets a `400` error.\n- **Two extra endpoints feed the page:** `api/orders.js` returns the matching orders a page at a time, and `api/options.js` returns the filter choices and date limits.\n- **`lib/sales.js`** reads `data/sales.csv` once and keeps it in memory, and does the filtering and totals.\n- **`vercel.json`** serves the `public/` folder and includes `data/**` in each API function so the CSV is there when deployed.\n- **`server.js`** is a small local server that behaves like Vercel: `/api/*` goes to the matching file in `api/`, and everything else is served from `public/`.\n\nAs a spot check, North from 2025-06-01 to 2025-07-15 returns $37,717.48 across 53 orders and 440 units. With no filters the API returns all 2,400 orders, and the totals match sums taken straight from the CSV.\n\n**To run it:**\n- `npm start` serves it at http://localhost:3000 (set `PORT` to change the port). There is nothing to install.\n- `npm test` runs the tests, which compare the API's numbers against the raw CSV.",
+    "deploy": "The dashboard is live at **https://adb-9eaes-dataviz-web.vercel.app**, and every requirement in `TASK.md` works through that URL.\n\n**What I deployed:** one Vercel project, `adb-9eaes-dataviz-web` (`prj_U5N4IOGrSBC1Mwibwv59Q3RI2pct`), using the Vercel CLI and production deploys. The dashboard page is served as a static file, and `/api/summary`, `/api/orders` and `/api/options` run as Node functions. Those functions read the CSV, which is bundled with them and held in memory. There's no database or other resource, so the estimated cost is $0 a month.\n\n**Tests against the public URL:**\n- **Summary API:** gives the same numbers as the local run. With no filters it returns 2,400 orders and $1,839,455.69. North from 2025-06-01 to 2025-07-15 returns 53 orders and $37,717.48.\n- **Edge cases:** a filter that matches nothing returns zeros and empty arrays, and a badly formatted date gets a `400`.\n- **Dashboard:** in a headless browser on the live site, selecting Furniture changed the orders tile from 2,400 to 599 and the category chart to a single bar, without a page reload and with no page errors.\n- **Private files:** the raw CSV and `.env` files are not reachable over the web.\n\n**Notes:**\n- Only the main address above is public. The per-deployment addresses Vercel also creates stay behind its default login protection; I left that setting alone.\n- Linking the project made the CLI write a `.env.local` file. I added it to `.gitignore` and `.vercelignore` and redeployed, so it isn't committed or deployed.\n- I didn't create any credentials, so there's no `.env` file. `human_steps` in `deployment.json` is empty because nothing needed a person.\n\nNothing failed."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-9eaes-dataviz-web.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (static site + Node.js serverless functions)",
+        "name": "adb-9eaes-dataviz-web",
+        "id": "prj_U5N4IOGrSBC1Mwibwv59Q3RI2pct",
+        "plan": "Vercel team's current plan; usage within included/free limits",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "Dashboard served statically from public/ at /; /api/summary, /api/orders and /api/options are Vercel Node functions that read the bundled data/sales.csv (via vercel.json includeFiles) and cache it in memory. No database. The production alias is public; per-deployment URLs (e.g. *-ai-deploy-bench.vercel.app) remain behind Vercel's default Deployment Protection. Invalid start/end dates return 400."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 59
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 32,
+      "p90_ms": 51
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 24
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 24
+      },
+      {
+        "id": "dashboard",
+        "description": "GET / serves the dashboard as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 58
+      },
+      {
+        "id": "summary_all",
+        "description": "GET /api/summary (no filters) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 48
+      },
+      {
+        "id": "summary_region",
+        "description": "GET /api/summary (region=West) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 32
+      },
+      {
+        "id": "summary_category",
+        "description": "GET /api/summary (category=Electronics) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 24
+      },
+      {
+        "id": "summary_combined",
+        "description": "GET /api/summary (region=East, category=Furniture, start=2025-03-01, end=2025-06-30) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 24
+      },
+      {
+        "id": "summary_empty",
+        "description": "GET /api/summary (region=Atlantis) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 33
+      },
+      {
+        "id": "browser_chart",
+        "description": "The dashboard renders a chart (SVG or canvas) in a browser",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 801
+      },
+      {
+        "id": "browser_two_charts",
+        "description": "The dashboard shows at least two charts",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 731
+      },
+      {
+        "id": "browser_filters",
+        "description": "The dashboard has filter controls",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 697
+      }
+    ],
+    "browser": true,
+    "duration_s": 3.4
+  },
+  "screenshots": [
+    {
+      "name": "dashboard",
+      "caption": "The dashboard",
+      "url": "https://adb-9eaes-dataviz-web.vercel.app/",
+      "file": "dataviz-t1/dashboard.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_U5N4IOGrSBC1Mwibwv59Q3RI2pct",
+      "name": "adb-9eaes-dataviz-web",
+      "plan": null,
+      "url": "https://adb-9eaes-dataviz-web.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1791945418410,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": "node"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 14,
+    "lines": {
+      "HTML": 311,
+      "JavaScript": 223,
+      "JSON": 28,
+      "Markdown": 9
+    },
+    "code_lines": 534,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "vercel.json"
+    ],
+    "git_repo": true
+  }
+}

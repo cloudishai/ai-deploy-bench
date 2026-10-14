@@ -1,6 +1,26 @@
 {
-  "schema": 5,
+  "schema": 6,
   "runs": [
+    {
+      "name": "2026-10-14_9-1",
+      "date": "2026-10-14",
+      "number": 9,
+      "attempt": 1,
+      "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/38499293224",
+      "scope": "full",
+      "models": [
+        "opus-5-5"
+      ],
+      "trials": 1,
+      "agent_versions": [
+        "2.1.296"
+      ],
+      "schema": 6,
+      "cells": 20,
+      "success": 20,
+      "summary": "runs/2026-10-14_9-1/summary.json",
+      "report": "runs/2026-10-14_9-1/summary.md"
+    },
     {
       "name": "2026-10-13_8-1",
       "date": "2026-10-13",
