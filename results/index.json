@@ -1,6 +1,27 @@
 {
-  "schema": 6,
+  "schema": 8,
   "runs": [
+    {
+      "name": "2026-10-14_12-1",
+      "date": "2026-10-14",
+      "number": 12,
+      "attempt": 1,
+      "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/38651736144",
+      "scope": "apps: static \u00b7 clouds: railway \u00b7 models: all",
+      "models": [
+        "opus-5-5"
+      ],
+      "trials": 1,
+      "benchmark_version": 3,
+      "agent_versions": [
+        "2.1.296"
+      ],
+      "schema": 8,
+      "cells": 1,
+      "success": 1,
+      "summary": "runs/2026-10-14_12-1/summary.json",
+      "report": "runs/2026-10-14_12-1/summary.md"
+    },
     {
       "name": "2026-10-14_10-1",
       "date": "2026-10-14",
@@ -12,6 +33,7 @@
         "opus-5-5"
       ],
       "trials": 1,
+      "benchmark_version": null,
       "agent_versions": [
         "2.1.296"
       ],
@@ -32,6 +54,7 @@
         "opus-5-5"
       ],
       "trials": 1,
+      "benchmark_version": null,
       "agent_versions": [
         "2.1.296"
       ],
@@ -52,6 +75,7 @@
         "opus-5-5"
       ],
       "trials": 1,
+      "benchmark_version": null,
       "agent_versions": [
         "2.1.296"
       ],
@@ -72,6 +96,7 @@
         "opus-5-5"
       ],
       "trials": 1,
+      "benchmark_version": null,
       "agent_versions": [
         "2.1.296"
       ],
@@ -92,6 +117,7 @@
         "opus-5-5"
       ],
       "trials": 1,
+      "benchmark_version": null,
       "agent_versions": [
         "2.1.296"
       ],

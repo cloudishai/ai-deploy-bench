@@ -1,0 +1,114 @@
+{
+  "schema": 8,
+  "run": {
+    "name": "2026-10-14_12-1",
+    "date": "2026-10-14",
+    "number": 12,
+    "attempt": 1,
+    "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/38651736144",
+    "models": [
+      "opus-5-5"
+    ],
+    "trials": 1,
+    "scope": "apps: static \u00b7 clouds: railway \u00b7 models: all",
+    "benchmark_version": 3,
+    "agent_versions": [
+      "2.1.296"
+    ],
+    "commit": true
+  },
+  "groups": [
+    {
+      "model": "opus-5-5",
+      "cloud": "railway",
+      "cells": 1,
+      "success": 1,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 2,
+        "minutes": 5
+      },
+      "deploys_without_human": {
+        "count": 0,
+        "total": 1
+      },
+      "security_score": 85.0,
+      "stack_fit_score": 90.0,
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 120.9,
+      "mean_deploy_s": 155.4,
+      "tokens": 1136686,
+      "agent_usd": 0.81,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": []
+    }
+  ],
+  "cells": [
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-bbchf-static-web-production.up.railway.app",
+      "path": "cells/opus-5-5/railway/static-t1.json",
+      "report": "cells/opus-5-5/railway/static-t1.md",
+      "build_s": 120.9,
+      "deploy_s": 155.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1136686,
+      "agent_usd": 0.809785,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 18,
+      "agent_version": "2.1.296",
+      "build_tokens": 505614,
+      "deploy_tokens": 403561,
+      "stack": [],
+      "technologies": [
+        "Node.js 18+",
+        "Node.js http"
+      ],
+      "code_lines": 457,
+      "dependencies": 0,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 85.0,
+      "stack_fit_score": 90.0,
+      "screenshots": [
+        "home.jpg",
+        "contact.jpg"
+      ]
+    }
+  ]
+}

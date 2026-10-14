@@ -6,6 +6,7 @@ Only full runs (every cloud, app and model) update the summary in the repository
 
 | Run | Scope | Models | Success | Checks passed | Agent cost |
 |---|---|---|---|---|---|
+| [2026-10-14 · #12](runs/2026-10-14_12-1/summary.md) | apps: static · clouds: railway · models: all | opus-5-5 | 1/1 | 100% | $0.81 |
 | [2026-10-14 · #10](runs/2026-10-14_10-1/summary.md) | full | opus-5-5 | 18/20 | 95% | $15.56 |
 | [2026-10-14 · #9](runs/2026-10-14_9-1/summary.md) | full | opus-5-5 | 20/20 | 100% | $20.24 |
 | [2026-10-13 · #8](runs/2026-10-13_8-1/summary.md) | full | opus-5-5 | 18/20 | 98% | $16.87 |
