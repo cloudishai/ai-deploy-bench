@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Runs · AI Deploy Bench{% endblock %}
+{% block description %}Every run of the AI Deploy Bench benchmark, newest first.{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>Runs</h1>
+  <p class="lede">Every run of the benchmark, newest first. A full run covers every cloud, app and model; the others test a subset.</p>
+</header>
+{% if runs %}
+<div class="table-scroll">
+<table class="data">
+  <thead><tr><th>Run</th><th>Scope</th><th>Models</th><th class="num">Cells</th><th class="num">Succeeded</th><th class="num">Checks passed</th><th class="num">Agent cost</th></tr></thead>
+  <tbody>
+{% for run in runs | reverse %}
+    <tr>
+      <td class="nowrap"><a href="{{ run.href }}"><strong>{{ run.label }}</strong></a></td>
+      <td>{% if run.full %}<span class="pill pill-accent">Full run</span>{% else %}{{ run.scope }}{% endif %}</td>
+      <td>{% for m in run.info.get('models', []) %}{{ model_name(m) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+      <td class="num">{{ run.cells | length }}</td>
+      <td class="num">{{ run.success_count }}</td>
+      <td class="num">{{ fmt.pct(run.mean_score) }}</td>
+      <td class="num">{{ fmt.usd(run.agent_usd) }}</td>
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="notice">No runs yet.</p>
+{% endif %}
+{% endblock %}

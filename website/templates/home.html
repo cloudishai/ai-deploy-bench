@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">An open benchmark, run on GitHub Actions</p>
+  <h1>What does it take for an AI agent to <span class="gradient-text">ship your app</span>?</h1>
+  <p class="lede">AI Deploy Bench gives an AI coding agent the same five apps to build and deploy on each cloud, from a static site to a realtime chat. Then it measures what it took: whether the app worked, what a person still had to do, how secure it was, how long it took and what it cost.</p>
+  <div class="hero-actions">
+{% if latest %}
+    <a class="button primary" href="{{ latest.href }}">See the latest run</a>
+{% endif %}
+    <a class="button" href="/methodology/">How it works</a>
+  </div>
+  <ul class="facts">
+    <li><strong>{{ cfg.clouds | length }}</strong> clouds</li>
+    <li><strong>{{ cfg.apps | length }}</strong> apps</li>
+    <li><strong>{{ cfg.models | length }}</strong> {{ 'model' if cfg.models | length == 1 else 'models' }}</li>
+    <li><strong>{{ runs | length }}</strong> {{ 'run' if runs | length == 1 else 'runs' }}</li>
+  </ul>
+</section>
+
+{% if latest %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>{{ 'Latest results' if latest.full else 'Latest run' }}</h2>
+      <p class="muted">{{ latest.label }} · {{ latest.scope }} · {% for m in latest.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if latest.info.get('agent_versions') %} · Claude Code {{ latest.info.agent_versions | join(', ') }}{% endif %}</p>
+    </div>
+    <a class="link-arrow" href="{{ latest.href }}">Run details</a>
+  </div>
+{% if not latest.full %}
+  <p class="notice">There's no full run yet. This run covered {{ latest.scope | lower }}, so its totals compare the clouds on those apps only.</p>
+{% endif %}
+{% for model in latest.info.get('models', []) %}
+{% if latest.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}
+  {{ ui.scorecards(latest, model) }}
+{% endfor %}
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Each app on each cloud</h2>
+      <p class="muted">What the verifier saw on each live deployment. Open one for its checks, security review, costs and what the agent did.</p>
+    </div>
+  </div>
+{% for model in latest.info.get('models', []) %}
+{% if latest.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}
+  {{ ui.matrix(latest, model) }}
+{% endfor %}
+</section>
+{% endif %}
+
+{% if preview %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Trends</h2>
+      <p class="muted">{% if full_runs %}Across all apps, over every full run.{% else %}The {{ app_name(preview_app) | lower }} over every run that included it, until the first full run.{% endif %}</p>
+    </div>
+    <a class="link-arrow" href="/trends/{% if not full_runs %}{{ preview_app }}/{% endif %}">All metrics</a>
+  </div>
+  <div class="chart-grid">
+{% for chart in preview %}
+    {{ ui.chart_card(chart) }}
+{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <h2>How a run works</h2>
+  <ol class="steps">
+    <li><h3>Build</h3><p>A fresh Claude Code session builds the app from its spec for the target cloud, without cloud credentials.</p></li>
+    <li><h3>Deploy</h3><p>The same session gets the cloud's credentials and deploys to a public URL on its own, listing anything only a person could do.</p></li>
+    <li><h3>Verify</h3><p>Black-box checks test the live app over HTTP and in a browser, and screenshots record what it looks like.</p></li>
+    <li><h3>Review</h3><p>A separate session scores how securely the app was built and deployed, and whether its hosting plan fits how it's used.</p></li>
+    <li><h3>Tear down</h3><p>Everything the agent created is priced, then deleted, and the results are committed to the repository.</p></li>
+  </ol>
+</section>
+{% endblock %}

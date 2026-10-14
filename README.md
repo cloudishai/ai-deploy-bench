@@ -7,6 +7,10 @@ Claude Code builds five kinds of app from a written spec and deploys each one to
 the live deployment. Everything runs in GitHub Actions, and results are committed to
 [`results/`](results).
 
+Browse the results at **[aideploybench.com](https://aideploybench.com)**: every run, each app's
+checks, security review, costs and screenshots, and how each metric changes over runs. The site is
+generated from `results/` and redeployed after every run ([`website/`](website)).
+
 ## Latest results
 
 <!-- results:start -->

@@ -1,0 +1,48 @@
+name: Website
+
+# Builds the site from results/ and deploys it to Cloudish (https://aideploybench.com, see
+# website/README.md). Runs when the site, the docs or the results change on main, and after every
+# benchmark run: its results commit is pushed with GITHUB_TOKEN, which doesn't trigger push workflows.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "results/**"
+      - "website/**"
+      - "docs/**"
+      - "benchmark.yaml"
+      - "bench/config.py"
+      - "bench/fmt.py"
+      - ".github/workflows/website.yml"
+  workflow_run:
+    workflows: [Benchmark]
+    types: [completed]
+  workflow_dispatch:
+
+# The newest commit wins; a deploy in progress for an older one is cancelled.
+concurrency:
+  group: website
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main  # after a benchmark run, deploy main as it is now, with that run's results
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt -r website/requirements.txt
+      - name: Build the site
+        run: python -m website.build
+      - name: Deploy to Cloudish
+        env:
+          CLOUDISH_API_KEY: ${{ secrets.WEBSITE_CLOUDISH_API_KEY }}
+        run: python -m website.deploy

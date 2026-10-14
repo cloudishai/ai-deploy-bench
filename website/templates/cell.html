@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% set r = cell.record or {} %}
+{% set cost = r.get('cost') or {} %}
+{% set timing = r.get('timing') or {} %}
+{% set people = r.get('human') or {} %}
+{% set security = r.get('security') or {} %}
+{% block title %}{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}, run {{ run.label }} · AI Deploy Bench{% endblock %}
+{% block description %}{{ app_name(cell.app, False) }} built and deployed on {{ cloud_name(cell.cloud) }} by {{ model_name(cell.model, True) }}: {{ states[state(cell)][0] | lower }}, {{ cell.checks_passed }}/{{ cell.checks_total }} checks passed.{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><a href="{{ run.href }}">{{ run.label }}</a><span aria-hidden="true">/</span><span>{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}</span></nav>
+<header class="page-head">
+  <p class="eyebrow">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }} · {{ model_name(cell.model, True) }} · trial {{ cell.trial }}</p>
+  <h1>{{ app_name(cell.app, False) }} on {{ cloud_name(cell.cloud) }}</h1>
+  <p class="head-status">{{ ui.badge(cell) }}{% if cell.failure_stage %} <span class="muted">stopped at the {{ cell.failure_stage }} stage</span>{% endif %}</p>
+</header>
+
+<section class="stats" aria-label="Key numbers">
+  <div class="stat"><span class="stat-label">Checks passed</span><span class="stat-value">{{ cell.checks_passed }}<span class="muted">/{{ cell.checks_total }}</span></span>{{ bar((cell.checks_passed / cell.checks_total) if cell.checks_total else None) }}</div>
+  <div class="stat"><span class="stat-label">Human steps</span><span class="stat-value">{{ fmt.count(people.get('count')) }}</span><span class="stat-note">{{ fmt.minutes(people.get('minutes')) }} of a person's time</span></div>
+  <div class="stat"><span class="stat-label">Security &amp; compliance</span><span class="stat-value">{{ fmt.score(security.get('score')) }}</span>{{ bar((security.get('score') / 100) if security.get('score') is not none else None) }}</div>
+  <div class="stat"><span class="stat-label">Build</span><span class="stat-value">{{ fmt.duration(timing.get('build_s')) }}</span></div>
+  <div class="stat"><span class="stat-label">Deploy</span><span class="stat-value">{{ fmt.duration(timing.get('deploy_s')) }}</span>{% if timing.get('ready_after_deploy_s') %}<span class="stat-note">ready {{ fmt.duration(timing.ready_after_deploy_s) }} later</span>{% endif %}</div>
+  <div class="stat"><span class="stat-label">Tokens</span><span class="stat-value">{{ fmt.tokens(((r.get('tokens') or {}).get('total') or {}).get('total')) }}</span></div>
+  <div class="stat"><span class="stat-label">Agent cost</span><span class="stat-value">{{ fmt.usd(cost.get('agent_usd'), cost.get('agent_cost_estimated', False)) }}</span></div>
+  <div class="stat"><span class="stat-label">Hosting / month</span>{% for label, cost in hosting(cell.summary) %}<span class="stat-line"><strong>{{ cost }}</strong> <span class="muted">{{ label | lower }}</span></span>{% endfor %}</div>
+</section>
+
+{% if r.get('url') %}
+<p class="muted deployed">Deployed to <code>{{ r.url }}</code>. Every deployment is deleted after it's verified and reviewed.</p>
+{% endif %}
+
+{% set shots = cell.screenshots %}
+{% if shots %}
+<section class="section">
+  <h2>Screenshots</h2>
+  <div class="shots">
+{% for shot in shots %}
+    <figure class="shot">
+      <a href="{{ shot.name }}"><img src="{{ shot.name }}" alt="{{ shot.caption }}" loading="lazy" width="1280" height="900"></a>
+      <figcaption>{{ shot.caption }}<span class="muted"> · {{ shot.url }}</span></figcaption>
+    </figure>
+{% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% set checks = (r.get('verification') or {}).get('checks') or [] %}
+{% if checks %}
+<section class="section">
+  <h2>Checks</h2>
+  <p class="muted">Black-box checks against the live URL. A cell succeeds when every required check passes. <a href="{{ github }}/blob/main/apps/{{ cell.app }}/TASK.md">The app's spec</a></p>
+  <div class="table-scroll">
+  <table class="data checks">
+    <thead><tr><th>Result</th><th>Check</th><th>Details</th></tr></thead>
+    <tbody>
+{% for check in checks %}
+      <tr class="check-{{ check.get('status') }}">
+        <td class="nowrap"><span class="check-mark" aria-hidden="true">{{ {'passed': '✓', 'failed': '✗'}.get(check.get('status'), '–') }}</span> {{ check.get('status') }}</td>
+        <td><strong>{{ check.get('description') or check.get('id') }}</strong> <code class="muted">{{ check.get('id') }}</code>{% if not check.get('required') %} <span class="pill">optional</span>{% endif %}</td>
+        <td class="detail">{{ check.get('detail') or '' }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <h2>Human steps</h2>
+{% if people.get('steps') %}
+  <ul class="list">
+{% for step in people.steps %}
+    <li><strong>{{ step.get('description') or step.get('id') }}</strong> <span class="muted">· {{ fmt.minutes(step.get('minutes')) }}</span>{% if step.get('evidence') %}<br><span class="muted small">{{ step.evidence | join('; ') }}</span>{% endif %}</li>
+{% endfor %}
+  </ul>
+{% else %}
+  <p>None: the agent got everything it needed on its own.</p>
+{% endif %}
+{% if people.get('blocked') and people.get('blockers') %}
+  <h3>What blocked the deploy</h3>
+  <ul class="list">
+{% for blocker in people.blockers %}
+    <li><span class="pill">{{ blocker.get('source') }}</span> {{ blocker.get('detail') }}</li>
+{% endfor %}
+  </ul>
+{% endif %}
+</section>
+
+<section class="section">
+  <h2>Security &amp; compliance review</h2>
+{% if security.get('status') == 'completed' %}
+  <p class="muted">An independent Claude Code session reviewed the source, the agent's sessions and the live deployment against a fixed rubric{% if security.get('reviewer') %} ({{ security.reviewer.get('model') }}, {{ security.reviewer.get('effort') }} effort){% endif %}.</p>
+{% if security.get('summary') %}<p>{{ security.summary }}</p>{% endif %}
+  <div class="table-scroll">
+  <table class="data criteria">
+    <thead><tr><th>Criterion</th><th class="num">Weight</th><th>Score</th><th>Why</th></tr></thead>
+    <tbody>
+{% for c in security.get('criteria') or [] %}
+      <tr>
+        <td class="nowrap"><strong>{{ c.get('name') }}</strong></td>
+        <td class="num">{{ c.get('weight') }}</td>
+        <td class="score-cell">{{ bar(c.get('score', 0) / 10) }}<span class="num">{{ c.get('score') }}/10</span></td>
+        <td class="detail">{{ c.get('rationale') }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% set findings = security.get('findings') or [] %}
+{% if findings %}
+  <h3>Findings</h3>
+  <ul class="findings">
+{% for f in findings %}
+    <li class="finding">
+      <p><span class="severity severity-{{ f.get('severity') }}">{{ f.get('severity') }}</span>{% if f.get('source') %} <span class="pill">{{ f.source }}</span>{% endif %} <strong>{{ f.get('title') }}</strong></p>
+{% if f.get('evidence') %}<p class="small"><span class="muted">Evidence:</span> {{ f.evidence }}</p>{% endif %}
+{% if f.get('recommendation') %}<p class="small"><span class="muted">Fix:</span> {{ f.recommendation }}</p>{% endif %}
+    </li>
+{% endfor %}
+  </ul>
+{% endif %}
+{% elif security %}
+  <p>Not scored: {{ security.get('detail') or security.get('status') }}.</p>
+{% else %}
+  <p class="muted">This run predates the security review.</p>
+{% endif %}
+</section>
+
+<section class="section">
+  <h2>Cloud resources and cost</h2>
+{% set usage = cost.get('hosting_usage') or {} %}
+{% if usage %}
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Traffic</th><th class="num">Per month</th><th>How it was priced</th></tr></thead>
+    <tbody>
+{% for u in cfg.hosting_usage %}{% if u.id in usage %}
+      <tr><td class="nowrap"><strong>{{ u.label }}</strong><br><span class="muted small">{{ u.description }}</span></td><td class="num">{{ fmt.usd(usage[u.id].get('usd')) }}{% if usage[u.id].get('incomplete') %}+{% endif %}</td><td class="detail">{{ usage[u.id].get('basis') }}</td></tr>
+{% endif %}{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% endif %}
+{% set resources = r.get('resources') or [] %}
+{% if resources %}
+  <h3>Resources the agent created</h3>
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Kind</th><th>Name</th><th>Plan</th><th class="num">List price / month</th><th>Pricing</th></tr></thead>
+    <tbody>
+{% for res in resources %}
+      <tr><td>{{ res.get('kind') }}</td><td><code>{{ res.get('name') }}</code></td><td>{{ res.get('plan') or '' }}</td><td class="num">{{ fmt.usd(res.get('monthly_usd')) }}</td><td class="detail">{{ res.get('pricing') or '' }}</td></tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  <p class="muted">The benchmark found no cloud resources for this cell.</p>
+{% endif %}
+{% set estimate = cost.get('hosting_agent_estimate_usd') %}
+{% if estimate is number %}
+  <p class="muted">The agent estimated {{ fmt.usd(estimate) }} a month.</p>
+{% elif estimate %}
+  <p class="muted">The agent estimated: {{ estimate }}.</p>
+{% endif %}
+</section>
+
+{% set code = r.get('code') or {} %}
+<section class="section">
+  <h2>What was built</h2>
+{% if code and not code.get('error') %}
+  <dl class="kv kv-wide">
+    <div><dt>Stack</dt><dd>{% for f in code.get('frameworks') or [] %}<code>{{ f }}</code> {% else %}No framework{% endfor %}</dd></div>
+    <div><dt>Code</dt><dd>{{ '{:,}'.format(code.get('code_lines', 0)) }} lines in {{ code.get('files', 0) }} files{% if code.get('lines') %} <span class="muted">({% for language, count in code.lines.items() %}{{ language }} {{ '{:,}'.format(count) }}{% if not loop.last %}, {% endif %}{% endfor %})</span>{% endif %}</dd></div>
+    <div><dt>Dependencies</dt><dd>{{ (code.get('dependencies') or {}).get('npm', 0) }} npm, {{ (code.get('dependencies') or {}).get('python', 0) }} Python</dd></div>
+    <div><dt>Deploy config</dt><dd>{% for f in code.get('deploy_config') or [] %}<code>{{ f }}</code> {% else %}None{% endfor %}</dd></div>
+  </dl>
+{% else %}
+  <p class="muted">No code statistics{% if code.get('error') %}: {{ code.error }}{% endif %}.</p>
+{% endif %}
+</section>
+
+{% set phases = r.get('phases') or {} %}
+{% if phases %}
+<section class="section">
+  <h2>The agent's sessions</h2>
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Phase</th><th>Status</th><th class="num">Time</th><th class="num">Turns</th><th class="num">Tokens</th><th class="num">Cost</th><th class="num">Shell commands</th></tr></thead>
+    <tbody>
+{% for name in ['build', 'deploy'] %}{% set p = phases.get(name) or {} %}
+      <tr><td><strong>{{ name | capitalize }}</strong></td><td>{{ p.get('status') or '—' }}</td><td class="num">{{ fmt.duration(p.get('wall_time_s')) }}</td><td class="num">{{ p.get('turns') or '—' }}</td><td class="num">{{ fmt.tokens((p.get('tokens') or {}).get('total')) }}</td><td class="num">{{ fmt.usd(p.get('cost_usd')) }}</td><td class="num">{{ ((r.get('activity') or {}).get('shell_commands') or {}).get(name, '—') }}</td></tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% set summary = (r.get('final_messages') or {}).get('deploy') %}
+{% if summary %}
+  <h3>The agent's deploy summary</h3>
+  <div class="prose quote">{{ markdown(summary) }}</div>
+{% endif %}
+{% if commands %}
+  <details class="commands">
+    <summary>{{ commands | length }} shell commands during deploy</summary>
+    <ol>
+{% for c in commands %}
+      <li{% if c.failed %} class="failed"{% endif %}>{% if c.at %}<span class="muted">{{ c.at }}</span> {% endif %}<code>{{ c.command }}</code></li>
+{% endfor %}
+    </ol>
+  </details>
+{% endif %}
+</section>
+{% endif %}
+
+<section class="section">
+  <h2>Raw data</h2>
+  <p class="links">
+    <a href="{{ github }}/blob/main/{{ cell.results_path }}.md">Report on GitHub</a>
+    <a href="/data/runs/{{ run.name }}/cells/{{ cell.slug }}.json">Full record (JSON)</a>
+{% if run.info.get('url') %}<a href="{{ run.info.url }}">Workflow run, with transcripts</a>{% endif %}
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AI Deploy Bench: what it takes for AI agents to deploy apps{% endblock %}</title>
+  <meta name="description" content="{% block description %}An open benchmark of AI coding agents building and deploying real apps on each cloud: success, human steps, security, time and cost, measured on every run.{% endblock %}">
+  <meta name="build" content="{{ build.sha }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AI Deploy Bench">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:url" content="{{ site_url }}/{{ page | replace('index.html', '') }}">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ asset('style.css') }}">
+  <script src="{{ asset('app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="/">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+          <defs><linearGradient id="logo-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+          <rect width="32" height="32" rx="9" fill="url(#logo-gradient)"/>
+          <path d="M10.5 20.5a4 4 0 0 1 .6-7.95A5.5 5.5 0 0 1 21.6 13a3.75 3.75 0 0 1-.1 7.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <path d="M16 24v-8m0 0-3 3m3-3 3 3" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>AI Deploy Bench</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="/"{% if page == 'index.html' %} aria-current="page"{% endif %}>Overview</a>
+        <a href="/trends/"{% if page.startswith('trends/') %} aria-current="page"{% endif %}>Trends</a>
+        <a href="/runs/"{% if page.startswith('runs/') %} aria-current="page"{% endif %}>Runs</a>
+        <a href="/methodology/"{% if page.startswith('methodology/') %} aria-current="page"{% endif %}>Methodology</a>
+        <a class="nav-github" href="{{ github }}">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main id="content" class="wrap">
+{% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <p>Every run is a GitHub Actions workflow. Its results are committed to <a href="{{ github }}">the repository</a>, and this site is rebuilt from them.</p>
+      <p class="muted">Built from <a href="{{ github }}/commit/{{ build.sha }}"><code>{{ build.short }}</code></a> on {{ build.time }} · <a href="/data/runs.json">Raw data</a> · <a href="/methodology/">Methodology</a></p>
+    </div>
+  </footer>
+</body>
+</html>

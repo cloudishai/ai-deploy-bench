@@ -10,3 +10,4 @@ __pycache__/
 # Local harness runs
 plan.json
 artifacts/
+website/dist/

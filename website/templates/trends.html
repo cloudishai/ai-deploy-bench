@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Trends{% if app %}: {{ app_name(app) }}{% endif %} · AI Deploy Bench{% endblock %}
+{% block description %}Each benchmark metric over runs, one line per cloud{% if app %}, for the {{ app_name(app) | lower }}{% endif %}.{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>Trends{% if app %}: {{ app_name(app) }}{% endif %}</h1>
+  <p class="lede">Each metric over runs, one line per cloud. Hover over a point for its value, and select a cloud in a legend to hide or show it.</p>
+</header>
+<nav class="tabs" aria-label="Which apps">
+  <a href="/trends/"{% if app is none %} aria-current="page"{% endif %}>All apps <span class="muted">full runs</span></a>
+{% for id, name, count in trend_apps() %}
+  <a href="/trends/{{ id }}/"{% if app == id %} aria-current="page"{% endif %}>{{ name }} <span class="count">{{ count }}</span></a>
+{% endfor %}
+</nav>
+{% if app is none %}
+{% if not charts[0].runs %}
+<p class="notice">There's no full run yet, so there's nothing to compare across all apps. Pick an app above to see its trend over the runs that included it.</p>
+{% else %}
+<p class="muted">Totals (tokens, agent cost, hosting) add up every app, so only full runs, which cover the same apps, are compared here.</p>
+{% endif %}
+{% else %}
+<p class="muted">Every run that included the {{ app_name(app) | lower }}, averaged over trials.</p>
+{% endif %}
+<div class="chart-grid">
+{% for chart in charts %}
+  {{ ui.chart_card(chart) }}
+{% endfor %}
+</div>
+{% endblock %}

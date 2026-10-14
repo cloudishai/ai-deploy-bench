@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Run {{ run.label }} · AI Deploy Bench{% endblock %}
+{% block description %}Benchmark run {{ run.label }}: {{ run.scope | lower }}, {{ run.success_count }} of {{ run.finished | length }} cells succeeded.{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><span>{{ run.label }}</span></nav>
+<header class="page-head">
+  <h1>Run {{ run.label }}</h1>
+  <p class="muted">{{ run.scope }} · {% for m in run.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if run.info.get('agent_versions') %} · Claude Code {{ run.info.agent_versions | join(', ') }}{% endif %} · {{ run.info.get('trials', 1) }} {{ 'trial' if run.info.get('trials', 1) == 1 else 'trials' }} per cell</p>
+  <p class="links">
+{% if run.info.get('url') %}<a href="{{ run.info.url }}">Workflow run</a>{% endif %}
+    <a href="{{ github }}/blob/main/results/runs/{{ run.name }}/summary.md">Summary on GitHub</a>
+    <a href="/data/runs/{{ run.name }}/summary.json">JSON</a>
+  </p>
+</header>
+
+<section class="section">
+  <h2>By cloud</h2>
+{% if not run.full %}<p class="notice">A partial run: {{ run.scope | lower }}. Totals cover those apps only.</p>{% endif %}
+{% for model in run.info.get('models', []) %}
+{% if run.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}
+  {{ ui.scorecards(run, model) }}
+{% endfor %}
+</section>
+
+<section class="section">
+  <h2>By app</h2>
+{% for model in run.info.get('models', []) %}
+{% if run.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}
+  {{ ui.matrix(run, model) }}
+{% endfor %}
+</section>
+
+<section class="section">
+  <h2>All cells</h2>
+  <div class="table-scroll">
+  <table class="data">
+    <thead>
+      <tr><th>Cloud</th><th>App</th>{% if run.info.models | length > 1 %}<th>Model</th>{% endif %}<th class="num">Trial</th><th>Result</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Tokens</th><th class="num">Agent cost</th><th>Hosting / month</th></tr>
+    </thead>
+    <tbody>
+{% for cell in run.cells %}
+      <tr>
+        <td class="nowrap">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }}</td>
+        <td class="nowrap">{% if cell.status != 'missing' %}<a href="{{ cell.href }}">{{ app_name(cell.app) }}</a>{% else %}{{ app_name(cell.app) }}{% endif %}</td>
+{% if run.info.models | length > 1 %}<td>{{ model_name(cell.model) }}</td>{% endif %}
+        <td class="num">{{ cell.trial }}</td>
+        <td>{{ ui.badge(cell, small=True) }}</td>
+        <td class="num">{{ cell.checks_passed }}/{{ cell.checks_total }}</td>
+        <td class="num nowrap">{{ fmt.count(cell.human_steps | length if cell.human_steps is not none else None) }} · {{ fmt.minutes(cell.human_minutes) }}</td>
+        <td class="num">{{ fmt.score(cell.security_score) }}</td>
+        <td class="num">{{ fmt.duration(cell.build_s) }}</td>
+        <td class="num">{{ fmt.duration(cell.deploy_s) }}</td>
+        <td class="num">{{ fmt.tokens(cell.tokens) }}</td>
+        <td class="num">{{ fmt.usd(cell.agent_usd) }}</td>
+        <td>{{ ui.hosting_line(cell.summary) }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}
