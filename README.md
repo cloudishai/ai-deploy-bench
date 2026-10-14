@@ -49,6 +49,7 @@ For every cloud × model × app (a *cell*):
 | **Security & compliance** | A 0–100 score from an independent Claude Code review of how the app was built and deployed, whether its hosting plan fits how the app is used, and what is live, against a fixed rubric (secrets, provenance, terms compliance, least privilege, transport, attack surface, application security) |
 | **Expected monthly cost** | The deployed resources priced from provider APIs and dated pricing tables for a month of *light use* (a few visits a week) and a *busy* month (hit around the clock), next to the agent's own estimate |
 | **What it took** | Turns, tool calls, the shell commands run during deploy, doc lookups, lines of code, dependencies and deploy config files |
+| **Technologies** | What each app was built and run with: runtime, frameworks, data stores, libraries, packaging and the cloud services it used |
 
 Definitions and caveats are in [docs/methodology.md](docs/methodology.md).
 

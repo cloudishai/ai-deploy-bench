@@ -45,6 +45,21 @@
 </section>
 {% endif %}
 
+{% set technologies = cell.technologies %}
+<section class="section">
+  <h2>Technologies</h2>
+{% if technologies %}
+  <dl class="tech">
+{% for group, names in technologies.items() %}
+    <div><dt>{{ group }}</dt><dd>{{ ui.chips(names) }}</dd></div>
+{% endfor %}
+  </dl>
+  <p class="muted small">Named from the app's dependencies, Dockerfile and config files, and the cloud resources it created.</p>
+{% else %}
+  <p class="muted">Not recorded for this cell.</p>
+{% endif %}
+</section>
+
 {% set checks = (r.get('verification') or {}).get('checks') or [] %}
 {% if checks %}
 <section class="section">
@@ -137,7 +152,7 @@
     <thead><tr><th>Traffic</th><th class="num">Per month</th><th>How it was priced</th></tr></thead>
     <tbody>
 {% for u in cfg.hosting_usage %}{% if u.id in usage %}
-      <tr><td class="nowrap"><strong>{{ u.label }}</strong><br><span class="muted small">{{ u.description }}</span></td><td class="num">{{ fmt.usd(usage[u.id].get('usd')) }}{% if usage[u.id].get('incomplete') %}+{% endif %}</td><td class="detail">{{ usage[u.id].get('basis') }}</td></tr>
+      <tr><td class="traffic"><strong>{{ u.label }}</strong><br><span class="muted small">{{ u.description }}</span></td><td class="num">{{ fmt.usd(usage[u.id].get('usd')) }}{% if usage[u.id].get('incomplete') %}+{% endif %}</td><td class="detail">{{ usage[u.id].get('basis') }}</td></tr>
 {% endif %}{% endfor %}
     </tbody>
   </table>
@@ -169,10 +184,9 @@
 
 {% set code = r.get('code') or {} %}
 <section class="section">
-  <h2>What was built</h2>
+  <h2>Code</h2>
 {% if code and not code.get('error') %}
   <dl class="kv kv-wide">
-    <div><dt>Stack</dt><dd>{% for f in code.get('frameworks') or [] %}<code>{{ f }}</code> {% else %}No framework{% endfor %}</dd></div>
     <div><dt>Code</dt><dd>{{ '{:,}'.format(code.get('code_lines', 0)) }} lines in {{ code.get('files', 0) }} files{% if code.get('lines') %} <span class="muted">({% for language, count in code.lines.items() %}{{ language }} {{ '{:,}'.format(count) }}{% if not loop.last %}, {% endif %}{% endfor %})</span>{% endif %}</dd></div>
     <div><dt>Dependencies</dt><dd>{{ (code.get('dependencies') or {}).get('npm', 0) }} npm, {{ (code.get('dependencies') or {}).get('python', 0) }} Python</dd></div>
     <div><dt>Deploy config</dt><dd>{% for f in code.get('deploy_config') or [] %}<code>{{ f }}</code> {% else %}None{% endfor %}</dd></div>

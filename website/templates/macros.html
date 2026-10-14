@@ -5,6 +5,10 @@
 <span class="badge badge-{{ s }}{% if small %} badge-sm{% endif %}" title="{{ states[s][1] }}">{{ states[s][0] }}</span>
 {%- endmacro %}
 
+{% macro hosting_lines(entry) -%}
+{% for label, cost in hosting(entry) %}<span class="nowrap block">{{ cost }} <span class="muted">{{ label | lower }}</span></span>{% endfor %}
+{%- endmacro %}
+
 {% macro hosting_line(entry) -%}
 {% for label, cost in hosting(entry) %}{% if not loop.first %} · {% endif %}<span class="nowrap">{{ cost }} <span class="muted">{{ label | lower }}</span></span>{% endfor %}
 {%- endmacro %}
@@ -40,41 +44,68 @@
 </div>
 {% endmacro %}
 
+{% macro chips(names) -%}
+{% for name in names %}<span class="chip">{{ name }}</span>{% endfor %}
+{%- endmacro %}
+
 {% macro matrix(run, model) %}
-<div class="table-scroll">
-<table class="matrix">
-  <thead>
-    <tr><th scope="col" class="matrix-corner">App</th>{% for cloud in run.clouds() %}<th scope="col">{{ dot(cloud) }}{{ cloud_name(cloud) }}</th>{% endfor %}</tr>
-  </thead>
-  <tbody>
+{% set clouds = run.clouds() %}
+<div class="matrix cols-{{ clouds | length }}" role="table" aria-label="Each app on each cloud">
+  <div class="matrix-row matrix-head" role="row">
+    <span class="matrix-corner" role="columnheader">App</span>
+{% for cloud in clouds %}
+    <span role="columnheader">{{ dot(cloud) }}{{ cloud_name(cloud) }}</span>
+{% endfor %}
+  </div>
 {% for app in run.apps() %}
-    <tr>
-      <th scope="row">{{ app_name(app) }}</th>
-{% for cloud in run.clouds() %}
+  <div class="matrix-row" role="row">
+    <span class="matrix-app" role="rowheader">{{ app_name(app) }}</span>
+{% for cloud in clouds %}
 {% set cell = run.cell(model, cloud, app) %}
-      <td>
+    <div class="matrix-cell" role="cell">
 {% if cell and cell.status != 'missing' %}
 {% set shots = cell.screenshots %}
-        <a class="tile" href="{{ cell.href }}">
+      <a class="tile" href="{{ cell.href }}">
+        <span class="tile-cloud">{{ dot(cloud) }}{{ cloud_name(cloud) }}</span>
 {% if shots %}
-          <img src="{{ cell.href }}{{ shots[0].name }}" alt="{{ shots[0].caption }}, {{ app_name(app) }} on {{ cloud_name(cloud) }}" loading="lazy" width="320" height="225">
+        <img src="{{ cell.href }}{{ shots[0].name }}" alt="{{ shots[0].caption }}, {{ app_name(app) }} on {{ cloud_name(cloud) }}" loading="lazy" width="320" height="225">
 {% else %}
-          <span class="thumb-empty">No screenshot</span>
+        <span class="thumb-empty">No screenshot</span>
 {% endif %}
-          <span class="tile-meta">{{ badge(cell, small=True) }}<span class="muted">{{ cell.checks_passed }}/{{ cell.checks_total }} checks</span></span>
-        </a>
+        <span class="tile-meta">{{ badge(cell, small=True) }}<span class="muted">{{ cell.checks_passed }}/{{ cell.checks_total }} checks</span></span>
+{% if cell.stack_headline %}
+        <span class="tile-stack">{{ chips(cell.stack_headline) }}</span>
+{% endif %}
+      </a>
 {% elif cell %}
-        <span class="badge badge-missing badge-sm">Missing</span>
+      <span class="badge badge-missing badge-sm">Missing</span>
 {% else %}
-        <span class="muted">Not run</span>
+      <span class="muted">Not run</span>
 {% endif %}
-      </td>
+    </div>
 {% endfor %}
-    </tr>
+  </div>
 {% endfor %}
-  </tbody>
-</table>
 </div>
+{% endmacro %}
+
+{% macro tally(run) %}
+{% set counts = run.technology_tally() %}
+{% if counts %}
+<div class="tally">
+{% for group, items in counts.items() %}
+  <div class="card tally-group">
+    <h3>{{ group }}</h3>
+    <ul class="chips">
+{% for name, count in items %}
+      <li class="chip">{{ name }} <span class="chip-count">{{ count }}</span></li>
+{% endfor %}
+    </ul>
+  </div>
+{% endfor %}
+</div>
+<p class="muted small">How many of the {{ run.finished | length }} deployments used each. Names come from each app's dependencies, Dockerfile and config, and the cloud resources it created.</p>
+{% endif %}
 {% endmacro %}
 
 {% macro chart_card(chart) %}

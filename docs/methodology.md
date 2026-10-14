@@ -185,6 +185,7 @@ that would have to fix it: the `platform` (the cloud's own behavior or defaults)
 | Hosting cost | The estimated monthly cost of the deployed resources with light use and when busy ([Hosting cost](#hosting-cost)), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
+| Technologies | What the app was built and run with, by group: runtime, frameworks, data stores, libraries, dev tools, packaging and hosting. [`bench/stack.py`](../bench/stack.py) names them from facts the harness records about the workspace (declared packages, Dockerfile base images, requested runtime versions, built-in modules such as `node:http` and `node:sqlite`) and from the cloud resources the inventory found. Records keep the facts, so a better catalog describes earlier runs better too. |
 | Performance | p50 and p90 latency of the ready path over 10 requests after the checks, plus WebSocket delivery latency for the chat app. |
 
 ## Hosting cost
@@ -262,6 +263,7 @@ versions as optional:
 | 3 | The review adds a `compliance` criterion and reweights the rubric (shown as *Security & compliance*), so scores aren't comparable with earlier runs. The JSON fields keep their names (`security`, `security_score`) |
 | 4 | `cost.hosting_usage` in cell records (cost, `incomplete` and `basis` for each traffic level), and `hosting_usage_usd` and `hosting_usage_incomplete` on summary cells and groups |
 | 5 | `screenshots` in cell records, and their file names on summary cells |
+| 6 | `technologies` in cell records (names by group) and on summary cells (a short headline), and the facts they come from in `code`: `packages`, `base_images`, `runtime_hints`, `builtins`, `manifests` and `dirs`. These fields were also added to the records of runs 2026-10-13 #4, #5 and #8, from their source snapshots; nothing else in those records changed |
 
 ## Fairness and limitations
 

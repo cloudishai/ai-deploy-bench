@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 SCREENSHOTS = "screenshots"  # the verifier's screenshots, under the cell directory
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",
@@ -197,6 +197,7 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         *screenshot_lines(record.get("screenshots") or []),
         "## What was built",
         "",
+        *technology_lines(record),
         *architecture_lines(record.get("code") or {}),
         "",
         "## Human steps",
@@ -316,6 +317,11 @@ def screenshot_lines(shots: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def technology_lines(record: dict[str, Any]) -> list[str]:
+    """The technologies the app used, by group (see bench/stack.py)."""
+    return [f"- {group}: {', '.join(names)}" for group, names in (record.get("technologies") or {}).items()]
+
+
 def architecture_lines(code: dict[str, Any]) -> list[str]:
     """The stack the agent chose for this cloud, from the workspace it left behind."""
     if code.get("error") or not code:
@@ -323,7 +329,6 @@ def architecture_lines(code: dict[str, Any]) -> list[str]:
     languages = ", ".join(f"{language} {count:,}" for language, count in code.get("lines", {}).items())
     deps = code.get("dependencies") or {}
     return [
-        f"- Stack: {', '.join(f'`{f}`' for f in code.get('frameworks') or []) or fmt.DASH}",
         f"- Code: {code.get('code_lines', 0):,} lines in {code.get('files', 0)} files ({languages or 'none'})",
         f"- Dependencies: {deps.get('npm', 0)} npm, {deps.get('python', 0)} Python",
         f"- Deploy config: {', '.join(f'`{f}`' for f in code.get('deploy_config') or []) or 'none'}",

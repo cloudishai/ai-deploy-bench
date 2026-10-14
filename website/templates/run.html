@@ -31,12 +31,19 @@
 {% endfor %}
 </section>
 
+{% if run.technology_tally() %}
+<section class="section">
+  <h2>Technologies</h2>
+  {{ ui.tally(run) }}
+</section>
+{% endif %}
+
 <section class="section">
   <h2>All cells</h2>
   <div class="table-scroll">
   <table class="data">
     <thead>
-      <tr><th>Cloud</th><th>App</th>{% if run.info.models | length > 1 %}<th>Model</th>{% endif %}<th class="num">Trial</th><th>Result</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Tokens</th><th class="num">Agent cost</th><th>Hosting / month</th></tr>
+      <tr><th>Cloud</th><th>App</th>{% if run.info.models | length > 1 %}<th>Model</th>{% endif %}{% if run.info.get('trials', 1) > 1 %}<th class="num">Trial</th>{% endif %}<th>Result</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Tokens</th><th class="num">Agent cost</th><th>Hosting / month</th></tr>
     </thead>
     <tbody>
 {% for cell in run.cells %}
@@ -44,7 +51,7 @@
         <td class="nowrap">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }}</td>
         <td class="nowrap">{% if cell.status != 'missing' %}<a href="{{ cell.href }}">{{ app_name(cell.app) }}</a>{% else %}{{ app_name(cell.app) }}{% endif %}</td>
 {% if run.info.models | length > 1 %}<td>{{ model_name(cell.model) }}</td>{% endif %}
-        <td class="num">{{ cell.trial }}</td>
+{% if run.info.get('trials', 1) > 1 %}<td class="num">{{ cell.trial }}</td>{% endif %}
         <td>{{ ui.badge(cell, small=True) }}</td>
         <td class="num">{{ cell.checks_passed }}/{{ cell.checks_total }}</td>
         <td class="num nowrap">{{ fmt.count(cell.human_steps | length if cell.human_steps is not none else None) }} · {{ fmt.minutes(cell.human_minutes) }}</td>
@@ -53,7 +60,7 @@
         <td class="num">{{ fmt.duration(cell.deploy_s) }}</td>
         <td class="num">{{ fmt.tokens(cell.tokens) }}</td>
         <td class="num">{{ fmt.usd(cell.agent_usd) }}</td>
-        <td>{{ ui.hosting_line(cell.summary) }}</td>
+        <td>{{ ui.hosting_lines(cell.summary) }}</td>
       </tr>
 {% endfor %}
     </tbody>

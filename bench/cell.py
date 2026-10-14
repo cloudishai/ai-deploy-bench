@@ -22,7 +22,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from bench import ROOT_PREFIX, agent, codestats, config, prompts, result, security
+from bench import ROOT_PREFIX, agent, codestats, config, prompts, result, security, stack
 from bench.clouds import ADAPTERS, base
 from bench.clouds.github import GitHub
 from bench.redact import redact_tree, screen_screenshots, secret_values
@@ -482,6 +482,7 @@ def finalize(cell: Cell) -> dict[str, Any]:
         log(f"removed screenshots of pages that showed a secret: {', '.join(removed)}")
     record = result.build(cell)
     record["code"] = code
+    record["technologies"] = stack.describe(record)
     cell.write("result.json", record)
     (cell.dir / "report.md").write_text(result.render_report(record, cell))
     redact_tree(cell.dir, hidden)

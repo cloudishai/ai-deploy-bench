@@ -11,6 +11,8 @@ from pathlib import Path
 import httpx
 import pytest
 
+from markupsafe import escape
+
 from bench import config
 from website import build, charts, data, deploy
 
@@ -80,6 +82,21 @@ def test_old_schemas_render(site):
     oldest = site.runs[0]
     page = (site.out / "runs" / oldest.name / oldest.cells[0].slug / "index.html").read_text()
     assert "Checks" in page and "Raw data" in page
+
+
+def test_technologies_are_shown_for_every_cell_with_a_record(site):
+    for run in site.runs:
+        for cell in run.finished:
+            page = (site.out / "runs" / run.name / cell.slug / "index.html").read_text()
+            assert "<h2>Technologies</h2>" in page
+            for names in cell.technologies.values():
+                for name in names:
+                    assert f'<span class="chip">{escape(name)}</span>' in page
+    home = (site.out / "index.html").read_text()
+    if site.runs[-1].technology_tally():
+        assert "What the agents built with" in home and 'class="chip-count"' in home
+    # The app x cloud grid fits the page: no scroll container around it.
+    assert 'class="matrix cols-' in home and "table-scroll\">\n<div class=\"matrix" not in home
 
 
 def test_cell_text_is_escaped_and_markdown_has_no_raw_html():

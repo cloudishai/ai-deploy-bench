@@ -13,7 +13,7 @@ import statistics
 from pathlib import Path
 from typing import Any, Callable
 
-from bench import config, fmt
+from bench import config, fmt, stack
 
 FULL = "full"
 
@@ -53,6 +53,16 @@ class Cell:
             if shot.get("file") and (self.source.parent / shot["file"]).is_file():
                 shots.append({**shot, "path": self.source.parent / shot["file"], "name": Path(shot["file"]).name})
         return shots
+
+    @property
+    def technologies(self) -> dict[str, list[str]]:
+        """By group, named from the record's facts (bench/stack.py), so older runs benefit from a
+        better catalog too."""
+        return stack.describe(self.record) if self.record else {}
+
+    @property
+    def stack_headline(self) -> list[str]:
+        return stack.headline(self.record) if self.record else []
 
     @property
     def human_minutes(self) -> float | None:
@@ -117,6 +127,10 @@ class Run:
     @property
     def agent_usd(self) -> float:
         return sum(c.agent_usd or 0 for c in self.finished)
+
+    def technology_tally(self) -> dict[str, list[tuple[str, int]]]:
+        """How many of the run's cells used each runtime, framework and data store."""
+        return stack.tally([c.record for c in self.finished if c.record])
 
     @property
     def success_count(self) -> int:

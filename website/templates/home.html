@@ -49,6 +49,18 @@
   {{ ui.matrix(latest, model) }}
 {% endfor %}
 </section>
+
+{% if latest.technology_tally() %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>What the agents built with</h2>
+      <p class="muted">The runtimes, frameworks and data stores the agent chose for each app and cloud. Open an app for its full stack, libraries and hosting.</p>
+    </div>
+  </div>
+  {{ ui.tally(latest) }}
+</section>
+{% endif %}
 {% endif %}
 
 {% if preview %}

@@ -13,7 +13,7 @@ import statistics
 from pathlib import Path
 from typing import Any, Iterable
 
-from bench import config, fmt
+from bench import config, fmt, stack
 from bench.result import SCHEMA_VERSION
 
 README_START, README_END = "<!-- results:start -->", "<!-- results:end -->"
@@ -79,6 +79,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "build_tokens": record["tokens"]["build"].get("total"),
         "deploy_tokens": record["tokens"]["deploy"].get("total"),
         "stack": (record.get("code") or {}).get("frameworks") or [],
+        "technologies": stack.headline(record),
         "code_lines": (record.get("code") or {}).get("code_lines"),
         "dependencies": sum(((record.get("code") or {}).get("dependencies") or {}).values()),
         "deploy_config": (record.get("code") or {}).get("deploy_config") or [],
@@ -93,7 +94,7 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "score": 0.0, "checks_passed": 0, "checks_total": 0, "required_failed": [], "build_s": None,
             "deploy_s": None, "ready_after_deploy_s": None, "tokens": 0, "agent_usd": None,
             "hosting_monthly_usd": None, "hosting_usage_usd": {}, "hosting_usage_incomplete": [], "path": None,
-            "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
+            "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "technologies": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
             "human_steps": [], "security_score": None, "screenshots": []}
 
 
@@ -292,14 +293,14 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
         "",
         "Every cell builds its app from scratch for its cloud, so stacks differ by platform.",
         "",
-        "| Model | Cloud | App | Trial | Stack | Code lines | Dependencies | Deploy config | Build tokens | Deploy tokens |",
+        "| Model | Cloud | App | Trial | Technologies | Code lines | Dependencies | Deploy config | Build tokens | Deploy tokens |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in summary["cells"]:
         if c["status"] == "missing":
             continue
         lines.append(
-            f"| {c['model']} | {c['cloud']} | {c['app']} | {c['trial']} | {', '.join(c['stack']) or fmt.DASH} | "
+            f"| {c['model']} | {c['cloud']} | {c['app']} | {c['trial']} | {', '.join(c.get('technologies') or c['stack']) or fmt.DASH} | "
             f"{fmt.tokens(c['code_lines'])} | {c['dependencies']} | {', '.join(c['deploy_config']) or fmt.DASH} | "
             f"{fmt.tokens(c['build_tokens'])} | {fmt.tokens(c['deploy_tokens'])} |"
         )

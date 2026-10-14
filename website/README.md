@@ -2,9 +2,10 @@
 
 The benchmark's site, [aideploybench.com](https://aideploybench.com): a static site generated from
 [`results/`](../results) and served from [Cloudish](https://cloudish.ai). It has a page for every
-run and every cell (checks, security review, human steps, costs, what the agent built, its deploy
-summary and screenshots of the live app), and trend charts of each metric over runs, one line per
-cloud: across all apps for full runs, and per app for every run that included it.
+run and every cell (checks, security review, human steps, costs, the technologies the agent chose,
+its deploy summary and screenshots of the live app), a tally of the runtimes, frameworks and data
+stores each run used, and trend charts of each metric over runs, one line per cloud: across all
+apps for full runs, and per app for every run that included it.
 
 ## Build and preview
 
