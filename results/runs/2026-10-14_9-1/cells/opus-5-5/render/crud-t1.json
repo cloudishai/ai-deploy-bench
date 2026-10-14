@@ -670,6 +670,50 @@
     "deploy_config": [
       "render.yaml"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Data": [
+      "PostgreSQL (Render Postgres, free)"
+    ],
+    "Libraries": [
+      "node-postgres",
+      "bcrypt.js"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:22-alpine)"
+    ]
   }
 }

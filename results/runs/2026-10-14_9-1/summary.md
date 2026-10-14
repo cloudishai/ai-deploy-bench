@@ -58,25 +58,25 @@ Every cell builds its app from scratch for its cloud, so stacks differ by platfo
 
 | Model | Cloud | App | Trial | Technologies | Code lines | Dependencies | Deploy config | Build tokens | Deploy tokens |
 |---|---|---|---|---|---|---|---|---|---|
-| opus-5-5 | cloudish | static | 1 | Static files | 399 | 0 | Dockerfile, .dockerignore | 384.5K | 830.3K |
-| opus-5-5 | cloudish | crud | 1 | Static files, Files on a persistent volume | 562 | 0 | Dockerfile, .dockerignore | 508.5K | 1.27M |
-| opus-5-5 | cloudish | api | 1 | Files on a persistent volume | 672 | 0 | Dockerfile, .dockerignore | 744.0K | 1.10M |
-| opus-5-5 | cloudish | dataviz | 1 | Static files | 345 | 0 | Dockerfile, .dockerignore | 352.3K | 838.4K |
-| opus-5-5 | cloudish | realtime | 1 | Node.js, Files on a persistent volume | 428 | 1 | Dockerfile, .dockerignore | 356.0K | 621.7K |
-| opus-5-5 | digitalocean | static | 1 | Static files | 391 | 0 | Dockerfile, .dockerignore, app.yaml | 335.2K | 397.5K |
-| opus-5-5 | digitalocean | crud | 1 | Node.js, Express, PostgreSQL | 451 | 5 | Dockerfile, .dockerignore, .do/app.yaml | 357.5K | 499.6K |
-| opus-5-5 | digitalocean | api | 1 | Node.js, Express, PostgreSQL | 533 | 2 | Dockerfile, .dockerignore, .do/app.yaml | 558.9K | 555.3K |
-| opus-5-5 | digitalocean | dataviz | 1 | Node.js, Express | 481 | 1 | Dockerfile, .dockerignore, app.yaml | 594.0K | 659.1K |
-| opus-5-5 | digitalocean | realtime | 1 | Node.js | 405 | 1 | Dockerfile, .dockerignore, .do/app.yaml | 345.6K | 369.4K |
-| opus-5-5 | render | static | 1 | Static files | 344 | 0 | render.yaml | 332.8K | 310.9K |
+| opus-5-5 | cloudish | static | 1 | Node.js 22, Node.js http | 399 | 0 | Dockerfile, .dockerignore | 384.5K | 830.3K |
+| opus-5-5 | cloudish | crud | 1 | Node.js 24, Node.js http, SQLite | 562 | 0 | Dockerfile, .dockerignore | 508.5K | 1.27M |
+| opus-5-5 | cloudish | api | 1 | Node.js 24, Node.js http, SQLite | 672 | 0 | Dockerfile, .dockerignore | 744.0K | 1.10M |
+| opus-5-5 | cloudish | dataviz | 1 | Node.js 22, Node.js http | 345 | 0 | Dockerfile, .dockerignore | 352.3K | 838.4K |
+| opus-5-5 | cloudish | realtime | 1 | Node.js 24, Node.js http, SQLite | 428 | 1 | Dockerfile, .dockerignore | 356.0K | 621.7K |
+| opus-5-5 | digitalocean | static | 1 | Node.js 22, Node.js http | 391 | 0 | Dockerfile, .dockerignore, app.yaml | 335.2K | 397.5K |
+| opus-5-5 | digitalocean | crud | 1 | Node.js 22, Express, PostgreSQL | 451 | 5 | Dockerfile, .dockerignore, .do/app.yaml | 357.5K | 499.6K |
+| opus-5-5 | digitalocean | api | 1 | Node.js 22, Express, PostgreSQL | 533 | 2 | Dockerfile, .dockerignore, .do/app.yaml | 558.9K | 555.3K |
+| opus-5-5 | digitalocean | dataviz | 1 | Node.js 22, Express | 481 | 1 | Dockerfile, .dockerignore, app.yaml | 594.0K | 659.1K |
+| opus-5-5 | digitalocean | realtime | 1 | Node.js 22, Node.js http | 405 | 1 | Dockerfile, .dockerignore, .do/app.yaml | 345.6K | 369.4K |
+| opus-5-5 | render | static | 1 | Node.js 18+, Node.js http | 344 | 0 | render.yaml | 332.8K | 310.9K |
 | opus-5-5 | render | crud | 1 | Node.js 22, Express, PostgreSQL | 441 | 3 | render.yaml | 435.0K | 792.0K |
 | opus-5-5 | render | api | 1 | Node.js 22, Express, PostgreSQL | 494 | 2 | render.yaml | 458.9K | 837.1K |
 | opus-5-5 | render | dataviz | 1 | Node.js 24, Express | 439 | 1 | render.yaml | 582.8K | 921.8K |
-| opus-5-5 | render | realtime | 1 | Node.js | 402 | 1 | render.yaml | 339.5K | 338.2K |
-| opus-5-5 | vercel | static | 1 | Static files | 373 | 0 | vercel.json | 293.7K | 254.2K |
-| opus-5-5 | vercel | crud | 1 | Node.js, Express, Vercel Blob | 593 | 4 | vercel.json | 404.8K | 1.38M |
-| opus-5-5 | vercel | api | 1 | Node.js, Hono, Vercel Blob | 652 | 4 | vercel.json | 465.3K | 1.55M |
-| opus-5-5 | vercel | dataviz | 1 | Static files | 534 | 0 | vercel.json | 742.1K | 544.9K |
+| opus-5-5 | render | realtime | 1 | Node.js 20+, Node.js http | 402 | 1 | render.yaml | 339.5K | 338.2K |
+| opus-5-5 | vercel | static | 1 | Node.js 18+, Vercel Functions | 373 | 0 | vercel.json | 293.7K | 254.2K |
+| opus-5-5 | vercel | crud | 1 | Node.js 24, Express, Vercel Blob | 593 | 4 | vercel.json | 404.8K | 1.38M |
+| opus-5-5 | vercel | api | 1 | Node.js 20+, Hono, Vercel Blob | 652 | 4 | vercel.json | 465.3K | 1.55M |
+| opus-5-5 | vercel | dataviz | 1 | Node.js 20+, Vercel Functions | 534 | 0 | vercel.json | 742.1K | 544.9K |
 | opus-5-5 | vercel | realtime | 1 | Node.js, Next.js, React | 841 | 9 | vercel.json | 744.7K | 6.89M |
 
 *Human steps* counts the distinct things a person had to do, or would have to do, for the agent's deployments to work (account setup, terms, payment, Git hosting), and *human time* estimates how long they take. *Security & compliance* is an independent Claude Code review of how each app was deployed, whether its hosting plan fits how the app is used, and what is live, scored against a fixed rubric. See the methodology. Times are wall-clock time of the agent's build and deploy phases; *ready after* is how much longer the app took to answer once the agent finished. Tokens include cache reads and writes. Agent cost is the API cost reported by Claude Code. Hosting is the estimated monthly cost of the deployed resources at two levels of traffic: *light use* is a few visits a week, and *busy* is a public app that crawlers, monitors and visitors hit around the clock. Plans that a business's app can't use under their terms, or that the traffic would exceed, are priced on the cheapest plan that allows it. `+` means some values were unknown. See [docs/methodology.md](../../../docs/methodology.md#hosting-cost).

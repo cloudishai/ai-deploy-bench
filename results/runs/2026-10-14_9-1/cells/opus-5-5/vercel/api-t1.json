@@ -634,6 +634,53 @@
     "deploy_config": [
       "vercel.json"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "@hono/node-server",
+        "@vercel/blob",
+        "hono",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "api",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Hono"
+    ],
+    "Data": [
+      "Vercel Blob"
+    ],
+    "Libraries": [
+      "Vercel Blob SDK",
+      "node-postgres",
+      "@hono/node-server"
+    ],
+    "Packaging": [
+      "vercel.json"
+    ],
+    "Hosting": [
+      "Vercel project (hono)",
+      "Vercel Functions"
+    ]
   }
 }

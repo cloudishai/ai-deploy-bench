@@ -562,6 +562,40 @@
     "deploy_config": [
       "render.yaml"
     ],
-    "git_repo": true
+    "git_repo": true,
+    "packages": {
+      "npm": [
+        "express"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:24-alpine)"
+    ]
   }
 }

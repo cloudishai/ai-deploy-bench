@@ -575,6 +575,51 @@
       "Dockerfile",
       ".dockerignore"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "ws"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:24-slim"
+    ],
+    "runtime_hints": {
+      "node": ">=22.5"
+    },
+    "builtins": [
+      "node:http",
+      "node:sqlite"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Data": [
+      "SQLite (on a persistent volume)"
+    ],
+    "Libraries": [
+      "ws"
+    ],
+    "Packaging": [
+      "Docker (node:24-slim)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared) with a persistent volume"
+    ]
   }
 }

@@ -560,6 +560,44 @@
       ".dockerignore",
       "app.yaml"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "express"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)",
+      "App spec (app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
   }
 }

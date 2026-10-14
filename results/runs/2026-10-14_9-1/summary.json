@@ -162,7 +162,8 @@
       "deploy_tokens": 830317,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 22",
+        "Node.js http"
       ],
       "code_lines": 399,
       "dependencies": 0,
@@ -208,8 +209,9 @@
       "deploy_tokens": 1265542,
       "stack": [],
       "technologies": [
-        "Static files",
-        "Files on a persistent volume"
+        "Node.js 24",
+        "Node.js http",
+        "SQLite"
       ],
       "code_lines": 562,
       "dependencies": 0,
@@ -252,7 +254,9 @@
       "deploy_tokens": 1101440,
       "stack": [],
       "technologies": [
-        "Files on a persistent volume"
+        "Node.js 24",
+        "Node.js http",
+        "SQLite"
       ],
       "code_lines": 672,
       "dependencies": 0,
@@ -297,7 +301,8 @@
       "deploy_tokens": 838383,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 22",
+        "Node.js http"
       ],
       "code_lines": 345,
       "dependencies": 0,
@@ -344,8 +349,9 @@
         "ws"
       ],
       "technologies": [
-        "Node.js",
-        "Files on a persistent volume"
+        "Node.js 24",
+        "Node.js http",
+        "SQLite"
       ],
       "code_lines": 428,
       "dependencies": 1,
@@ -390,7 +396,8 @@
       "deploy_tokens": 397482,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 22",
+        "Node.js http"
       ],
       "code_lines": 391,
       "dependencies": 0,
@@ -455,7 +462,7 @@
         "pg"
       ],
       "technologies": [
-        "Node.js",
+        "Node.js 22",
         "Express",
         "PostgreSQL"
       ],
@@ -520,7 +527,7 @@
         "pg"
       ],
       "technologies": [
-        "Node.js",
+        "Node.js 22",
         "Express",
         "PostgreSQL"
       ],
@@ -583,7 +590,7 @@
         "express"
       ],
       "technologies": [
-        "Node.js",
+        "Node.js 22",
         "Express"
       ],
       "code_lines": 481,
@@ -645,7 +652,8 @@
         "ws"
       ],
       "technologies": [
-        "Node.js"
+        "Node.js 22",
+        "Node.js http"
       ],
       "code_lines": 405,
       "dependencies": 1,
@@ -704,7 +712,8 @@
       "deploy_tokens": 310850,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 18+",
+        "Node.js http"
       ],
       "code_lines": 344,
       "dependencies": 0,
@@ -934,7 +943,8 @@
         "ws"
       ],
       "technologies": [
-        "Node.js"
+        "Node.js 20+",
+        "Node.js http"
       ],
       "code_lines": 402,
       "dependencies": 1,
@@ -987,7 +997,8 @@
       "deploy_tokens": 254201,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 18+",
+        "Vercel Functions"
       ],
       "code_lines": 373,
       "dependencies": 0,
@@ -1046,7 +1057,7 @@
         "pg"
       ],
       "technologies": [
-        "Node.js",
+        "Node.js 24",
         "Express",
         "Vercel Blob"
       ],
@@ -1106,7 +1117,7 @@
         "pg"
       ],
       "technologies": [
-        "Node.js",
+        "Node.js 20+",
         "Hono",
         "Vercel Blob"
       ],
@@ -1161,7 +1172,8 @@
       "deploy_tokens": 544931,
       "stack": [],
       "technologies": [
-        "Static files"
+        "Node.js 20+",
+        "Vercel Functions"
       ],
       "code_lines": 534,
       "dependencies": 0,

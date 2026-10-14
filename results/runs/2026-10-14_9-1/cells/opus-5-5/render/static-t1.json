@@ -563,6 +563,40 @@
     "deploy_config": [
       "render.yaml"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=18"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 18+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, built from render-examples/express-hello-world)"
+    ]
   }
 }

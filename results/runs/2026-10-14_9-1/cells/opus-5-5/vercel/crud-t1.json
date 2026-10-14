@@ -650,6 +650,53 @@
     "deploy_config": [
       "vercel.json"
     ],
-    "git_repo": false
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "@vercel/blob",
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": "24.x"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "api",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Data": [
+      "Vercel Blob"
+    ],
+    "Libraries": [
+      "Vercel Blob SDK",
+      "node-postgres",
+      "bcrypt.js"
+    ],
+    "Packaging": [
+      "vercel.json"
+    ],
+    "Hosting": [
+      "Vercel project",
+      "Vercel Functions"
+    ]
   }
 }
