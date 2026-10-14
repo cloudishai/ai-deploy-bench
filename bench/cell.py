@@ -388,13 +388,15 @@ def verify(cell: Cell, use_browser: bool = True) -> dict[str, Any]:
 
 
 def review(cell: Cell) -> dict[str, Any]:
-    """Independent security review of the live deployment, with no cloud credentials."""
+    """Independent security review of the live deployment, and a rating of its stack, with no cloud credentials."""
     extra = dict(config.HIPAA_ENV) if cell.config.reviewer.get("hipaa") else {}
     report = security.run(cell, env=agent_env(cell.config, cloud=None, extra=extra), secrets=secrets_to_hide(cell.config, cell),
                           claude=claude_binary(), log=log)
     cell.write("security.json", report)
     if report["status"] == "completed":
         log(f"security review: {report['score']:.0f}/100, {len(report['findings'])} finding(s)")
+        fit = report["stack_fit"]
+        log(f"stack fit: {fit['score']:.0f}/100" if fit["status"] == "completed" else f"stack fit {fit['status']}: {fit.get('detail')}")
     else:
         log(f"security review {report['status']}: {report.get('detail')}")
     return report

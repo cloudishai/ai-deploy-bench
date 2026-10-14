@@ -217,6 +217,10 @@ def metrics(cfg: config.Config) -> list[Metric]:
         Metric("security", "Security & compliance", "Score of the independent security and compliance review (0-100).",
                lambda g: g.get("security_score"), lambda c: c.summary.get("security_score"), fmt.score,
                lambda v: f"{v:.0f}", "higher", 100),
+        Metric("stack_fit", "Stack fit", "The same review's rating of the stack the agent chose for each app, judged "
+               "against the app's requirements (0-100). From benchmark version 2.",
+               lambda g: g.get("stack_fit_score"), lambda c: c.summary.get("stack_fit_score"), fmt.score,
+               lambda v: f"{v:.0f}", "higher", 100),
         Metric("build", "Build time", "Wall-clock time of the agent's build phase, averaged over apps.",
                lambda g: g.get("mean_build_s"), lambda c: c.build_s, fmt.duration, _duration_tick, "lower"),
         Metric("deploy", "Deploy time", "Wall-clock time of the agent's deploy phase, averaged over apps.",

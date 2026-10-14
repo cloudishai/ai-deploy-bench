@@ -130,6 +130,8 @@ class Config:
     human_steps: dict[str, dict[str, Any]] = dataclasses.field(default_factory=dict)
     reviewer: dict[str, Any] = dataclasses.field(default_factory=dict)
     security_rubric: tuple[dict[str, Any], ...] = ()
+    stack_rubric: tuple[dict[str, Any], ...] = ()
+    version: int = 1
     hosting_usage: tuple[Usage, ...] = ()
 
     def cloud(self, cloud_id: str) -> Cloud:
@@ -186,5 +188,7 @@ def load(path: Path = ROOT / "benchmark.yaml") -> Config:
         human_steps=raw.get("human_steps", {}),
         reviewer=raw.get("reviewer", {}),
         security_rubric=tuple(raw.get("security_rubric") or ()),
+        stack_rubric=tuple(raw.get("stack_rubric") or ()),
+        version=int(raw.get("version") or 1),
         hosting_usage=tuple(Usage(id=key, **value) for key, value in (raw.get("hosting_usage") or {}).items()),
     )

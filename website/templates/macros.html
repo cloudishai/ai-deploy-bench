@@ -30,6 +30,9 @@
       <div><dt>Checks passed</dt><dd>{{ fmt.pct(g.get('mean_score')) }}</dd></div>
       <div><dt>Human steps</dt><dd>{{ fmt.count(people[0]) }} <span class="muted">· {{ fmt.minutes(people[1]) }}</span></dd></div>
       <div><dt>Security &amp; compliance</dt><dd>{{ fmt.score(g.get('security_score')) }}</dd></div>
+{% if g.get('stack_fit_score') is not none %}
+      <div><dt>Stack fit</dt><dd>{{ fmt.score(g.get('stack_fit_score')) }}</dd></div>
+{% endif %}
       <div><dt>Avg build</dt><dd>{{ fmt.duration(g.get('mean_build_s')) }}</dd></div>
       <div><dt>Avg deploy</dt><dd>{{ fmt.duration(g.get('mean_deploy_s')) }}</dd></div>
       <div><dt>Tokens</dt><dd>{{ fmt.tokens(g.get('tokens')) }}</dd></div>

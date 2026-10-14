@@ -19,13 +19,16 @@ DigitalOcean's single container registry or Render's single free Postgres.
 | deploy | The same Claude Code session resumes and deploys ([prompt](../bench/templates/deploy.md)) and writes `deployment.json`, then the harness times how long the URL takes to answer. | model key, the cloud's prerequisite credentials (none for Cloudish), optional GitHub scratch token |
 | inventory | Lists the cloud resources the cell created and prices them, including any created with credentials the agent saved in the workspace's `.env` files. | cloud credentials |
 | verify | Waits for the URL to answer, then runs the app's black-box checks. | none |
-| review | A separate Claude Code session reviews the security and compliance of the process, the code, the hosting plan and the live app ([prompt](../bench/templates/review.md)). | model key only |
+| review | A separate Claude Code session reviews the security and compliance of the process, the code, the hosting plan and the live app, and rates the stack the agent chose ([prompt](../bench/templates/review.md)). | model key only |
 | teardown | Stops any agent process a cancelled step left behind, deletes what the cell created, then lists again to report leftovers. | cloud credentials |
 | finalize | Writes `result.json` and `report.md`, archives the source, and masks secrets in every file. | secrets, only to mask them |
 
 Every cell builds its app from scratch, and the build prompt names the target cloud, so the agent
 picks an architecture that suits the platform: serverless functions on one cloud, a container with
-a volume on another. That is deliberate: the work and tokens a build takes depend on the
+a volume on another. Before writing code, it compares the two or three most plausible stacks for
+the app and records them and its choice in `STACK.md`; the prompt states there is no default
+language or framework, and suggests no technology for any app (from benchmark version 2, see
+[CHANGES.md](../CHANGES.md)). That is deliberate: the work and tokens a build takes depend on the
 architecture a cloud calls for, so build metrics are part of the comparison. Each cell's report
 and the run summary show the stack that was built (frameworks, lines of code, dependencies and
 deploy configuration). Because builds also vary from run to run, use `trials` above 1 to tell
@@ -164,6 +167,25 @@ model:
 The weights favor how the app was deployed over the app's own code. The code would have the same
 weaknesses on any cloud, so it says little about the cloud; it is still reviewed, but counts for 5.
 
+## Stack fit
+
+From benchmark version 2, the same review session also rates the stack the agent chose for the app:
+its language, frameworks, libraries, data stores and hosting. It judges the stack against the app's
+requirements in `TASK.md`, not against a stack it would have preferred, so any stack that fits well
+can score highly, including an unexpected one. When the agent recorded its decision in `STACK.md`,
+the reviewer credits sound reasoning and notes where the build departed from it. Each criterion of
+`stack_rubric` is scored from 0 to 10 and weighted by the harness into a separate 0–100 score:
+
+| Criterion | Weight | Question |
+|---|---|---|
+| Fit for the job | 40 | Does each part suit its job: a durable store for persistent data, a suitable transport for realtime, static hosting for static content? |
+| Proportion | 30 | Is it as simple as the requirements allow, with no needless services, frameworks or dependencies, and no stand-ins that only appear to work, such as a blob store used as a database? |
+| Platform fit | 30 | Does it use what the cloud does well, or work against it? |
+
+The stack fit score is reported next to the security score but kept separate from it, and from
+success: a stack that fits poorly can still pass every check. A missing or invalid stack rating
+doesn't invalidate the security review.
+
 Cells without a reachable deployment aren't reviewed. The reviewer's cost is reported separately and
 isn't added to the agent cost. Each cell's report lists the criterion scores, the rationale and the
 findings, and the summaries average the score per cloud. Each finding names its source, the party
@@ -182,6 +204,7 @@ that would have to fix it: the `platform` (the cloud's own behavior or defaults)
 | Human steps | Distinct human steps the deployment needed or would need ([Human steps](#human-steps)). |
 | Human time | Estimated minutes for those steps, from the `human_steps` catalog. |
 | Security & compliance | 0–100 score from the independent review ([Security and compliance review](#security-and-compliance-review)). |
+| Stack fit | 0–100 rating of the stack the agent chose, from the same review ([Stack fit](#stack-fit)). From benchmark version 2. |
 | Hosting cost | The estimated monthly cost of the deployed resources with light use and when busy ([Hosting cost](#hosting-cost)), plus the agent's own estimate from `deployment.json` for comparison. |
 | Activity | Turns, tool calls by tool, shell commands (with the deploy commands listed in each cell report), tool errors, web searches and fetches, subagents, context compactions. |
 | Code | Files, non-blank lines by language, npm and Python dependency counts, frameworks detected, and deploy configuration files (Dockerfile, `vercel.json`, `render.yaml`, `.do/app.yaml`, ...). Dependencies, build output, lockfiles and seeded fixtures are excluded. |
@@ -264,6 +287,7 @@ versions as optional:
 | 4 | `cost.hosting_usage` in cell records (cost, `incomplete` and `basis` for each traffic level), and `hosting_usage_usd` and `hosting_usage_incomplete` on summary cells and groups |
 | 5 | `screenshots` in cell records, and their file names on summary cells |
 | 6 | `technologies` in cell records (names by group) and on summary cells (a short headline), and the facts they come from in `code`: `packages`, `base_images`, `runtime_hints`, `builtins`, `manifests` and `dirs`. These fields were also added to the records of runs 2026-10-13 #4, #5 and #8, from their source snapshots; nothing else in those records changed |
+| 7 | `benchmark_version` in cell records, in `run` in `summary.json` and in `results/index.json`; `stack_fit` in cell records (`status`, `score`, `criteria`, `summary`), and `stack_fit_score` on summary cells and groups |
 
 ## Fairness and limitations
 
@@ -274,6 +298,9 @@ versions as optional:
   the same reviewer for every cell keep it comparable, but reviews vary from run to run like the
   deployments do. The reviewer also can't inspect cloud settings it has no credentials for, and it
   judges providers' terms from what it knows of them.
+- **The stack fit score is a model's judgment too,** and the reviewer is the same model family as
+  the agent, so it may favor the stacks that family tends to choose. The rationale for each
+  criterion is published so the scores can be checked.
 - **Human time is estimated.** The steps are collected from evidence, but their minutes come from
   a catalog; first-time setup usually takes longer than the estimates. A person's own model API
   key is not counted, since every cloud needs it equally.

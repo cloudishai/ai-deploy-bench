@@ -5,6 +5,7 @@
 {% set timing = r.get('timing') or {} %}
 {% set people = r.get('human') or {} %}
 {% set security = r.get('security') or {} %}
+{% set fit = r.get('stack_fit') or {} %}
 {% block title %}{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}, run {{ run.label }} · AI Deploy Bench{% endblock %}
 {% block description %}{{ app_name(cell.app, False) }} built and deployed on {{ cloud_name(cell.cloud) }} by {{ model_name(cell.model, True) }}: {{ states[state(cell)][0] | lower }}, {{ cell.checks_passed }}/{{ cell.checks_total }} checks passed.{% endblock %}
 {% block content %}
@@ -19,6 +20,9 @@
   <div class="stat"><span class="stat-label">Checks passed</span><span class="stat-value">{{ cell.checks_passed }}<span class="muted">/{{ cell.checks_total }}</span></span>{{ bar((cell.checks_passed / cell.checks_total) if cell.checks_total else None) }}</div>
   <div class="stat"><span class="stat-label">Human steps</span><span class="stat-value">{{ fmt.count(people.get('count')) }}</span><span class="stat-note">{{ fmt.minutes(people.get('minutes')) }} of a person's time</span></div>
   <div class="stat"><span class="stat-label">Security &amp; compliance</span><span class="stat-value">{{ fmt.score(security.get('score')) }}</span>{{ bar((security.get('score') / 100) if security.get('score') is not none else None) }}</div>
+{% if fit %}
+  <div class="stat"><span class="stat-label">Stack fit</span><span class="stat-value">{{ fmt.score(fit.get('score')) }}</span>{{ bar((fit.get('score') / 100) if fit.get('score') is not none else None) }}</div>
+{% endif %}
   <div class="stat"><span class="stat-label">Build</span><span class="stat-value">{{ fmt.duration(timing.get('build_s')) }}</span></div>
   <div class="stat"><span class="stat-label">Deploy</span><span class="stat-value">{{ fmt.duration(timing.get('deploy_s')) }}</span>{% if timing.get('ready_after_deploy_s') %}<span class="stat-note">ready {{ fmt.duration(timing.ready_after_deploy_s) }} later</span>{% endif %}</div>
   <div class="stat"><span class="stat-label">Tokens</span><span class="stat-value">{{ fmt.tokens(((r.get('tokens') or {}).get('total') or {}).get('total')) }}</span></div>
@@ -102,6 +106,33 @@
   </ul>
 {% endif %}
 </section>
+
+{% if fit %}
+<section class="section">
+  <h2>Stack fit</h2>
+{% if fit.get('status') == 'completed' %}
+  <p class="muted">The same review rated the stack the agent chose, judged against the app's requirements rather than a preferred stack.</p>
+{% if fit.get('summary') %}<p>{{ fit.summary }}</p>{% endif %}
+  <div class="table-scroll">
+  <table class="data criteria">
+    <thead><tr><th>Criterion</th><th class="num">Weight</th><th>Score</th><th>Why</th></tr></thead>
+    <tbody>
+{% for c in fit.get('criteria') or [] %}
+      <tr>
+        <td class="nowrap"><strong>{{ c.get('name') }}</strong></td>
+        <td class="num">{{ c.get('weight') }}</td>
+        <td class="score-cell">{{ bar(c.get('score', 0) / 10) }}<span class="num">{{ c.get('score') }}/10</span></td>
+        <td class="detail">{{ c.get('rationale') }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  <p>Not rated: {{ fit.get('detail') or fit.get('status') }}.</p>
+{% endif %}
+</section>
+{% endif %}
 
 <section class="section">
   <h2>Security &amp; compliance review</h2>

@@ -4,6 +4,7 @@ the CSP (no inline scripts or styles); charts, trends and the deploy script."""
 import io
 import json
 import re
+import shutil
 import tarfile
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
@@ -82,6 +83,31 @@ def test_old_schemas_render(site):
     oldest = site.runs[0]
     page = (site.out / "runs" / oldest.name / oldest.cells[0].slug / "index.html").read_text()
     assert "Checks" in page and "Raw data" in page
+
+
+def test_version_2_runs_show_stack_fit(tmp_path):
+    results = tmp_path / "results"
+    latest = sorted((ROOT / "results" / "runs").glob("*/summary.json"))[-1].parent
+    shutil.copytree(latest, results / "runs" / latest.name)
+    summary_path = results / "runs" / latest.name / "summary.json"
+    summary = json.loads(summary_path.read_text())
+    summary["run"]["benchmark_version"] = 2
+    summary["groups"][0]["stack_fit_score"] = 72.0
+    row = next(c for c in summary["cells"] if c.get("path"))
+    row["stack_fit_score"] = 72.0
+    summary_path.write_text(json.dumps(summary))
+    record_path = summary_path.parent / row["path"]
+    record = json.loads(record_path.read_text())
+    record["stack_fit"] = {"status": "completed", "score": 72.0, "summary": "A static site would have done.",
+                           "criteria": [{"id": "fit", "name": "Fit for the job", "weight": 40, "score": 8, "rationale": "ok"}]}
+    record_path.write_text(json.dumps(record))
+    built = build.Site(results, tmp_path / "site")
+    built.build()
+    run = built.runs[0]
+    cell = next(c for c in run.cells if c.slug == data.cell_slug(row))
+    page = (built.out / "runs" / run.name / cell.slug / "index.html").read_text()
+    assert "<h2>Stack fit</h2>" in page and "A static site would have done." in page and "72/100" in page
+    assert "benchmark v2" in (built.out / "runs" / run.name / "index.html").read_text()
 
 
 def test_technologies_are_shown_for_every_cell_with_a_record(site):

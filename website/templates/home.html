@@ -24,7 +24,7 @@
   <div class="section-head">
     <div>
       <h2>{{ 'Latest results' if latest.full else 'Latest run' }}</h2>
-      <p class="muted">{{ latest.label }} · {{ latest.scope }} · {% for m in latest.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if latest.info.get('agent_versions') %} · Claude Code {{ latest.info.agent_versions | join(', ') }}{% endif %}</p>
+      <p class="muted">{{ latest.label }} · {{ latest.scope }} · {% for m in latest.info.get('models', []) %}{{ model_name(m, True) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if latest.info.get('benchmark_version') %} · <a href="{{ github }}/blob/main/CHANGES.md">benchmark v{{ latest.info.benchmark_version }}</a>{% endif %}{% if latest.info.get('agent_versions') %} · Claude Code {{ latest.info.agent_versions | join(', ') }}{% endif %}</p>
     </div>
     <a class="link-arrow" href="{{ latest.href }}">Run details</a>
   </div>

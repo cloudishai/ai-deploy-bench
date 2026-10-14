@@ -4,6 +4,9 @@ While the deployment is still live, the reviewer gets a read-only copy of what t
 condensed transcripts of the build and deploy sessions, the resources and account plans the benchmark
 found, how the app will be used, and the public URL. It has no cloud credentials. It scores the fixed rubric in benchmark.yaml with evidence,
 and the harness turns those scores into a 0-100 score, so the weighting isn't left to the model.
+
+The same session rates the stack the agent chose against stack_rubric, into a separate 0-100 stack fit
+score. A missing or invalid stack rating doesn't invalidate the security review.
 """
 
 from __future__ import annotations
@@ -90,14 +93,19 @@ def prepare(cell: "Cell", directory: Path, secrets: list[str]) -> None:
     (directory / "TASK.md").write_text(app_config.task)
 
 
+def rubric_lines(rubric: tuple[dict[str, Any], ...]) -> str:
+    return "\n".join(f"- `{c['id']}` ({c['name']}, weight {c['weight']}): {c['question']}" for c in rubric)
+
+
 def render_prompt(cell: "Cell", url: str) -> str:
-    rubric = cell.config.security_rubric
-    lines = "\n".join(f"- `{c['id']}` ({c['name']}, weight {c['weight']}): {c['question']}" for c in rubric)
+    rubric, stack_rubric = cell.config.security_rubric, cell.config.stack_rubric
     return (TEMPLATES / "review.md").read_text().format(
         cloud_name=cell.config.cloud(cell.info["cloud"]).name,
         url=url,
-        rubric=lines,
+        rubric=rubric_lines(rubric),
         criterion_ids=", ".join(f"`{c['id']}`" for c in rubric),
+        stack_rubric=rubric_lines(stack_rubric),
+        stack_criterion_ids=", ".join(f"`{c['id']}`" for c in stack_rubric),
     )
 
 
@@ -119,6 +127,15 @@ def score(rubric: tuple[dict[str, Any], ...], review: Any) -> tuple[float | None
     if problems:
         return None, rows, problems
     return round(100 * weighted / sum(item["weight"] for item in rubric), 1), rows, []
+
+
+def stack_fit(rubric: tuple[dict[str, Any], ...], review: dict[str, Any]) -> dict[str, Any]:
+    """The reviewer's rating of the stack the agent chose, as its own 0-100 score."""
+    stack = review.get("stack")
+    value, rows, problems = score(rubric, stack)
+    if problems:
+        return {"status": "error", "detail": "; ".join(problems), "criteria": rows}
+    return {"status": "completed", "score": value, "criteria": rows, "summary": str(stack.get("summary") or "")[:800]}
 
 
 def findings(review: dict[str, Any]) -> list[dict[str, str]]:
@@ -180,4 +197,4 @@ def run(cell: "Cell", env: dict[str, str], secrets: list[str], claude: str, log:
     if problems:
         return {**report, "status": "error", "detail": "; ".join(problems), "criteria": rows}
     return {**report, "status": "completed", "score": value, "criteria": rows, "findings": findings(review),
-            "summary": str(review.get("summary") or "")[:1500]}
+            "summary": str(review.get("summary") or "")[:1500], "stack_fit": stack_fit(cfg.stack_rubric, review)}

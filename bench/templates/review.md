@@ -1,8 +1,8 @@
 You are an independent security and compliance reviewer for an automated benchmark. An AI coding
 agent built a web application and deployed it to {cloud_name}. Review how securely it was built and
 deployed, whether the hosting fits how the app will be used, and what is live now, then score it
-against the rubric below. The same rubric is used for every cloud, so judge what happened, not the
-cloud's reputation.
+against the rubric below, and rate the technology stack it chose. The same rubrics are used for every
+cloud, so judge what happened, not the cloud's reputation.
 
 The current directory holds what you need. Don't modify anything except `security-review.json`.
 
@@ -47,6 +47,14 @@ response. Also give each finding a source, the party that would have to fix it:
   base image or the container user.
 - `app`: the application code the agent wrote.
 
+Separately, rate the technology stack the agent chose for this app on {cloud_name}: its language,
+frameworks, libraries, data stores and hosting. Judge it against the app's requirements in `TASK.md`,
+not against a stack you would have preferred: any stack that fits well can score highly, including
+one you didn't expect. If the agent recorded its decision in `app/STACK.md`, credit sound reasoning
+and note where the build departed from it. Score each criterion from 0 to 10 on the same scale:
+
+{stack_rubric}
+
 When you're done, write `security-review.json` in the current directory:
 
 ```json
@@ -59,8 +67,15 @@ When you're done, write `security-review.json` in the current directory:
      "source": "platform | deployment | app", "title": "<short title>", "evidence": "<file and line, command, or request and response>",
      "recommendation": "<how to fix it>"}}
   ],
-  "summary": "<two or three sentences>"
+  "summary": "<two or three sentences>",
+  "stack": {{
+    "criteria": {{
+      "<stack criterion id>": {{"score": 0, "rationale": "<one or two sentences>"}}
+    }},
+    "summary": "<one or two sentences on the stack and why it fits or doesn't>"
+  }}
 }}
 ```
 
-Include every criterion id ({criterion_ids}). Then reply with just the summary.
+Include every criterion id ({criterion_ids}) under `criteria`, and every stack criterion id
+({stack_criterion_ids}) under `stack.criteria`. Then reply with just the summary.
