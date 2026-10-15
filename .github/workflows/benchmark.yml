@@ -31,6 +31,9 @@ on:
         description: Open a pull request with results/ and README.md (instead of committing to the branch)
         type: boolean
         default: true
+      base_run:
+        description: Full run to complete (e.g. 2026-10-14_13-1); only the cells chosen above rerun, the rest are copied from it
+        default: ""
       smoke_test:
         description: Use a stub instead of Claude Code (no model spend) to check secrets and plumbing
         type: boolean
@@ -78,9 +81,10 @@ jobs:
           MODELS: ${{ inputs.models || 'all' }}
           TRIALS: ${{ inputs.trials || '1' }}
           MAX_PARALLEL: ${{ inputs.max_parallel }}
+          BASE_RUN: ${{ inputs.base_run }}
         run: >
           python -m bench plan --clouds "$CLOUDS" --apps "$APPS" --models "$MODELS" --trials "$TRIALS"
-          ${MAX_PARALLEL:+--max-parallel "$MAX_PARALLEL"} --out plan.json
+          ${MAX_PARALLEL:+--max-parallel "$MAX_PARALLEL"} ${BASE_RUN:+--base-run "$BASE_RUN"} --out plan.json
       - uses: actions/upload-artifact@v7
         with:
           name: plan
@@ -134,10 +138,11 @@ jobs:
         env:
           DATE: ${{ needs.plan.outputs.date }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BASE_RUN: ${{ inputs.base_run }}
         run: >
           python -m bench aggregate --artifacts artifacts --plan plan.json --results results --readme README.md
           --run-name "$RUN_NAME" --date "$DATE" --run-number "$GITHUB_RUN_NUMBER" --run-attempt "$GITHUB_RUN_ATTEMPT"
-          --run-url "$RUN_URL"
+          --run-url "$RUN_URL" ${BASE_RUN:+--base-run "$BASE_RUN"}
       - run: cat "results/runs/$RUN_NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
       # A pull request rather than a direct commit, so a person reviews each run before it lands on the
       # default branch. Cloud runs can fail for reasons only a person can judge (a missing payment

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import json
 import os
 import sys
@@ -20,7 +21,17 @@ def write_github_output(**values: str) -> None:
                 f.write(f"{key}={value}\n")
 
 
+def check_base_run(results: Path, name: str, date: str) -> None:
+    try:
+        aggregate.load_base(results, name, {"date": date}, config.load())
+    except ValueError as error:
+        sys.exit(f"::error::{error}")
+
+
 def cmd_plan(args: argparse.Namespace) -> None:
+    # Checked before any cell runs, so a run that couldn't be merged doesn't spend anything.
+    if args.base_run:
+        check_base_run(Path(args.results), args.base_run, dt.date.today().isoformat())
     result = plan.plan(config.load(), args.clouds, args.models, args.apps, args.trials, args.max_parallel)
     result["run"] = {"name": args.run_name} if args.run_name else {}
     Path(args.out).write_text(json.dumps(result, indent=2))
@@ -73,8 +84,10 @@ def cmd_verify(args: argparse.Namespace) -> None:
 def cmd_aggregate(args: argparse.Namespace) -> None:
     run = {"name": args.run_name, "date": args.date, "number": args.run_number, "attempt": args.run_attempt,
            "url": args.run_url}
+    if args.base_run:
+        check_base_run(Path(args.results), args.base_run, args.date)
     summary = aggregate.aggregate(Path(args.artifacts), json.loads(Path(args.plan).read_text()), Path(args.results),
-                                  Path(args.readme), run)
+                                  Path(args.readme), run, base_run=args.base_run or None)
     for group in summary["groups"]:
         print(f"{group['model']}/{group['cloud']}: {group['success']}/{group['cells']} succeeded")
     commit = summary["run"]["commit"]
@@ -99,6 +112,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--trials", type=int, default=1)
     p.add_argument("--max-parallel", type=int, default=None)
     p.add_argument("--run-name", default="")
+    p.add_argument("--base-run", default="", help="check that this run can be completed by the planned cells")
+    p.add_argument("--results", default="results")
     p.add_argument("--out", default="plan.json")
     p.set_defaults(func=cmd_plan)
 
@@ -140,6 +155,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--run-number", type=int)
     p.add_argument("--run-attempt", type=int)
     p.add_argument("--run-url", default="")
+    p.add_argument("--base-run", default="", help="run name whose other cells complete this one (a rerun of part of it)")
     p.set_defaults(func=cmd_aggregate)
 
     p = sub.add_parser("janitor", help="list (and with --delete, remove) leftover benchmark resources")

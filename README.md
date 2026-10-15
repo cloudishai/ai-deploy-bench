@@ -122,7 +122,11 @@ test whatever stack the agent picks:
    gh workflow run benchmark.yml                                         # everything
    gh workflow run benchmark.yml -f clouds=vercel -f apps=static,api     # a subset
    gh workflow run benchmark.yml -f trials=3                             # repeated trials
+   gh workflow run benchmark.yml -f clouds=railway -f base_run=2026-10-14_13-1  # rerun one cloud
    ```
+   After a fix that only affects some cells, such as a bug in one cloud's adapter, `base_run` reruns
+   just those cells and copies the rest from that full run, so the result is a full run again
+   ([when that's valid](docs/methodology.md#rerunning-part-of-a-run)).
 5. **Read the results**: when the run finishes, the collect job opens a pull request adding
    `results/runs/<date>_<run>/` (a summary with a screenshot gallery, `summary.json`, and per cell a
    JSON record, a report and screenshots of the live app)

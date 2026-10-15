@@ -16,6 +16,7 @@
 
 <section class="section">
   <h2>By cloud</h2>
+{% if run.info.get('base_run') %}<p class="notice">Reran {{ run.info.get('rerun') }}; the other cells are copied unchanged from <a href="/runs/{{ run.info.base_run.name }}/">run #{{ run.info.base_run.number }}</a>.</p>{% endif %}
 {% if not run.full %}<p class="notice">A partial run: {{ run.scope | lower }}. Totals cover those apps only.</p>{% endif %}
 {% for model in run.info.get('models', []) %}
 {% if run.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}

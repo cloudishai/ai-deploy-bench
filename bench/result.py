@@ -10,7 +10,7 @@ from bench.clouds.base import parse_time
 if TYPE_CHECKING:
     from bench.cell import Cell
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 SCREENSHOTS = "screenshots"  # the verifier's screenshots, under the cell directory
 PHASE_SUMMARY_FIELDS = (
     "status", "detail", "started", "resumed", "started_at", "wall_time_s", "api_time_s", "turns", "tokens",

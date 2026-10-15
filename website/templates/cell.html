@@ -264,7 +264,7 @@
   <p class="links">
     <a href="{{ github }}/blob/main/{{ cell.results_path }}.md">Report on GitHub</a>
     <a href="/data/runs/{{ run.name }}/cells/{{ cell.slug }}.json">Full record (JSON)</a>
-{% if run.info.get('url') %}<a href="{{ run.info.url }}">Workflow run, with transcripts</a>{% endif %}
+{% if cell.workflow_url %}<a href="{{ cell.workflow_url }}">Workflow run, with transcripts</a>{% endif %}
   </p>
 </section>
 {% endblock %}

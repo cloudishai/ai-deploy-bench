@@ -55,6 +55,29 @@ When a run is cancelled or a step times out, the harness stops Claude Code and e
 started before the step ends, so teardown never races a live agent. A cancelled run is not
 committed.
 
+## Rerunning part of a run
+
+When a harness bug only affected some cells, say one cloud's inventory or teardown, those cells
+can be rerun on their own and merged with the full run they belong to, instead of rerunning
+everything. Run the benchmark with `base_run` set to that run's name and the cells to rerun chosen
+as usual (for example `clouds: railway`). The new run's own cells replace the base run's, and every
+other cell is copied from the base run unchanged: its record, report and screenshots. The new run
+then covers the whole matrix, so it is a full run and updates the README.
+
+Cells are independent (a fresh runner and Claude Code session each), so a copied cell is exactly
+what a full rerun would have kept, provided the fix doesn't touch it. That is for whoever reruns to
+judge. A fix to anything every cell shares, such as the prompts, the verifiers or a rubric, needs a
+full run, and usually a new benchmark version. The harness refuses a base run that:
+
+- isn't a full run,
+- ran a different benchmark version, Claude Code version or set of models, or
+- is more than 7 days older than the rerun, since clouds change their products and prices.
+
+It checks this when planning, before any cell runs. A merged run records its base (`base_run`) and
+what was rerun (`rerun`), each copied cell records the run that produced it (`from_run`), and the
+summaries and the site say so. Trends on the site skip a cloud whose cells were all copied, so the
+base run's results aren't plotted twice. Times and costs of copied cells are the base run's.
+
 ## Completion success
 
 A cell is a **success** when its deployment answers on a public HTTPS URL and passes every
@@ -310,6 +333,8 @@ versions as optional:
 | 5 | `screenshots` in cell records, and their file names on summary cells |
 | 6 | `technologies` in cell records (names by group) and on summary cells (a short headline), and the facts they come from in `code`: `packages`, `base_images`, `runtime_hints`, `builtins`, `manifests` and `dirs`. These fields were also added to the records of runs 2026-10-13 #4, #5 and #8, from their source snapshots; nothing else in those records changed |
 | 7 | `benchmark_version` in cell records, in `run` in `summary.json` and in `results/index.json`; `stack_fit` in cell records (`status`, `score`, `criteria`, `summary`), and `stack_fit_score` on summary cells and groups |
+| 8 | `deploys_without_human` and `no_human` in cell records, with the no-credentials attempt's `cost.agent_nohuman_deploy_usd`, `tokens.deploy_nohuman` and `timing.deploy_nohuman_s`; `deploys_without_human` on summary cells and groups |
+| 9 | Merged runs ([rerunning part of a run](#rerunning-part-of-a-run)): `base_run` and `rerun` in `run` in `summary.json` and in `results/index.json`, and `from_run` (`name`, `date`, `number`, `attempt`, `url`, or null) on summary cells |
 
 ## Fairness and limitations
 
