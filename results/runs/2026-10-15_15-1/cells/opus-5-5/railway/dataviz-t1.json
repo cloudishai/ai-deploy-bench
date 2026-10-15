@@ -1,0 +1,628 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "38680694223-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-unbc1-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 33.2,
+    "tokens": 231125,
+    "agent_usd": 0.118079
+  },
+  "url": "https://adb-unbc1-dataviz-web-production.up.railway.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "resources: paid resources: adb-unbc1-dataviz"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 81.6,
+      "tokens": 339383,
+      "cost_usd": 0.363453
+    },
+    "status": "completed",
+    "score": 74.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets. The Railway token stayed in the environment, never showed up in commands or output, and .env is excluded by both .gitignore and .railwayignore."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "The live build is the code that was built: a CLI upload from the agent's working directory, with zero npm dependencies. However, no repo or commit records what was shipped, the Railpack base image and Node version (engines \">=20\") are unpinned, and deploy.sh installs the Railway CLI without a version."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "This is a commercial app on an always-on, usage-billed Railway service that doesn't sleep. The account plan wasn't readable, though: the agent assumed Hobby without checking it, and Railway positions Hobby for personal and side projects (it isn't clearly prohibited for business use) and the Trial for evaluation, so Pro is the safe tier for a business app. I'm not certain how Railway's current terms treat commercial use on Hobby."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There's a single public web service and no data store or extra services. The Railpack-built container most likely runs as root, though, and nothing in the config sets a non-root user."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "The site is HTTPS only: plain HTTP gets a 301 redirect, and the certificate is a valid Let's Encrypt one. HSTS, X-Content-Type-Options, frame protection and CSP are all missing, and the app could easily have set them in its send() helper."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Source files, .env, .git, the raw CSV and admin paths all return a JSON 404 with no stack traces and no directory listings. The only extras are /health (which shows the row count) and /api/orders, which publishes the full order data by design."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 4,
+        "rationale": "Input validation is good: strict date checks, exact-match filters, page_size capped at 200, and output is HTML-escaped before innerHTML. But `new URL(req.url, ...)` isn't guarded, so a request target like `//` throws an uncaught exception that crashes the process. With a restart policy capped at 5 retries, a handful of anonymous requests could take the service down. There's also no rate limiting."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unhandled URL parse error crashes the server (unauthenticated DoS)",
+        "evidence": "app/server.js:25 `const url = new URL(req.url, 'http://localhost');` runs with no try/catch. Running the app locally, `curl --path-as-is http://localhost:3999//` returned 000, the process exited with 'TypeError: Invalid URL ... input: \"//\"', and a follow-up /health got no response. app/railway.json sets restartPolicyType ON_FAILURE with restartPolicyMaxRetries 5. Not sent to production, to avoid taking the live service down.",
+        "recommendation": "Wrap URL parsing in try/catch and return 400, or parse req.url with a safe fallback. Add a process-level error boundary, and use restartPolicyType ALWAYS or a higher retry cap."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from an unversioned local upload with unpinned build inputs",
+        "evidence": "process/deploy.md: `railway up --service adb-unbc1-dataviz-web --ci` with no GitHub repo connected. app/railway.json uses builder RAILPACK with its default base image. app/package.json has `\"engines\": { \"node\": \">=20\" }`. app/deploy.sh runs `npm i -g @railway/cli` with no version.",
+        "recommendation": "Deploy from a git repo the owner controls (Railway's GitHub integration) so every deploy maps to a commit. Pin the Node major version (e.g. .node-version or engines \"22.x\"), consider a Dockerfile with a digest-pinned base image, and pin the CLI version."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Plan not verified for commercial use",
+        "evidence": "process/context.json shows use \"commercial\" and an empty account object. process/deployment.json gives the plan as \"account's existing plan (usage-based)\", and the notes assume 'covered by the Hobby plan's included usage'.",
+        "recommendation": "Confirm the workspace is on a paid plan suited to business use (Railway Pro for commercial or team apps), not Trial or a personal Hobby workspace."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "`curl -sI https://adb-unbc1-dataviz-web-production.up.railway.app/` returned only cache-control, content-type, date, server and x-railway-* headers: no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy. app/server.js:20 writeHead sets only Content-Type and Cache-Control.",
+        "recommendation": "Add HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` (or CSP frame-ancestors 'none') and a CSP in send(); the page is self-contained, so a strict CSP is feasible."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container likely runs as root",
+        "evidence": "app/railway.json builds with Railpack's default image (the build log in process/deploy.md shows apt packages being installed), and no non-root user is configured anywhere.",
+        "recommendation": "Use a Dockerfile based on node:<pinned>-slim with `USER node`, or a Railpack option that runs as non-root."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public API endpoints",
+        "evidence": "app/server.js:24-48: /api/summary and /api/orders filter and sort all 2,400 rows on every request, with no throttling.",
+        "recommendation": "The cost is small, but consider simple per-IP rate limiting or caching responses by filter key."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "Malformed percent-encoding returns a Railway edge 502",
+        "evidence": "GET /% and GET /%zz returned 502 'upstream error'. GET /%25 returned the app's 404.",
+        "recommendation": "Platform behaviour; no action needed."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "Health endpoint shows the row count",
+        "evidence": "GET /health returned 200 {\"status\":\"ok\",\"rows\":2400}",
+        "recommendation": "Harmless here; return only a status if you want minimal disclosure."
+      }
+    ],
+    "summary": "A small zero-dependency Node.js dashboard on one Railway service. Secrets were handled cleanly, the site is HTTPS-only with a valid certificate, and nothing beyond the app is exposed. The main weaknesses are an app bug where a request for `//` crashes the process (an unauthenticated DoS made worse by a 5-retry restart cap), a deploy from an unversioned local upload with unpinned base image and Node version, missing security headers, a container that probably runs as root, and a plan that wasn't checked for commercial use."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "Holding 2,400 read-only rows in memory and aggregating them in integer cents fits the job exactly. node:http covers the small API, and hand-drawn SVG charts with fetch-based updates cover the dashboard needs with no CDN."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 10,
+        "rationale": "One process and no npm dependencies, database or build step: as simple as the requirements allow, and STACK.md gives sound reasons for rejecting pandas and Postgres."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "A single always-on container serving a dynamic API plus one HTML page suits Railway's service model, and Railpack auto-detects it. The deprecated railway.json config and the CLI-upload delivery work but don't use Railway's git-based deploys."
+      }
+    ],
+    "summary": "A zero-dependency Node.js server with in-memory CSV data and inline SVG charts is a well-reasoned, minimal stack for a small read-only dashboard, and it fits Railway's container model well. The build matched STACK.md."
+  },
+  "timing": {
+    "build_s": 105.1,
+    "deploy_s": 70.6,
+    "deploy_nohuman_s": 33.2,
+    "agent_s": 208.9,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 4.6
+  },
+  "tokens": {
+    "build": {
+      "input": 3776,
+      "output": 11351,
+      "cache_read": 392082,
+      "cache_write": 18921,
+      "total": 426130
+    },
+    "deploy": {
+      "input": 430,
+      "output": 2732,
+      "cache_read": 398505,
+      "cache_write": 5672,
+      "total": 407339
+    },
+    "deploy_nohuman": {
+      "input": 263,
+      "output": 2579,
+      "cache_read": 224160,
+      "cache_write": 4123,
+      "total": 231125
+    },
+    "total": {
+      "input": 4469,
+      "output": 16662,
+      "cache_read": 1014747,
+      "cache_write": 28716,
+      "total": 1064594
+    }
+  },
+  "cost": {
+    "agent_usd": 0.697645,
+    "agent_build_usd": 0.415145,
+    "agent_deploy_usd": 0.164421,
+    "agent_nohuman_deploy_usd": 0.118079,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 25.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.28,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~10 h of activity, 0.04 GB egress at $0.05/GB"
+      },
+      "busy": {
+        "usd": 27.63,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~730 h of activity, 52.6 GB egress at $0.05/GB"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 1
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 8
+    },
+    "tool_calls": {
+      "Bash": 17
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 7
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-15T04:46:15+00:00",
+      "wall_time_s": 105.1,
+      "api_time_s": 101.9,
+      "turns": 11,
+      "tokens": {
+        "input": 3776,
+        "output": 11351,
+        "cache_read": 392082,
+        "cache_write": 18921,
+        "total": 426130
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.415145,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3776,
+          "output": 11351,
+          "cache_read": 392082,
+          "cache_write": 18921,
+          "cost_usd": 0.41514540000000005,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-15T04:48:34+00:00",
+      "wall_time_s": 70.6,
+      "api_time_s": 37.3,
+      "turns": 8,
+      "tokens": {
+        "input": 430,
+        "output": 2732,
+        "cache_read": 398505,
+        "cache_write": 5672,
+        "total": 407339
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.164421,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 430,
+          "output": 2732,
+          "cache_read": 398505,
+          "cache_write": 5672,
+          "cost_usd": 0.16442099999999993,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 7
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The sales dashboard is built and working locally, and the server is stopped.\n\n**Stack** (the options I compared are in `STACK.md`): Node.js using only its built-in `http` module, with no npm dependencies. The CSV is loaded into memory when the server starts, which is enough for 2,400 read-only rows; a database wouldn't add anything. Revenue is added up in whole cents and then rounded to 2 decimals, so the totals don't pick up floating-point errors. The dashboard is one HTML page with plain JavaScript, and the charts are drawn as SVG without a CDN or chart library. On Railway it should be picked up as a Node app automatically, starting with `npm start` and listening on `$PORT`.\n\n**What's there:**\n- **`GET /`:** filters for region, category, start date and end date; the three KPI tiles; a monthly revenue bar chart and a revenue-by-category bar chart. Changing a filter updates everything without reloading the page. Below that is a table of matching orders, newest first, 50 per page.\n- **`GET /api/summary`:** returns exactly the JSON described in the task. The filters combine with AND and both dates are inclusive. Months come back in ascending order and categories by revenue, highest first. With no matches it returns zeros and empty arrays.\n- **Extra endpoints I added:** `/api/orders` feeds the table and takes the same filters plus `page` and `page_size`. `/api/options` supplies the filter dropdown values, and `/health` is for a health check.\n- **A choice the task didn't specify:** a badly formed `start` or `end` date gets a `400` error rather than being ignored.\n\n**Checks:** I called every endpoint with curl. The full data set totals $1,839,455.69 across 2,400 orders and 15,179 units, and the combined filters, no-match case, bad-date case and pagination all behaved correctly. `npm test` runs 6 unit tests, all passing; they compare the totals against a straightforward recalculation from the CSV. The dashboard's JavaScript parses cleanly, but I didn't open the page in a browser.\n\n**To run it:**\n```bash\nnpm start          # http://localhost:3000 (or $PORT)\nnpm test\n```",
+    "deploy": "The dashboard is live on Railway at **https://adb-unbc1-dataviz-web-production.up.railway.app**, and every requirement in `TASK.md` works through that address.\n\n**What I deployed:** the project `adb-unbc1-dataviz` with one service, `adb-unbc1-dataviz-web`. Railway built the Node.js app from an upload of the local code made with the CLI, and the HTTPS address is a free `*.up.railway.app` domain that Railway generated. There's no database, because the CSV is loaded into memory. Running cost should be roughly $1 a month (my estimate, since Railway bills by usage), which the account's plan should cover.\n\n**What I checked through the public URL:**\n- **`/api/summary` with no filters:** $1,839,455.69 revenue, 2,400 orders and 15,179 units, matching the local run.\n- **Filters:** region, category and dates combined gave the same results as locally, including inclusive dates.\n- **Edge cases:** a filter with no matches returns zeros and empty arrays, and a malformed date returns a `400` error.\n- **`/api/orders` and `/api/options`:** pagination works and the filter options are correct.\n- **Dashboard in a headless browser:** the KPI tiles, both charts and the table (\"Page 1 of 48\") all filled in from the live API. The page drew 18 bars where I expected 16 (12 months plus 4 categories), and I didn't look into why.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty. I didn't create any new credentials, so there is no `.env` file.\n\n**Things to know:**\n- **Redeploys:** the service isn't connected to a GitHub repo. To ship changes, run `railway up --service adb-unbc1-dataviz-web` again.\n- **Config file deprecation:** Railway's CLI says the `railway.json` config format is deprecated. It keeps working until 2026-12-01; `railway config migrate` converts it to the new format."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-unbc1-dataviz-web-production.up.railway.app",
+    "resources": [
+      {
+        "type": "Railway project",
+        "name": "adb-unbc1-dataviz",
+        "id": "de03e972-6a39-4847-babf-dd22fb85f12e",
+        "plan": "account's existing plan (usage-based)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Node.js, Railpack build, CLI upload)",
+        "name": "adb-unbc1-dataviz-web",
+        "id": "a542cc77-97d6-4275-8840-eb8687522191",
+        "plan": "default usage-based instance, 1 replica, production environment",
+        "monthly_cost_usd": 1
+      }
+    ],
+    "estimated_monthly_cost_usd": 1,
+    "human_steps": [],
+    "notes": "Single zero-dependency Node.js service; the CSV is bundled and loaded into memory, so no database. Public domain is a Railway-generated *.up.railway.app HTTPS domain. Health check: /health. Cost estimate assumes ~30-50 MB RAM and near-idle CPU under Railway usage pricing (roughly $0.5-2/month), which is covered by the Hobby plan's included usage. Deployed by `railway up` (no GitHub repo connected), so redeploys require re-running `railway up --service adb-unbc1-dataviz-web`. railway.json (Config as Code) is flagged deprecated by the CLI but still honored until 2026-12-01. Verified via the public URL: dashboard renders KPIs/charts/table in headless Chrome; /api/summary filters, inclusive dates, empty results and 400 on malformed dates all behave as locally."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 109
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 71,
+      "p90_ms": 87
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 76
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 89
+      },
+      {
+        "id": "dashboard",
+        "description": "GET / serves the dashboard as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 69
+      },
+      {
+        "id": "summary_all",
+        "description": "GET /api/summary (no filters) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "summary_region",
+        "description": "GET /api/summary (region=West) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "summary_category",
+        "description": "GET /api/summary (category=Electronics) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 86
+      },
+      {
+        "id": "summary_combined",
+        "description": "GET /api/summary (region=East, category=Furniture, start=2025-03-01, end=2025-06-30) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "summary_empty",
+        "description": "GET /api/summary (region=Atlantis) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "browser_chart",
+        "description": "The dashboard renders a chart (SVG or canvas) in a browser",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 880
+      },
+      {
+        "id": "browser_two_charts",
+        "description": "The dashboard shows at least two charts",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 861
+      },
+      {
+        "id": "browser_filters",
+        "description": "The dashboard has filter controls",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 841
+      }
+    ],
+    "browser": true,
+    "duration_s": 4.6
+  },
+  "screenshots": [
+    {
+      "name": "dashboard",
+      "caption": "The dashboard",
+      "url": "https://adb-unbc1-dataviz-web-production.up.railway.app/",
+      "file": "dataviz-t1/dashboard.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "de03e972-6a39-4847-babf-dd22fb85f12e",
+      "name": "adb-unbc1-dataviz",
+      "plan": "1 service(s)",
+      "url": null,
+      "monthly_usd": 25.0,
+      "pricing": "1 service(s) at the assumed 1 vCPU / 0.5 GB each, always on; usage is metered per second so a mostly idle service costs less than this list price",
+      "matched_by": "prefix",
+      "created_at": "2026-10-15T04:48:41.956Z",
+      "details": {
+        "services": [
+          {
+            "id": "a542cc77-97d6-4275-8840-eb8687522191",
+            "name": "adb-unbc1-dataviz-web"
+          }
+        ],
+        "volume_gb": 0.0,
+        "vcpu": 1.0,
+        "memory_gb": 0.5
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 12,
+    "lines": {
+      "JavaScript": 183,
+      "HTML": 176,
+      "JSON": 33,
+      "Markdown": 18,
+      "Shell": 12
+    },
+    "code_lines": 371,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

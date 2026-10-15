@@ -1,0 +1,665 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "38680694223-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-yz0s2-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 38.8,
+    "tokens": 273495,
+    "agent_usd": 0.132982
+  },
+  "url": "https://adb-yz0s2-static-web-production.up.railway.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "resources: paid resources: adb-yz0s2-static"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 51.2,
+      "tokens": 243654,
+      "cost_usd": 0.253327
+    },
+    "status": "completed",
+    "score": 80.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets. The Railway token came only from the environment, was never echoed (the transcript shows only 'token set'), and .env is excluded by .gitignore and .railwayignore. No credentials show up in source, logs or deployed files."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "Local source was uploaded with `railway up`, built by Railpack and checked live, and there are no npm dependencies. Two inputs are not pinned: the Node version (engines '>=18', so Railpack picked Node 24) and the Railpack base image chosen by the platform. There is also no source repository behind the deployed artifact."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 7,
+        "rationale": "This is a commercial app on what the agent describes as the account's existing usage-based Railway plan. Railway's paid plans allow commercial use and do not sleep services, but context.json does not name the plan, so I can't confirm the account isn't on the trial/free tier, which has credit limits. Separately, railway.json config-as-code is deprecated after 2026-12-01."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There is a single service with no data store, volume or extra public resources, and only the needed HTTP port is exposed. The Railpack image runs as its default (root) user, and the agent took no steps to drop privileges."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid Let's Encrypt certificate, and HTTP returns a 301 to HTTPS. The app sets none of HSTS, X-Content-Type-Options, frame protection or CSP, even though it fully controls its response headers."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Routing uses an exact-path allowlist, so .env, .git, server.js, package.json, *.html and traversal attempts all return 404, with no listings or stack traces. The only extra endpoint is a harmless /healthz."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "The contact endpoint checks types, required fields and email format, limits bodies to 64 KB (returns 413), handles bad JSON cleanly, and the client renders responses with textContent, so there is no XSS. There is no rate limiting or bot protection on the public form, and submitter emails are written to the logs."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers set",
+        "evidence": "curl -sI https://adb-yz0s2-static-web-production.up.railway.app/ returns only content-type, date, server, x-railway-* and content-length; there is no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy. server.js:83-98 writes only Content-Type and Content-Length.",
+        "recommendation": "Add HSTS, X-Content-Type-Options: nosniff, X-Frame-Options: DENY (or CSP frame-ancestors 'none') and a strict CSP such as default-src 'self' to every response in server.js."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Node runtime and build base image not pinned",
+        "evidence": "app/package.json engines {\"node\": \">=18\"}; deployment.json reports Node.js 24 picked by Railpack; railway.json uses builder RAILPACK with no pinned image or version.",
+        "recommendation": "Pin an exact Node major/minor (engines or .node-version / RAILPACK_NODE_VERSION), or deploy from a Dockerfile with a digest-pinned base image."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from an untracked local upload",
+        "evidence": "deploy.md: `railway up --service adb-yz0s2-static-web --ci`; deployment.json notes 'no GitHub repo, no container registry'.",
+        "recommendation": "Deploy from a version-controlled repository the owner controls (for example Railway's GitHub integration), so every deployment maps to a commit."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container likely runs as root",
+        "evidence": "railway.json uses the default Railpack build with no user configuration; Railpack images run as root by default, and the build log shows apt/libc-bin steps in the image.",
+        "recommendation": "Use a Dockerfile with a non-root USER (for example node), or configure the build to drop root privileges."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Contact endpoint has no rate limiting",
+        "evidence": "server.js:46-70 accepts every valid POST /api/contact; a POST of {\"name\":\"<script>\",\"email\":\"a@b.co\",\"message\":\"hi\"} returned 200 {\"ok\":true}, and no throttling exists.",
+        "recommendation": "Add a simple per-IP rate limit and/or a honeypot field before submissions are ever stored or emailed."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Submitter email addresses logged",
+        "evidence": "server.js:67 console.log(`Contact form submission from ${data.email.trim()}`)",
+        "recommendation": "Avoid logging personal data, or mask it and document log retention."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Plan not verifiable; config format deprecated",
+        "evidence": "process/context.json has an empty account object; deployment.json says \"account's existing Railway plan (usage-based)\" and notes that railway.json is deprecated after 2026-12-01.",
+        "recommendation": "Confirm the account is on a paid Hobby or Pro plan (not the trial) for commercial uptime, and run `railway config migrate` before 2026-12-01."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a small, dependency-free Node server deployed cleanly to Railway with no secrets involved. HTTPS is enforced with a valid certificate and only allowlisted paths are exposed. The remaining weaknesses are minor: no security headers, an unpinned Node runtime and Railpack base image, a local `railway up` upload with no source repository, a likely root container, and no rate limiting on the contact form."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "Node's built-in http module serves exact extensionless routes, real 404s and a validated JSON endpoint on the same origin, which covers everything TASK.md asks for, and the app needs no data store."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 10,
+        "rationale": "It is one roughly 100-line file with zero dependencies and no build step, using the built-in node:test runner, which is about as small as these requirements allow."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "Railway has no static-only hosting or functions, so one small always-on service serving both pages and the API is the natural fit there, and it costs about $1/month. Static files are served from a container, which is acceptable on this platform."
+      }
+    ],
+    "summary": "A dependency-free Node.js server on a single Railway service fits a three-page site with one same-origin form endpoint well. STACK.md explains the choice soundly, and the build matches it."
+  },
+  "timing": {
+    "build_s": 119.5,
+    "deploy_s": 137.2,
+    "deploy_nohuman_s": 38.8,
+    "agent_s": 295.5,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 7.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3982,
+      "output": 10234,
+      "cache_read": 444166,
+      "cache_write": 42065,
+      "total": 500447
+    },
+    "deploy": {
+      "input": 370,
+      "output": 2757,
+      "cache_read": 344686,
+      "cache_write": 5372,
+      "total": 353185
+    },
+    "deploy_nohuman": {
+      "input": 349,
+      "output": 2717,
+      "cache_read": 265604,
+      "cache_write": 4825,
+      "total": 273495
+    },
+    "total": {
+      "input": 4701,
+      "output": 15708,
+      "cache_read": 1054456,
+      "cache_write": 52262,
+      "total": 1127127
+    }
+  },
+  "cost": {
+    "agent_usd": 0.805165,
+    "agent_build_usd": 0.519766,
+    "agent_deploy_usd": 0.152417,
+    "agent_nohuman_deploy_usd": 0.132982,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 25.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.28,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~10 h of activity, 0.04 GB egress at $0.05/GB"
+      },
+      "busy": {
+        "usd": 27.63,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~730 h of activity, 52.6 GB egress at $0.05/GB"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 1
+  },
+  "activity": {
+    "turns": {
+      "build": 13,
+      "deploy": 7
+    },
+    "tool_calls": {
+      "Bash": 18
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 6
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-15T04:18:43+00:00",
+      "wall_time_s": 119.5,
+      "api_time_s": 109.6,
+      "turns": 13,
+      "tokens": {
+        "input": 3982,
+        "output": 10234,
+        "cache_read": 444166,
+        "cache_write": 42065,
+        "total": 500447
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.519766,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3982,
+          "output": 10234,
+          "cache_read": 444166,
+          "cache_write": 42065,
+          "cost_usd": 0.5197662000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-15T04:21:22+00:00",
+      "wall_time_s": 137.2,
+      "api_time_s": 37.9,
+      "turns": 7,
+      "tokens": {
+        "input": 370,
+        "output": 2757,
+        "cache_read": 344686,
+        "cache_write": 5372,
+        "total": 353185
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.152417,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 370,
+          "output": 2757,
+          "cache_read": 344686,
+          "cache_write": 5372,
+          "cost_usd": 0.15241719999999992,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 6
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and every requirement checks out locally. The automated tests pass (8 of 8), and I've stopped the servers I started.\n\n**Stack** (reasoning is in `STACK.md`): a single Node.js server that uses only Node's built-in modules, so there is nothing to install and no build step. The other options I considered were Express, and static hosting with a separate process for the API. I chose this one because the form endpoint needs a running server anyway, and one small process can serve the pages and the endpoint from the same address. It reads its port from `$PORT` (default 3000), so Railway can start it with `npm start`.\n\n**What's in it**\n- `server.js` routes exactly `/`, `/about` and `/contact` to the three pages, and handles `POST /api/contact`. I also added a `/healthz` URL that Railway can use as a health check.\n- Any other path returns a 404, including `/about.html` and `/about/`. Sending a GET to `/api/contact` returns a 405 (\"method not allowed\").\n- The endpoint returns `{\"ok\": true}` for valid input. A missing name, invalid email or empty message gets a 400 with a reason, and so does a body that isn't valid JSON.\n- The pages and stylesheet are in `public/`. The layout adapts to phone and desktop widths.\n- `public/contact.js` sends the form to the endpoint in the background and shows a success or error message on the page.\n\n**Checks**\n- **Automated tests** (`test/server.test.js`) cover every page's status, content type, title, viewport tag and navigation, the required content on each page, the 404s, and valid and invalid form submissions.\n- **Manual check with curl** against the running server confirmed the same status codes and responses.\n- **Browser check** in headless Chromium at phone width: the form showed its confirmation without reloading the page, an invalid email showed the error message, and the page didn't scroll sideways.\n\n**To run it**\n```\nnpm start              # http://localhost:3000 (or set PORT)\nnpm test\n```",
+    "deploy": "The site is live at **https://adb-yz0s2-static-web-production.up.railway.app**, and every requirement in `TASK.md` works through that address.\n\n**What I deployed**\n- A Railway project `adb-yz0s2-static` with one web service, `adb-yz0s2-static-web`, in the production environment.\n- I uploaded the code straight from this directory with `railway up`, so no GitHub repo or image registry was involved. The service has a Railway-provided HTTPS address and a health check on `/healthz`.\n- Estimated cost is about $1/month, which the plan's included usage should cover.\n\n**What I tested through the public address**\n- **Pages:** `/`, `/about` and `/contact` return 200 as HTML, each with the required heading or form fields.\n- **404s:** unknown paths and `.html` suffixes (e.g. `/about.html`) return 404.\n- **Form endpoint:** `POST /api/contact` returns 200 `{\"ok\":true}` for valid input. A missing name, invalid email or empty message each return 400 with a reason.\n- **HTTPS:** plain HTTP redirects to HTTPS.\n- **Browser:** in headless Chromium at phone width, the form showed its confirmation without reloading the page, and an invalid email showed the error message.\n\n**Things to know**\n- **Config format:** Railway now flags `railway.json` as deprecated. It keeps working until 2026-12-01; running `railway config migrate` before then moves it to the new format.\n- **Credentials:** I used only the token you provided and created none, so there is no `.env` and `human_steps` in `deployment.json` is empty.\n\n`deploy.sh` and the `.railwayignore` from earlier are still in the directory. I didn't run the script, since I did the same steps by hand."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-yz0s2-static-web-production.up.railway.app",
+    "resources": [
+      {
+        "type": "project",
+        "name": "adb-yz0s2-static",
+        "id": "58aa1b2f-f1c8-4d93-9027-0240e26962ce",
+        "plan": "account's existing Railway plan (usage-based)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Node.js 24, Railpack build, 1 replica)",
+        "name": "adb-yz0s2-static-web",
+        "id": "f76e28f0-5a53-499b-9b26-027fcddbc98e",
+        "plan": "usage-based, default instance; environment production (86b596e8-e201-46b0-a742-6e05bf02622d)",
+        "monthly_cost_usd": 1
+      },
+      {
+        "type": "Railway-provided domain (HTTPS)",
+        "name": "adb-yz0s2-static-web-production.up.railway.app",
+        "id": "",
+        "plan": "included",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 1,
+    "human_steps": [],
+    "notes": "Deployed from local source with `railway up` (no GitHub repo, no container registry). The service is a single dependency-free Node.js process that serves the 3 static pages and POST /api/contact, with a health check at /healthz (configured in railway.json). Cost estimate: an idle ~30 MB Node process uses roughly $0.5-1/month of Railway usage, which the plan's included usage credit covers. Verified through the public URL: /, /about and /contact return 200 text/html with the required content; unknown paths and .html suffixes return 404; the API returns 200 {ok:true} for valid input and 400 with an error for a missing name, invalid email or empty message; HTTP redirects to HTTPS; and a headless Chromium test submitted the form and showed the confirmation without a page reload. The railway.json config-as-code format is deprecated (still supported until 2026-12-01); migrate with `railway config migrate` before then. No new credentials were created, so there is no .env."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 107
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 80,
+      "p90_ms": 115
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 85
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 142
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2435
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2141
+      }
+    ],
+    "browser": true,
+    "duration_s": 7.5
+  },
+  "screenshots": [
+    {
+      "name": "home",
+      "caption": "The home page",
+      "url": "https://adb-yz0s2-static-web-production.up.railway.app/",
+      "file": "static-t1/home.jpg"
+    },
+    {
+      "name": "contact",
+      "caption": "The contact page after the verifier submitted the form",
+      "url": "https://adb-yz0s2-static-web-production.up.railway.app/contact",
+      "file": "static-t1/contact.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "58aa1b2f-f1c8-4d93-9027-0240e26962ce",
+      "name": "adb-yz0s2-static",
+      "plan": "1 service(s)",
+      "url": null,
+      "monthly_usd": 25.0,
+      "pricing": "1 service(s) at the assumed 1 vCPU / 0.5 GB each, always on; usage is metered per second so a mostly idle service costs less than this list price",
+      "matched_by": "prefix",
+      "created_at": "2026-10-15T04:21:31.785Z",
+      "details": {
+        "services": [
+          {
+            "id": "f76e28f0-5a53-499b-9b26-027fcddbc98e",
+            "name": "adb-yz0s2-static-web"
+          }
+        ],
+        "volume_gb": 0.0,
+        "vcpu": 1.0,
+        "memory_gb": 0.5
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 16,
+    "lines": {
+      "JavaScript": 208,
+      "HTML": 166,
+      "JSON": 36,
+      "CSS": 33,
+      "Markdown": 26,
+      "Shell": 11
+    },
+    "code_lines": 418,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=18"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 18+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}
