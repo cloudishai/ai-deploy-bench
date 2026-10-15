@@ -2,6 +2,9 @@
 {% import "macros.html" as ui %}
 {% block title %}Run {{ run.label }} · AI Deploy Bench{% endblock %}
 {% block description %}Benchmark run {{ run.label }}: {{ run.scope | lower }}, {{ run.success_count }} of {{ run.finished | length }} cells succeeded.{% endblock %}
+{% block alternates %}
+  <link rel="alternate" type="application/json" href="/data/runs/{{ run.name }}/summary.json" title="This run's results (JSON)">
+{% endblock %}
 {% block content %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><span>{{ run.label }}</span></nav>
 <header class="page-head">

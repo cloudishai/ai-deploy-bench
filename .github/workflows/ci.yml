@@ -25,6 +25,20 @@ jobs:
       - run: python -m playwright install --with-deps chromium
       - run: python -m pytest -q
 
+  # Serves the built site from its real nginx image, to check the markdown versions, llms.txt and headers.
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt -r website/requirements.txt
+      - run: python -m website.build
+      - run: website/check_serving.sh
+
   workflows:
     runs-on: ubuntu-latest
     steps:

@@ -42,6 +42,8 @@ OUTCOMES = {
 }
 SEVERITIES = ("critical", "high", "medium", "low", "info")
 PREVIEW = ("success", "human_minutes", "security", "agent_usd")  # the charts on the overview
+# Markdown links that point somewhere relative: into the repository, or next to a cell's report.
+RELATIVE_LINK = re.compile(r"(!?\[[^\]]*\])\((?![a-z]+:|#|/)([^)\s]+)\)")
 COMMAND = re.compile(r"^- `([^`]*)` (❌ )?`(.*)`$")
 
 
@@ -69,6 +71,26 @@ def markdown(text: str, base: str | None = None) -> Markup:
 
         md.renderer.rules["link_open"] = link_open
     return Markup(md.render(text or ""))
+
+
+def absolute_links(text: str, base: str, local: dict[str, str] | None = None) -> str:
+    """Points a markdown document's relative links at the repository on GitHub, relative to `base`
+    (a folder in the repository), so the document reads the same wherever it's fetched from. `local`
+    maps a link's first path segment to a URL on the site instead (a cell's screenshots)."""
+    def resolve(match: re.Match) -> str:
+        label, href = match.groups()
+        path, _, anchor = href.partition("#")
+        head, _, rest = path.partition("/")
+        if local and head in local:
+            return f"{label}({local[head]}{rest})"
+        resolved = os.path.normpath(os.path.join(base, path)).replace(os.sep, "/")
+        return f"{label}({GITHUB}/blob/main/{resolved}" + (f"#{anchor}" if anchor else "") + ")"
+    return RELATIVE_LINK.sub(resolve, text)
+
+
+def md_cell(value: Any) -> str:
+    """Text that can sit in a markdown table cell."""
+    return " ".join(str(value).split()).replace("|", "\\|")
 
 
 def report_section(report: str, heading: str) -> str:
@@ -108,7 +130,8 @@ class Site:
         self.cfg = config.load()
         self.runs = data.load(results)
         self.metrics = data.metrics(self.cfg)
-        self.pages: list[str] = []
+        self.pages: list[tuple[str, str | None]] = []  # (URL path, last modified) for the sitemap
+        self.markdown: dict[str, str] = {}  # each page's markdown version, by URL path
         self.env = jinja2.Environment(
             loader=jinja2.FileSystemLoader(HERE / "templates"),
             autoescape=jinja2.select_autoescape(["html", "xml"]),
@@ -124,7 +147,9 @@ class Site:
             model_name=lambda m, label=False: data.model_name(self.cfg, m, label), metric_value=self.metric_value,
             hosting=self.hosting, asset=self.asset, trend_apps=self.trend_apps, compare=self.compare,
             cloud_href=lambda c: f"/clouds/{c}/", human_steps=lambda cells: data.human_steps(cells, self.cfg),
+            url=lambda path: SITE_URL + path, md=lambda href: f"{SITE_URL}{href}index.md",
         )
+        self.env.filters["md_cell"] = md_cell
         self.assets: dict[str, str] = {}
 
     # -- helpers for templates ---------------------------------------------------------------
@@ -180,12 +205,63 @@ class Site:
         ids = [x.id for x in self.cfg.clouds]
         return ids + sorted({c.cloud for r in self.runs for c in r.cells} - set(ids))
 
-    def write(self, path: str, template: str, **context: Any) -> None:
+    def write(self, path: str, template: str, lastmod: str | None = None, markdown: str | None = None,
+              **context: Any) -> None:
+        """Writes a page and, next to it, its markdown version (`index.md`): from the `markdown` text, or
+        else rendered from the template of the same name under templates/md/."""
         target = self.out / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(self.env.get_template(template).render(page=path, **context))
-        if path.endswith("index.html"):
-            self.pages.append("/" + path[: -len("index.html")])
+        if not path.endswith("index.html"):
+            return
+        url = "/" + path[: -len("index.html")]
+        self.pages.append((url, lastmod))
+        if markdown is None:
+            markdown = self.env.get_template(f"md/{template.removesuffix('.html')}.md").render(page=path, **context)
+        markdown = "\n".join(line.rstrip() for line in markdown.splitlines())
+        markdown = re.sub(r"^(#{1,6} .+)\n(?=\S)", r"\1\n\n", markdown, flags=re.MULTILINE)  # a blank line after headings
+        markdown = re.sub(r"\n{3,}", "\n\n", markdown).strip() + "\n"
+        (target.parent / "index.md").write_text(markdown)
+        self.markdown[url] = markdown
+
+    def dataset(self, name: str, description: str, path: str, runs: list[data.Run], json_path: str,
+                **extra: Any) -> dict[str, Any]:
+        """schema.org Dataset metadata (JSON-LD), so search engines and agents can tell what the data is."""
+        dates = sorted(r.info["date"] for r in runs)
+        found = {
+            "@context": "https://schema.org", "@type": "Dataset", "name": name, "description": description,
+            "url": SITE_URL + path, "isAccessibleForFree": True, "isBasedOn": GITHUB,
+            "creator": {"@type": "Organization", "name": "AI Deploy Bench", "url": SITE_URL},
+            "keywords": ["AI coding agents", "cloud deployment", "benchmark", "Claude Code"]
+                        + [x.name for x in self.cfg.clouds],
+            "variableMeasured": [m.label for m in self.metrics],
+            "distribution": [
+                {"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": SITE_URL + json_path},
+                {"@type": "DataDownload", "encodingFormat": "text/markdown", "contentUrl": f"{SITE_URL}{path}index.md"},
+            ],
+            **extra,
+        }
+        if dates:
+            found["temporalCoverage"] = dates[0] if dates[0] == dates[-1] else f"{dates[0]}/{dates[-1]}"
+            found["dateModified"] = dates[-1]
+        return found
+
+    def cell_markdown(self, run: data.Run, cell: data.Cell) -> str:
+        """The cell's report, with where it sits on the site and its screenshots' and records' links."""
+        title, _, body = (cell.report or f"# {data.app_name(self.cfg, cell.app, False)} on "
+                          f"{data.cloud_name(self.cfg, cell.cloud)}\n").partition("\n")
+        context = (f"> {data.app_name(self.cfg, cell.app, False)} on {data.cloud_name(self.cfg, cell.cloud)}, built and "
+                   f"deployed by {data.model_name(self.cfg, cell.model, True)} in benchmark run {run.label}: "
+                   f"{STATES[state(cell)][0].lower()}, {cell.checks_passed}/{cell.checks_total} checks passed.\n>\n"
+                   f"> [Web page]({SITE_URL}{cell.href}) · [Full record (JSON)]({SITE_URL}/data/runs/{run.name}/cells/"
+                   f"{cell.slug}.json) · [Run]({SITE_URL}{run.href}index.md) · "
+                   f"[{data.cloud_name(self.cfg, cell.cloud)} on every run]({SITE_URL}/clouds/{cell.cloud}/index.md)")
+        if cell.from_run:
+            context += (f"\n>\n> This run reran other clouds, so this result is copied unchanged from run "
+                        f"[#{cell.from_run.get('number')}]({SITE_URL}/runs/{cell.from_run.get('name')}/index.md).")
+        body = absolute_links(body, f"results/runs/{run.name}/cells/{cell.model}/{cell.cloud}",
+                              local={f"{cell.app}-t{cell.trial}": f"{SITE_URL}{cell.href}"})
+        return f"{title}\n\n{context}\n{body}"
 
     def charts(self, app: str | None) -> list[dict[str, Any]]:
         found = []
@@ -211,33 +287,71 @@ class Site:
         latest = full[-1] if full else (self.runs[-1] if self.runs else None)
         featured = None if full else max(self.trend_apps(), key=lambda a: a[2], default=(None,))[0]
         preview = [c for c in self.charts(None if full else featured) if c["metric"].id in PREVIEW] if self.runs else []
-        self.write("index.html", "home.html", latest=latest, full_runs=full, preview=preview, preview_app=featured)
-        self.write("runs/index.html", "runs.html")
+        # Every page but a run's own changes when a run is added, so the newest run's date is theirs.
+        updated = self.runs[-1].info["date"] if self.runs else None
+        names = [x.name for x in self.cfg.clouds]
+        description = ("What it takes for an AI coding agent to build web apps from a written spec and deploy them to "
+                       + (", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else "".join(names)) + ": success, deploys without a human, human steps "
+                       "and time, security, stack fit, time, tokens and cost, for every run, cloud and app.")
+        home_ld = [{"@context": "https://schema.org", "@type": "WebSite", "name": "AI Deploy Bench", "url": SITE_URL + "/",
+                    "description": description},
+                   self.dataset("AI Deploy Bench results", description, "/", self.runs, "/data/index.json")]
+        self.write("index.html", "home.html", latest=latest, full_runs=full, preview=preview, preview_app=featured,
+                   lastmod=updated, ld=home_ld)
+        self.write("runs/index.html", "runs.html", lastmod=updated)
         for run in self.runs:
-            self.write(f"runs/{run.name}/index.html", "run.html", run=run)
+            self.write(f"runs/{run.name}/index.html", "run.html", run=run, lastmod=run.info["date"], ld=self.dataset(
+                f"AI Deploy Bench run {run.label}", f"Results of benchmark run {run.label} ({run.scope.lower()}): each app "
+                f"built and deployed on each cloud, verified live.", run.href, [run], f"/data/runs/{run.name}/summary.json"))
             for cell in run.cells:
                 if cell.status == "missing":
                     continue
                 self.write(f"runs/{run.name}/{cell.slug}/index.html", "cell.html", run=run, cell=cell,
-                           commands=shell_commands(cell))
+                           commands=shell_commands(cell), lastmod=run.info["date"], markdown=self.cell_markdown(run, cell))
                 for shot in cell.screenshots:
                     shutil.copyfile(shot["path"], self.out / "runs" / run.name / cell.slug / shot["name"])
-        self.write("clouds/index.html", "clouds.html", latest=latest)
+        self.write("clouds/index.html", "clouds.html", latest=latest, lastmod=updated)
         for cloud in self.clouds():
             history = [run for run in self.runs if cloud in run.clouds()]
             cloud_latest = next((r for r in reversed(history) if r.full), history[-1] if history else None)
-            self.write(f"clouds/{cloud}/index.html", "cloud.html", cloud=cloud, history=history, latest=cloud_latest)
-        self.write("trends/index.html", "trends.html", app=None, charts=self.charts(None))
+            name = data.cloud_name(self.cfg, cloud)
+            self.write(f"clouds/{cloud}/index.html", "cloud.html", cloud=cloud, history=history, latest=cloud_latest,
+                       lastmod=history[-1].info["date"] if history else updated, ld=self.dataset(
+                           f"AI Deploy Bench results for {name}", f"How an AI coding agent did building and deploying web "
+                           f"apps on {name}, in every run of the benchmark.", f"/clouds/{cloud}/", history,
+                           "/data/index.json", about={"@type": "Organization", "name": name,
+                                                      "url": data.cloud_url(self.cfg, cloud)}))
+        self.write("trends/index.html", "trends.html", app=None, charts=self.charts(None), lastmod=updated)
         for app in self.cfg.apps:
-            self.write(f"trends/{app.id}/index.html", "trends.html", app=app.id, charts=self.charts(app.id))
+            self.write(f"trends/{app.id}/index.html", "trends.html", app=app.id, charts=self.charts(app.id),
+                       lastmod=updated)
         methodology = (ROOT / "docs" / "methodology.md").read_text()
-        self.write("methodology/index.html", "methodology.html", body=markdown(methodology, base="docs"))
+        self.write("methodology/index.html", "methodology.html", body=markdown(methodology, base="docs"),
+                   markdown=absolute_links(methodology, "docs"))
         (self.out / "404.html").write_text(self.env.get_template("404.html").render(page="404.html"))
         self.copy_data()
-        (self.out / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
-        urls = "".join(f"<url><loc>{xml_escape(SITE_URL + page)}</loc></url>" for page in self.pages)
+        self.write_agent_files(latest)
+        urls = "".join(f"<url><loc>{xml_escape(SITE_URL + page)}</loc>" + (f"<lastmod>{lastmod}</lastmod>" if lastmod else "")
+                       + "</url>" for page, lastmod in self.pages)
         (self.out / "sitemap.xml").write_text(
             f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
+
+    def write_agent_files(self, latest: data.Run | None) -> None:
+        """llms.txt (an index for language models, https://llmstxt.org), llms-full.txt (the main pages'
+        markdown in one file) and robots.txt."""
+        (self.out / "llms.txt").write_text(self.env.get_template("llms.txt").render(page="llms.txt", latest=latest))
+        full = ["/", "/methodology/"] + ([latest.href] if latest else []) + ["/clouds/"] + [f"/clouds/{c}/" for c in self.clouds()]
+        parts = [f"<!-- {SITE_URL}{url}index.md -->\n\n{self.markdown[url]}" for url in full if url in self.markdown]
+        (self.out / "llms-full.txt").write_text("\n---\n\n".join(parts))
+        (self.out / "robots.txt").write_text(
+            "# AI Deploy Bench is an open benchmark: search engines, AI agents and crawlers are all welcome.\n"
+            f"# For language models: {SITE_URL}/llms.txt indexes the site, {SITE_URL}/llms-full.txt has its main\n"
+            "# pages in one file, every page has a markdown version at <page>/index.md (or send\n"
+            f"# `Accept: text/markdown`), and the raw results are JSON under {SITE_URL}/data/.\n"
+            "User-agent: *\n"
+            "Content-Signal: search=yes, ai-input=yes\n"
+            "Allow: /\n\n"
+            f"Sitemap: {SITE_URL}/sitemap.xml\n")
 
     def copy_data(self) -> None:
         """The results' JSON under /data/, for tools that read the benchmark."""

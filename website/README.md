@@ -7,6 +7,26 @@ its deploy summary and screenshots of the live app), a tally of the runtimes, fr
 stores each run used, and trend charts of each metric over runs, one line per cloud: across all
 apps for full runs, and per app for every run that included it.
 
+## For agents
+
+The site is meant to be as easy for AI agents to read as for people:
+
+- **Markdown versions.** Every page has one next to it, at `<page>/index.md`, with absolute links. nginx
+  also serves it at the page's own URL to requests that send `Accept: text/markdown`. Pages are rendered
+  from `templates/md/`, and a cell's is its report with links fixed up.
+- **[`/llms.txt`](https://aideploybench.com/llms.txt)** ([llmstxt.org](https://llmstxt.org)) indexes
+  the site for language models. `/llms-full.txt` has the overview, methodology, latest run and every
+  cloud's page in one file.
+- **The raw results** are served as JSON under `/data/` (a copy of `results/`, from `data/index.json`).
+- **In each page's `<head>`:** a canonical URL, `rel="alternate"` links to its markdown and JSON, a
+  pointer to `llms.txt`, an HTML comment explaining all of this, and schema.org `Dataset` metadata
+  (JSON-LD) on the overview, run and cloud pages.
+- **`robots.txt`** welcomes every crawler and points to the sitemap. Every page in the sitemap has a
+  `lastmod`: a run's date, or for other pages the newest run's.
+
+`website/check_serving.sh` (run in CI) builds the image and checks that nginx serves all of this with the
+right content types and headers.
+
 ## Build and preview
 
 ```bash

@@ -84,8 +84,81 @@ def test_pages_need_nothing_the_csp_forbids(site):
     for page in html_pages(site.out):
         text = page.read_text()
         assert " style=" not in text, page
-        assert not re.search(r"<script(?![^>]*\bsrc=)", text), page  # only external scripts
+        # Only external scripts, and JSON-LD: a data block browsers don't run, so the CSP doesn't apply.
+        assert not re.search(r"<script(?![^>]*\b(src=|type=\"application/ld\+json\"))", text), page
         assert "<style" not in text, page
+
+
+def test_every_page_has_a_markdown_version_for_agents(site):
+    for page in html_pages(site.out):
+        if page.name != "index.html":
+            continue
+        markdown = page.with_name("index.md")
+        assert markdown.is_file(), page
+        text = markdown.read_text()
+        assert text.startswith("# ") and "\n\n\n" not in text, markdown
+        folder = page.parent.relative_to(site.out).as_posix()
+        path = "/" if folder == "." else f"/{folder}/"
+        assert f'<link rel="alternate" type="text/markdown" href="{path}index.md"' in page.read_text(), page
+        # Its links are absolute, so it reads the same wherever an agent fetched it from.
+        for target in re.findall(r"\]\(([^)]+)\)", text):
+            assert target.startswith(("https://", "#", "mailto:")), f"{markdown}: {target}"
+
+
+def test_markdown_links_resolve(site):
+    broken = []
+    for markdown in site.out.rglob("*.md"):
+        for target in re.findall(r"\]\((https://aideploybench\.com/[^)#]*)", markdown.read_text()):
+            path = site.out / target.removeprefix("https://aideploybench.com/")
+            if path.is_dir():
+                path = path / "index.html"
+            if not path.is_file():
+                broken.append(f"{markdown.relative_to(site.out)} -> {target}")
+    assert broken == []
+
+
+def test_cell_markdown_is_its_report_with_context(site):
+    run = next(r for r in site.runs if r.name == "2026-10-15_15-1")
+    cell = run.cell("opus-5-5", "railway", "static")
+    text = (site.out / "runs" / run.name / cell.slug / "index.md").read_text()
+    assert text.startswith("# ✅ Static Content Site on Railway")
+    assert f"[Full record (JSON)](https://aideploybench.com/data/runs/{run.name}/cells/{cell.slug}.json)" in text
+    assert f"](https://aideploybench.com/runs/{run.name}/{cell.slug}/home.jpg)" in text
+    copied = (site.out / "runs" / run.name / run.cell("opus-5-5", "vercel", "static").slug / "index.md").read_text()
+    assert "copied unchanged from run [#13]" in copied
+
+
+def test_llms_txt_robots_and_sitemap(site):
+    llms = (site.out / "llms.txt").read_text()
+    # https://llmstxt.org: an H1, a blockquote summary, then sections of links.
+    assert llms.startswith("# AI Deploy Bench\n\n> ")
+    for section in ("## Start here", "## Clouds", "## Data", "## Optional"):
+        assert section in llms
+    for cloud in config.load().clouds:
+        assert f"(https://aideploybench.com/clouds/{cloud.id}/index.md)" in llms
+    full = (site.out / "llms-full.txt").read_text()
+    assert "# Methodology" in full and "# Railway" in full and "## Result files" in full
+    robots = (site.out / "robots.txt").read_text()
+    assert "User-agent: *\n" in robots and "Allow: /" in robots and "llms.txt" in robots
+    assert "Sitemap: https://aideploybench.com/sitemap.xml" in robots
+    sitemap = ElementTree.parse(site.out / "sitemap.xml").getroot()
+    entries = sitemap.findall("{http://www.sitemaps.org/schemas/sitemap/0.9}url")
+    assert len(entries) == len([p for p in html_pages(site.out) if p.name == "index.html"])
+    run_page = next(e for e in entries if e.findtext("{*}loc").endswith("/runs/2026-10-14_13-1/"))
+    assert run_page.findtext("{*}lastmod") == "2026-10-14"
+
+
+def test_pages_carry_structured_data_and_alternates(site):
+    home = (site.out / "index.html").read_text()
+    ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', home, re.S).group(1))
+    assert [item["@type"] for item in ld] == ["WebSite", "Dataset"]
+    assert ld[1]["distribution"][0]["contentUrl"] == "https://aideploybench.com/data/index.json"
+    assert '<link rel="canonical" href="https://aideploybench.com/">' in home and 'href="/llms.txt"' in home
+    run = (site.out / "runs" / "2026-10-15_15-1" / "index.html").read_text()
+    assert 'type="application/json" href="/data/runs/2026-10-15_15-1/summary.json"' in run
+    assert json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', run, re.S).group(1))["@type"] == "Dataset"
+    for path in ("/data/runs/2026-10-15_15-1/summary.json", "/data/index.json"):
+        assert (site.out / path.lstrip("/")).is_file()
 
 
 def test_charts_are_valid_svg(site):

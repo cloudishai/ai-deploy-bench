@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% import "macros.html" as ui %}
+{% block alternates %}
+  <link rel="alternate" type="application/json" href="/data/index.json" title="Every run (JSON)">
+{% endblock %}
 {% block content %}
 <section class="hero">
   <p class="eyebrow">An open benchmark, run on GitHub Actions</p>

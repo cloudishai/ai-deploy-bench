@@ -1,0 +1,39 @@
+# AI Deploy Bench
+
+> An open benchmark of what it takes for an AI coding agent ({{ cfg.agent.get('name', 'Claude Code') }}) to build a web app from a written spec and deploy it to a cloud: {% for c in cfg.clouds %}{{ c.name }}{% if loop.revindex == 2 %} and {% elif not loop.last %}, {% endif %}{% endfor %}. Each deployment is tested live by an independent verifier and reviewed for security and stack fit. It measures success, whether the agent could deploy without a human, the human steps and time it took, security, time, tokens and cost.
+
+Every page on this site has a markdown version: add `index.md` to its URL (e.g. {{ url('/clouds/railway/index.md') }}), or request the page with `Accept: text/markdown`. The raw results are JSON under {{ url('/data/') }}, starting from {{ url('/data/index.json') }}; their fields are described in the methodology's "Result files" section. Everything is generated from the results committed to {{ github }}.
+{% if latest %}
+
+The latest {{ 'full run' if latest.full else 'run' }} is {{ latest.label }}, benchmark v{{ latest.info.get('benchmark_version') }}.
+{% endif %}
+
+## Start here
+
+- [Overview]({{ md('/') }}): what the benchmark measures, and the latest results for every cloud side by side
+{% if latest %}
+- [Latest run]({{ md(latest.href) }}): every metric for every cloud, and each app's result with a link to its full report
+{% endif %}
+- [Methodology]({{ md('/methodology/') }}): how a run works, how each metric is defined and measured, the result file formats, and the benchmark's limitations
+
+## Clouds
+
+{% for cloud in cfg.clouds %}
+{% set g = latest.group(latest.info.models[0], cloud.id) if latest and latest.info.get('models') else none %}
+- [{{ cloud.name }}]({{ md(cloud_href(cloud.id)) }}): {% if g %}{{ g.get('success', 0) }}/{{ g.get('cells', 0) }} apps deployed in the latest run{% if g.get('deploys_without_human') %}, {{ g.deploys_without_human.count }} without a human{% endif %}; {% endif %}what a person had to do, each app's results and every run
+{% endfor %}
+
+## Data
+
+- [Run index (JSON)]({{ url('/data/index.json') }}): every run, newest first, with its scope, cell and success counts and the path of its summary
+{% if latest %}
+- [Latest run summary (JSON)]({{ url('/data/runs/' ~ latest.name ~ '/summary.json') }}): one row per cloud and per cell, with the path of each cell's full record
+{% endif %}
+- [Result file formats]({{ md('/methodology/') }}): see "Result files" for every field and schema version
+- [Source and results on GitHub]({{ github }}): the harness, the prompts, the app specs and every run's results
+
+## Optional
+
+- [Every run]({{ md('/runs/') }}): all runs with their scope, success and cost
+- [Trends]({{ md('/trends/') }}): each metric over runs, per cloud
+- [Full text]({{ url('/llms-full.txt') }}): the overview, methodology, latest run and every cloud's page in one file
