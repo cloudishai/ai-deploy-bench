@@ -256,7 +256,8 @@ def test_railway_prices_projects_and_deletes(fake):
             {"node": {"id": "p1", "name": "adb-k3x9f-crud", "createdAt": "2026-10-12T10:00:00Z",
                       "services": {"edges": [{"node": {"id": "s1", "name": "web"}},
                                              {"node": {"id": "s2", "name": "db"}}]},
-                      "volumes": {"edges": [{"node": {"id": "v1", "name": "data", "currentSizeMB": 1024}}]}}},
+                      "volumes": {"edges": [{"node": {"id": "v1", "name": "data",
+                                                      "volumeInstances": {"edges": [{"node": {"currentSizeMB": 1024}}]}}}]}}},
             {"node": {"id": "p2", "name": "unrelated", "createdAt": "2026-10-12T10:00:00Z",
                       "services": {"edges": []}, "volumes": {"edges": []}}},
         ]}}}}

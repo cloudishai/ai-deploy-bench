@@ -89,8 +89,12 @@ claiming the key and adding prepaid credits.
   avoid the Limited Trial, which restricts outbound network access.
 - `railway up` uploads the local folder and builds it on Railway, so **no Git hosting is needed** —
   agents don't need the GitHub scratch account.
-- The free trial ($5 of credit for 30 days, no card) covers a benchmark deployment. A payment method
-  is counted as a human step only when a deployment's usage would exceed it.
+- The free trial ($5 of credit for 30 days, no card) covers a benchmark deployment, but it caps a
+  workspace at **2 projects** — `projectCreate` then fails with "Free plan resource provision limit
+  exceeded". Each cell creates one project and teardown deletes it, so a clean sequential run stays
+  under the cap; but leftover projects (from a failed teardown, or other work in the same workspace)
+  will exhaust it and block later cells on a `payment_method` human step. Use a dedicated workspace,
+  and add a payment method / Hobby plan to remove the cap for a full run.
 - Railway bills actual usage per second, so hosting costs are estimated from an assumed per-service
   size (see [`bench/clouds/pricing/railway.yaml`](../bench/clouds/pricing/railway.yaml)). Teardown
   deletes each project the cell created (named with the cell prefix), which removes its services and

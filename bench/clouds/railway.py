@@ -11,7 +11,8 @@ from bench.clouds.base import HOURS_PER_MONTH, Cloud, Resource, api_for, fixed_c
 API = "https://backboard.railway.com"
 GRAPHQL_PATH = "/graphql/v2"
 
-# The token's projects, with the services and volumes inside each, in one query.
+# The token's projects, with the services and volumes inside each, in one query. A volume's size
+# lives on its volumeInstances (per environment), not on the Volume itself.
 PROJECTS_QUERY = """
 query {
   me {
@@ -19,7 +20,7 @@ query {
       edges { node {
         id name createdAt
         services { edges { node { id name } } }
-        volumes { edges { node { id name currentSizeMB } } }
+        volumes { edges { node { id name volumeInstances { edges { node { currentSizeMB } } } } } }
       } }
     }
   }
@@ -58,6 +59,8 @@ class Railway(Cloud):
         for project in nodes(((data.get("me") or {}).get("projects"))):
             services = nodes(project.get("services"))
             volumes = nodes(project.get("volumes"))
+            volume_mb = sum((vi.get("currentSizeMB") or 0)
+                            for v in volumes for vi in nodes(v.get("volumeInstances")))
             yield Resource(
                 kind="project",
                 id=project["id"],
@@ -65,7 +68,7 @@ class Railway(Cloud):
                 created_at=project.get("createdAt"),
                 details={
                     "services": [{"id": s["id"], "name": s.get("name")} for s in services],
-                    "volume_gb": round(sum((v.get("currentSizeMB") or 0) for v in volumes) / 1024, 3),
+                    "volume_gb": round(volume_mb / 1024, 3),
                 },
             )
 
