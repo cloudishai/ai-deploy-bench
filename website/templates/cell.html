@@ -8,6 +8,9 @@
 {% set fit = r.get('stack_fit') or {} %}
 {% block title %}{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}, run {{ run.label }} · AI Deploy Bench{% endblock %}
 {% block description %}{{ app_name(cell.app, False) }} built and deployed on {{ cloud_name(cell.cloud) }} by {{ model_name(cell.model, True) }}: {{ states[state(cell)][0] | lower }}, {{ cell.checks_passed }}/{{ cell.checks_total }} checks passed.{% endblock %}
+{% block alternates %}
+  <link rel="alternate" type="application/json" href="/data/runs/{{ run.name }}/cells/{{ cell.slug }}.json" title="This cell's full record (JSON)">
+{% endblock %}
 {% block content %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><a href="{{ run.href }}">{{ run.label }}</a><span aria-hidden="true">/</span><span>{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}</span></nav>
 <header class="page-head">

@@ -12,6 +12,24 @@
   <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:url" content="{{ site_url }}/{{ page | replace('index.html', '') }}">
   <meta name="color-scheme" content="light dark">
+{% set path = '/' ~ (page | replace('index.html', '')) %}
+  <link rel="canonical" href="{{ site_url }}{{ path }}">
+{% if page.endswith('index.html') %}
+  <link rel="alternate" type="text/markdown" href="{{ path }}index.md" title="This page as markdown">
+{% endif %}
+{% block alternates %}{% endblock %}
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt: this site for language models">
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <!--
+    For AI agents:{% if page.endswith('index.html') %} this page has a markdown version at {{ site_url }}{{ path }}index.md (or send
+    `Accept: text/markdown`).{% endif %} {{ site_url }}/llms.txt indexes the site for language models, and
+    {{ site_url }}/llms-full.txt has its main pages in one file. The raw results are JSON under
+    {{ site_url }}/data/, starting from {{ site_url }}/data/index.json.
+  -->
+{% block structured %}{% endblock %}
+{% if ld is defined %}
+  <script type="application/ld+json">{{ ld | tojson }}</script>
+{% endif %}
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="{{ asset('style.css') }}">
   <script src="{{ asset('app.js') }}" defer></script>
