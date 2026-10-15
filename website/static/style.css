@@ -190,6 +190,10 @@ table { border-collapse: collapse; width: 100%; }
 .data .traffic { min-width: 200px; max-width: 320px; }
 .block { display: block; }
 .data tbody tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.data tbody tr.row-link { cursor: pointer; }
+.data tbody tr.row-link:hover td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+a.plain { color: inherit; text-decoration: none; }
+a.plain:hover .badge { text-decoration: none; filter: brightness(1.05); }
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .data .detail { color: var(--text-2); font-size: 0.88rem; max-width: 560px; overflow-wrap: anywhere; }
 .checks .check-mark { display: inline-block; width: 1.2em; font-weight: 800; }
