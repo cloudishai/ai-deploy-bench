@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}Clouds · AI Deploy Bench{% endblock %}
+{% block description %}The clouds in AI Deploy Bench, and how an AI coding agent did deploying five apps on each.{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>Clouds</h1>
+  <p class="lede">Each cloud gets the same five apps, built and deployed by a fresh agent session each. Open one for what a person had to do, each app's results and every run.</p>
+</header>
+{% if latest %}
+<section class="section">
+  <p class="muted">Latest {{ 'full run' if latest.full else 'run' }}: <a href="{{ latest.href }}">{{ latest.label }}</a></p>
+{% for model in latest.info.get('models', []) %}
+{% if latest.info.models | length > 1 %}<h3 class="model-head">{{ model_name(model, True) }}</h3>{% endif %}
+  {{ ui.scorecards(latest, model) }}
+{% endfor %}
+</section>
+{% endif %}
+{% set listed = latest.clouds() if latest else [] %}
+{% set others = cfg.clouds | rejectattr('id', 'in', listed) | list %}
+{% if others %}
+<section class="section">
+  <h2>Not in the latest run</h2>
+  <ul>
+{% for cloud in others %}
+    <li><a href="{{ cloud_href(cloud.id) }}">{{ cloud.name }}</a></li>
+{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

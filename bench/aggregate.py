@@ -198,7 +198,9 @@ def headline_table(summary: dict[str, Any], cfg: config.Config) -> list[str]:
             "| Checks passed | Avg build | Avg deploy | Tokens | Agent cost | " + " | ".join(hosting_headers(cfg)) + " |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|" + "---|" * len(cfg.hosting_usage),
         ]
-        for group in [g for g in summary["groups"] if g["model"] == model.id]:
+        order = [x.id for x in cfg.clouds]
+        # In benchmark.yaml's (alphabetical) order, whatever order the run recorded.
+        for group in sorted([g for g in summary["groups"] if g["model"] == model.id], key=lambda g: order.index(g["cloud"])):
             cloud = cfg.cloud(group["cloud"])
             people = group["human_steps"]
             nohuman = group.get("deploys_without_human") or {"count": 0, "total": group["cells"]}

@@ -11,7 +11,7 @@
 {% block content %}
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/runs/">Runs</a><span aria-hidden="true">/</span><a href="{{ run.href }}">{{ run.label }}</a><span aria-hidden="true">/</span><span>{{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}</span></nav>
 <header class="page-head">
-  <p class="eyebrow">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }} · {{ model_name(cell.model, True) }} · trial {{ cell.trial }}</p>
+  <p class="eyebrow"><a class="plain" href="{{ cloud_href(cell.cloud) }}">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }}</a> · {{ model_name(cell.model, True) }} · trial {{ cell.trial }}</p>
   <h1>{{ app_name(cell.app, False) }} on {{ cloud_name(cell.cloud) }}</h1>
   <p class="head-status">{{ ui.badge(cell) }}{% if cell.failure_stage %} <span class="muted">stopped at the {{ cell.failure_stage }} stage</span>{% endif %}</p>
 </header>
@@ -19,9 +19,8 @@
 <section class="stats" aria-label="Key numbers">
   <div class="stat"><span class="stat-label">Checks passed</span><span class="stat-value">{{ cell.checks_passed }}<span class="muted">/{{ cell.checks_total }}</span></span>{{ bar((cell.checks_passed / cell.checks_total) if cell.checks_total else None) }}</div>
   <div class="stat"><span class="stat-label">Human steps</span><span class="stat-value">{{ fmt.count(people.get('count')) }}</span><span class="stat-note">{{ fmt.minutes(people.get('minutes')) }} of a person's time</span></div>
-{% if cell.with_human is not none %}
-  <div class="stat"><span class="stat-label">Deploy without a human</span><span class="stat-value stat-small">{{ ui.outcome(cell.without_human) }}</span></div>
-  <div class="stat"><span class="stat-label">Deploy with a human</span><span class="stat-value stat-small">{{ ui.outcome(cell.with_human) }}</span></div>
+{% if cell.without_human is not none %}
+  <div class="stat"><span class="stat-label">Without a human</span><span class="stat-value stat-small">{{ ui.outcome(cell.without_human) }}</span></div>
 {% endif %}
   <div class="stat"><span class="stat-label">Security &amp; compliance</span><span class="stat-value">{{ fmt.score(security.get('score')) }}</span>{{ bar((security.get('score') / 100) if security.get('score') is not none else None) }}</div>
 {% if fit %}

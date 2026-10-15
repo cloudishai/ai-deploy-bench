@@ -127,25 +127,41 @@ def test_version_2_runs_show_stack_fit(tmp_path):
     assert "benchmark v2" in (built.out / "runs" / run.name / "index.html").read_text()
 
 
-def test_deploys_with_and_without_a_human_are_shown_from_version_3(site):
+def test_clouds_are_alphabetical_and_each_has_a_page(site):
     run = next(r for r in site.runs if r.name == "2026-10-15_15-1")
-    groups = {g["cloud"]: g for g in run.groups}
-    # Cloudish deployed everything without credentials; the others needed a person's token, and Vercel's
-    # CRUD app failed even with it.
-    assert groups["cloudish"]["deploys_with_human"] == {"count": 0, "total": 0}
-    assert groups["vercel"]["deploys_with_human"] == {"count": 4, "total": 5}
-    assert run.cell("opus-5-5", "cloudish", "static").with_human == "not_needed"
+    # The run recorded Railway last; the site follows benchmark.yaml's alphabetical order.
+    assert run.clouds() == ["cloudish", "digitalocean", "railway", "render", "vercel"]
+    assert [g["cloud"] for g in run.groups] == run.clouds()
+    for cloud in config.load().clouds:
+        assert (site.out / "clouds" / cloud.id / "index.html").is_file()
+    home = (site.out / "index.html").read_text()
+    # The overview's cards open each cloud's page, and every metric can be compared side by side.
+    assert '<a class="card scorecard card-link" href="/clouds/railway/">' in home
+    assert "Compare every metric" in home and '<td class="num best">5/5' in home
+    assert "Deploys with a human" not in home
+
+
+def test_a_cloud_page_explains_its_results(site):
+    page = (site.out / "clouds" / "vercel" / "index.html").read_text()
+    # The latest results, what a person had to do, each app and every run that included the cloud.
+    for heading in ("Latest results", "What a person had to do", "Each app", "Every run"):
+        assert f"<h2>{heading}</h2>" in page
+    assert "Install a Marketplace integration and accept its terms in a browser" in page
+    assert "/runs/2026-10-15_15-1/opus-5-5/vercel/crud-t1/" in page
+    assert "/runs/2026-10-13_4-1/" in page  # older, partial runs too
+    # Run #15 reran Railway only, so Vercel's results there are #13's.
+    assert "copied unchanged from" in page and "copied from #13" in page
+    cloudish = (site.out / "clouds" / "cloudish" / "index.html").read_text()
+    assert "The agent signed up and got its own credentials" in cloudish
+
+
+def test_runs_before_version_3_show_no_attempt_without_a_human(site):
+    run = next(r for r in site.runs if r.name == "2026-10-15_15-1")
     vercel_crud = run.cell("opus-5-5", "vercel", "crud")
-    assert (vercel_crud.without_human, vercel_crud.with_human) == ("failed", "failed")
-    page = (site.out / "runs" / run.name / "index.html").read_text()
-    assert "<th>With a human</th>" in page and "Not needed" in page
-    assert '<span class="outcome outcome-partial"><span aria-hidden="true">◐</span> 4/5</span>' in page
-    cell_page = (site.out / "runs" / run.name / vercel_crud.slug / "index.html").read_text()
-    assert "Deploy with a human" in cell_page
-    # Runs before version 3 didn't make the attempt without credentials, so they show neither.
+    assert vercel_crud.without_human == "failed" and run.cell("opus-5-5", "cloudish", "static").without_human == "success"
     old = site.runs[0]
-    assert all(c.with_human is None for c in old.cells)
-    assert "Deploys with a human" not in (site.out / "runs" / old.name / "index.html").read_text()
+    assert all(c.without_human is None for c in old.cells)
+    assert "Without a human" not in (site.out / "runs" / old.name / "index.html").read_text().split("<h2>All cells</h2>")[0]
 
 
 def test_technologies_are_shown_for_every_cell_with_a_record(site):

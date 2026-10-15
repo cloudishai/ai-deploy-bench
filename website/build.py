@@ -35,12 +35,10 @@ STATES = {
     "error": ("Error", "The agent or the harness couldn't run"),
     "missing": ("Missing", "No result was recorded"),
 }
-# A deploy attempt's outcome, with or without a person's help: (symbol, label, tooltip).
+# How the deploy attempt with no credentials went: (symbol, label, tooltip).
 OUTCOMES = {
-    "success": ("✓", "Deployed", "Deployed and passed every required check"),
-    "failed": ("✗", "Failed", "Didn't deploy an app that passed every required check"),
-    "not_needed": ("–", "Not needed", "Deployed without a person's help"),
-    "not_tried": ("–", "Not tried", "The cloud has no credentials for a person to provide"),
+    "success": ("✓", "Deployed", "Deployed with no credentials provided, and passed every required check"),
+    "failed": ("✗", "Needed a person", "Couldn't deploy until a person provided the cloud's credentials"),
 }
 SEVERITIES = ("critical", "high", "medium", "low", "info")
 PREVIEW = ("success", "human_minutes", "security", "agent_usd")  # the charts on the overview
@@ -124,7 +122,8 @@ class Site:
             cloud_name=lambda c: data.cloud_name(self.cfg, c), cloud_url=lambda c: data.cloud_url(self.cfg, c),
             cloud_color=lambda c: data.cloud_color(self.cfg, c), app_name=lambda a, short=True: data.app_name(self.cfg, a, short),
             model_name=lambda m, label=False: data.model_name(self.cfg, m, label), metric_value=self.metric_value,
-            hosting=self.hosting, asset=self.asset, trend_apps=self.trend_apps,
+            hosting=self.hosting, asset=self.asset, trend_apps=self.trend_apps, compare=self.compare,
+            cloud_href=lambda c: f"/clouds/{c}/", human_steps=lambda cells: data.human_steps(cells, self.cfg),
         )
         self.assets: dict[str, str] = {}
 
@@ -144,6 +143,28 @@ class Site:
             return [(u.label, fmt.usd(usage.get(u.id))) for u in self.cfg.hosting_usage if u.id in usage]
         return [("Always on", fmt.usd(entry.get("hosting_monthly_usd")))]
 
+    def compare(self, run: data.Run, model: str) -> list[dict[str, Any]]:
+        """One row per metric with each cloud's value in `run` (in `run.clouds()` order), the best marked.
+        Success and deploys without a human read as counts of apps, like the README."""
+        groups = [run.group(model, cloud) for cloud in run.clouds()]
+        rows = []
+        for metric in self.metrics:
+            values = [metric.group(g) if g else None for g in groups]
+            if all(v is None for v in values):
+                continue
+            known = [v for v in values if v is not None]
+            best = (max if metric.better == "higher" else min)(known) if len(known) > 1 else None
+            texts = [metric.format(v) for v in values]
+            if metric.id == "success":
+                texts = [f"{g.get('success', 0)}/{g.get('cells', 0)}" if g else fmt.DASH for g in groups]
+            elif metric.id == "no_human":
+                texts = [f"{(g.get('deploys_without_human') or {}).get('count')}/{(g.get('deploys_without_human') or {}).get('total')}"
+                         if g and g.get("deploys_without_human") else fmt.DASH for g in groups]
+            label = "Success" if metric.id == "success" else metric.label
+            rows.append({"label": label, "description": metric.description, "better": metric.better,
+                         "values": [{"text": t, "best": best is not None and v == best} for t, v in zip(texts, values)]})
+        return rows
+
     def trend_apps(self) -> list[tuple[str, str, int]]:
         """(app id, name, runs with it) for the per-app trend pages."""
         found = []
@@ -153,6 +174,11 @@ class Site:
         return found
 
     # -- output ------------------------------------------------------------------------------
+
+    def clouds(self) -> list[str]:
+        """Every cloud in benchmark.yaml, then any that only older runs have."""
+        ids = [x.id for x in self.cfg.clouds]
+        return ids + sorted({c.cloud for r in self.runs for c in r.cells} - set(ids))
 
     def write(self, path: str, template: str, **context: Any) -> None:
         target = self.out / path
@@ -196,6 +222,11 @@ class Site:
                            commands=shell_commands(cell))
                 for shot in cell.screenshots:
                     shutil.copyfile(shot["path"], self.out / "runs" / run.name / cell.slug / shot["name"])
+        self.write("clouds/index.html", "clouds.html", latest=latest)
+        for cloud in self.clouds():
+            history = [run for run in self.runs if cloud in run.clouds()]
+            cloud_latest = next((r for r in reversed(history) if r.full), history[-1] if history else None)
+            self.write(f"clouds/{cloud}/index.html", "cloud.html", cloud=cloud, history=history, latest=cloud_latest)
         self.write("trends/index.html", "trends.html", app=None, charts=self.charts(None))
         for app in self.cfg.apps:
             self.write(f"trends/{app.id}/index.html", "trends.html", app=app.id, charts=self.charts(app.id))
