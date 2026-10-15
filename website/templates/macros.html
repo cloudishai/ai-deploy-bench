@@ -11,9 +11,9 @@
 {%- endif %}
 {%- endmacro %}
 
+{# A count of apps (`{count, total}`): ✓ all of them, ◐ some, ✗ none. #}
 {% macro deploys(entry) -%}
-{%- if entry is none %}<span class="muted">—</span>
-{%- elif entry.total == 0 %}<span class="muted nowrap">Not needed</span>
+{%- if not entry or not entry.total %}<span class="muted">—</span>
 {%- else %}{% set kind = 'success' if entry.count == entry.total else ('failed' if entry.count == 0 else 'partial') %}<span class="outcome outcome-{{ kind }}"><span aria-hidden="true">{{ {'success': '✓', 'failed': '✗', 'partial': '◐'}[kind] }}</span> {{ entry.count }}/{{ entry.total }}</span>
 {%- endif %}
 {%- endmacro %}
@@ -26,42 +26,58 @@
 {% for label, cost in hosting(entry) %}{% if not loop.first %} · {% endif %}<span class="nowrap">{{ cost }} <span class="muted">{{ label | lower }}</span></span>{% endfor %}
 {%- endmacro %}
 
+{# One compact card per cloud, all on one row on wide screens. Each opens the cloud's page. #}
 {% macro scorecards(run, model) %}
-<div class="cards">
-{% for cloud in run.clouds() %}
+{% set clouds = run.clouds() %}
+<div class="cards cards-clouds cols-{{ clouds | length }}">
+{% for cloud in clouds %}
 {% set g = run.group(model, cloud) %}
 {% if g %}
 {% set people = human(g) %}
-  <article class="card scorecard">
+  <a class="card scorecard card-link" href="{{ cloud_href(cloud) }}">
     <header class="scorecard-head">
       <h3>{{ dot(cloud) }}{{ cloud_name(cloud) }}</h3>
       <p class="score-big"><strong>{{ g.get('success', 0) }}</strong><span>/{{ g.get('cells', 0) }}</span></p>
-      <p class="caption">{{ 'app' if g.get('cells', 0) == 1 else 'apps' }} deployed and passing</p>
+      <p class="caption">Success</p>
       {{ bar((g.get('success', 0) / g.get('cells', 1)) if g.get('cells') else None, 'bar-success') }}
     </header>
     <dl class="kv">
-      <div><dt>Checks passed</dt><dd>{{ fmt.pct(g.get('mean_score')) }}</dd></div>
+{% if g.get('deploys_without_human') %}
+      <div><dt>Without a human</dt><dd>{{ deploys(g.get('deploys_without_human')) }}</dd></div>
+{% endif %}
       <div><dt>Human steps</dt><dd>{{ fmt.count(people[0]) }} <span class="muted">· {{ fmt.minutes(people[1]) }}</span></dd></div>
-{% if g.get('deploys_with_human') is not none %}
-      <div><dt>Deploys without a human</dt><dd>{{ deploys(g.get('deploys_without_human')) }}</dd></div>
-      <div><dt>Deploys with a human</dt><dd>{{ deploys(g.get('deploys_with_human')) }}</dd></div>
-{% endif %}
-      <div><dt>Security &amp; compliance</dt><dd>{{ fmt.score(g.get('security_score')) }}</dd></div>
-{% if g.get('stack_fit_score') is not none %}
-      <div><dt>Stack fit</dt><dd>{{ fmt.score(g.get('stack_fit_score')) }}</dd></div>
-{% endif %}
-      <div><dt>Avg build</dt><dd>{{ fmt.duration(g.get('mean_build_s')) }}</dd></div>
-      <div><dt>Avg deploy</dt><dd>{{ fmt.duration(g.get('mean_deploy_s')) }}</dd></div>
-      <div><dt>Tokens</dt><dd>{{ fmt.tokens(g.get('tokens')) }}</dd></div>
+      <div><dt>Security</dt><dd>{{ fmt.score(g.get('security_score')) }}</dd></div>
       <div><dt>Agent cost</dt><dd>{{ fmt.usd(g.get('agent_usd')) }}</dd></div>
 {% for label, cost in hosting(g) %}
-      <div><dt>Hosting, {{ label | lower }}</dt><dd>{{ cost }}<span class="muted">/mo</span></dd></div>
+      <div><dt>Hosting, {{ label | lower }}</dt><dd>{{ cost }}</dd></div>
 {% endfor %}
     </dl>
-  </article>
+    <span class="card-more">Details</span>
+  </a>
 {% endif %}
 {% endfor %}
 </div>
+{% endmacro %}
+
+{# Every metric for every cloud, side by side; the best value in each row is highlighted. #}
+{% macro compare_table(run, model) %}
+{% set clouds = run.clouds() %}
+<div class="table-scroll">
+<table class="data compare">
+  <thead><tr><th>Metric</th>{% for cloud in clouds %}<th class="num"><a class="plain" href="{{ cloud_href(cloud) }}">{{ dot(cloud) }}{{ cloud_name(cloud) }}</a></th>{% endfor %}</tr></thead>
+  <tbody>
+{% for row in compare(run, model) %}
+    <tr>
+      <th scope="row"><span title="{{ row.description }} {{ 'Higher' if row.better == 'higher' else 'Lower' }} is better.">{{ row.label }}</span></th>
+{% for v in row['values'] %}
+      <td class="num{% if v.best %} best{% endif %}">{{ v.text }}{% if v.best %}<span class="visually-hidden"> (best)</span>{% endif %}</td>
+{% endfor %}
+    </tr>
+{% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">The best value in each row is highlighted. Hover a metric for what it measures; times are averages per app, tokens and costs totals across the apps. Open a cloud for each app and every run.</p>
 {% endmacro %}
 
 {% macro chips(names) -%}
@@ -74,7 +90,7 @@
   <div class="matrix-row matrix-head" role="row">
     <span class="matrix-corner" role="columnheader">App</span>
 {% for cloud in clouds %}
-    <span role="columnheader">{{ dot(cloud) }}{{ cloud_name(cloud) }}</span>
+    <span role="columnheader"><a class="plain" href="{{ cloud_href(cloud) }}">{{ dot(cloud) }}{{ cloud_name(cloud) }}</a></span>
 {% endfor %}
   </div>
 {% for app in run.apps() %}

@@ -74,18 +74,6 @@ class Cell:
         return "success" if used == "no_credentials" and self.status == "success" else "failed"
 
     @property
-    def with_human(self) -> str | None:
-        """How the deploy went once a person had provided the cloud's credentials: 'success' or 'failed';
-        'not_needed' when the attempt without them deployed, 'not_tried' when there were none to
-        provide. None before benchmark version 3."""
-        used = ((self.record or {}).get("no_human") or {}).get("used")
-        if used is None:
-            return None
-        if used == "no_credentials":
-            return "not_needed" if self.status == "success" else "not_tried"
-        return "success" if self.status == "success" else "failed"
-
-    @property
     def workflow_url(self) -> str | None:
         """The workflow run that produced the cell, which a merged run may have copied it from."""
         return (self.from_run or {}).get("url") or self.run.info.get("url")
@@ -153,15 +141,8 @@ class Run:
         mine = [c for c in self.cells if (c.model, c.cloud) == (model, cloud)]
         return bool(mine) and all(c.from_run for c in mine)
 
-    def with_human(self, model: str, cloud: str) -> dict[str, int] | None:
-        """Of the apps the agent couldn't deploy without credentials, how many it deployed once a person
-        provided them (any trial). None before benchmark version 3."""
-        mine = [c for c in self.finished if (c.model, c.cloud) == (model, cloud) and c.with_human is not None]
-        if not mine:
-            return None
-        needed = sorted({c.app for c in mine if c.with_human in ("success", "failed")})
-        count = sum(any(c.with_human == "success" for c in mine if c.app == app) for app in needed)
-        return {"count": count, "total": len(needed)}
+    def cloud_cells(self, model: str, cloud: str) -> list[Cell]:
+        return [c for c in self.cells if (c.model, c.cloud) == (model, cloud)]
 
     def group(self, model: str, cloud: str) -> dict[str, Any] | None:
         return next((g for g in self.groups if (g["model"], g["cloud"]) == (model, cloud)), None)
@@ -189,7 +170,10 @@ def cell_slug(cell: dict[str, Any]) -> str:
 
 
 def load(results: Path) -> list[Run]:
-    """Every run under results/runs, oldest first."""
+    """Every run under results/runs, oldest first, with clouds in benchmark.yaml's order (alphabetical),
+    whatever order a run recorded them in."""
+    order = [x.id for x in config.load().clouds]
+    rank = lambda cloud: order.index(cloud) if cloud in order else len(order)  # noqa: E731
     runs = []
     for summary_path in sorted((results / "runs").glob("*/summary.json")):
         summary = json.loads(summary_path.read_text())
@@ -201,9 +185,8 @@ def load(results: Path) -> list[Run]:
             record = json.loads(record_path.read_text()) if record_path.is_file() else None
             report = report_path.read_text() if report_path.is_file() else ""
             run.cells.append(Cell(run=run, summary=row, record=record, report=report, source=source))
-        # Derived from the cell records, since summary.json doesn't carry it.
-        for group in run.groups:
-            group["deploys_with_human"] = run.with_human(group["model"], group["cloud"])
+        run.cells.sort(key=lambda c: rank(c.cloud))
+        run.groups.sort(key=lambda g: rank(g["cloud"]))
         runs.append(run)
     return sorted(runs, key=lambda r: (r.info["date"], r.number, int(r.info.get("attempt") or 1)))
 
@@ -264,12 +247,6 @@ def metrics(cfg: config.Config) -> list[Metric]:
                lambda g: (g.get("deploys_without_human") or {}).get("count"),
                lambda c: None if c.summary.get("deploys_without_human") is None else (1.0 if c.summary.get("deploys_without_human") else 0.0),
                lambda v: fmt.DASH if v is None else f"{v:g}", lambda v: f"{v:g}", "higher", integer=True),
-        Metric("with_human", "Deploys with a human",
-               "Of the apps the agent couldn't deploy without credentials, how many it deployed once a person "
-               "provided them. From benchmark version 3.",
-               lambda g: (g.get("deploys_with_human") or {}).get("count"),
-               lambda c: {"success": 1.0, "failed": 0.0}.get(c.with_human),
-               lambda v: fmt.DASH if v is None else f"{v:g}", lambda v: f"{v:g}", "higher", integer=True),
         Metric("security", "Security & compliance", "Score of the independent security and compliance review (0-100).",
                lambda g: g.get("security_score"), lambda c: c.summary.get("security_score"), fmt.score,
                lambda v: f"{v:.0f}", "higher", 100),
@@ -327,6 +304,22 @@ def trend(runs: list[Run], metric: Metric, cfg: config.Config, app: str | None =
                 name = cloud_name(cfg, cloud) + (f" · {model_name(cfg, model)}" if len(models) > 1 else "")
                 series.append(Series(f"{model}/{cloud}", name, clouds.index(cloud) + len(clouds) * models.index(model), values))
     return scoped, series
+
+
+def human_steps(cells: list[Cell], cfg: config.Config) -> list[dict[str, Any]]:
+    """The distinct human steps across cells: what each is, its estimated minutes, and how many of the
+    apps it was needed for, in the order of benchmark.yaml's catalog."""
+    apps: dict[str, set[str]] = {}
+    for cell in cells:
+        for step in cell.human_steps or []:
+            apps.setdefault(step["id"], set()).add(cell.app)
+    order = list(cfg.human_steps)
+    steps = []
+    for step_id in sorted(apps, key=lambda s: order.index(s) if s in order else len(order)):
+        info = cfg.human_steps.get(step_id) or {}
+        steps.append({"id": step_id, "description": info.get("description", step_id), "minutes": info.get("minutes"),
+                      "apps": len(apps[step_id])})
+    return steps
 
 
 # -- names that survive config changes ---------------------------------------------------------

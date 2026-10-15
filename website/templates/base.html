@@ -31,6 +31,7 @@
       </a>
       <nav class="nav" aria-label="Main">
         <a href="/"{% if page == 'index.html' %} aria-current="page"{% endif %}>Overview</a>
+        <a href="/clouds/"{% if page.startswith('clouds/') %} aria-current="page"{% endif %}>Clouds</a>
         <a href="/trends/"{% if page.startswith('trends/') %} aria-current="page"{% endif %}>Trends</a>
         <a href="/runs/"{% if page.startswith('runs/') %} aria-current="page"{% endif %}>Runs</a>
         <a href="/methodology/"{% if page.startswith('methodology/') %} aria-current="page"{% endif %}>Methodology</a>

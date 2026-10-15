@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}{{ cloud_name(cloud) }} · AI Deploy Bench{% endblock %}
+{% block description %}How an AI coding agent did building and deploying five apps on {{ cloud_name(cloud) }}: success, what a person had to do, security, time and cost, in every run of the benchmark.{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb"><a href="/clouds/">Clouds</a><span aria-hidden="true">/</span><span>{{ cloud_name(cloud) }}</span></nav>
+<header class="page-head">
+  <h1>{{ ui.dot(cloud) }}{{ cloud_name(cloud) }}</h1>
+  <p class="muted">{% if cloud_url(cloud) %}<a href="{{ cloud_url(cloud) }}">{{ cloud_url(cloud) | replace('https://', '') | replace('www.', '') }}</a> · {% endif %}in {{ history | length }} {{ 'run' if history | length == 1 else 'runs' }}{% if latest %} · latest {{ 'full run' if latest.full else 'run' }} <a href="{{ latest.href }}">{{ latest.label }}</a>{% endif %}</p>
+</header>
+
+{% if latest %}
+{% for model in latest.info.get('models', []) %}
+{% set g = latest.group(model, cloud) %}
+{% set cells = latest.cloud_cells(model, cloud) %}
+{% if g %}
+{% set people = human(g) %}
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Latest results{% if latest.info.models | length > 1 %} · {{ model_name(model, True) }}{% endif %}</h2>
+      <p class="muted">Run {{ latest.label }}: {{ g.get('cells', 0) }} {{ 'app' if g.get('cells', 0) == 1 else 'apps' }}, each built and deployed by a fresh {{ cfg.agent.get('name', 'Claude Code') }} session and tested live by an independent verifier.</p>
+    </div>
+    <a class="link-arrow" href="{{ latest.href }}">Compare with the other clouds</a>
+  </div>
+{% if latest.inherited(model, cloud) %}
+  {% set origin = cells[0].from_run %}
+  <p class="notice">This run reran other clouds, so these results are copied unchanged from <a href="/runs/{{ origin.name }}/">run #{{ origin.number }}</a>.</p>
+{% endif %}
+  <div class="stats">
+    <div class="stat"><span class="stat-label">Success</span><span class="stat-value">{{ g.get('success', 0) }}<span class="muted">/{{ g.get('cells', 0) }}</span></span>{{ bar((g.get('success', 0) / g.get('cells', 1)) if g.get('cells') else None, 'bar-success') }}<span class="stat-note">apps deployed and passing every required check</span></div>
+{% if g.get('deploys_without_human') %}
+    <div class="stat"><span class="stat-label">Without a human</span><span class="stat-value stat-small">{{ ui.deploys(g.get('deploys_without_human')) }}</span><span class="stat-note">deployed with no credentials provided: no signup or token</span></div>
+{% endif %}
+    <div class="stat"><span class="stat-label">Human steps</span><span class="stat-value">{{ fmt.count(people[0]) }}</span><span class="stat-note">{{ fmt.minutes(people[1]) }} of a person's time, once per account</span></div>
+    <div class="stat"><span class="stat-label">Checks passed</span><span class="stat-value">{{ fmt.pct(g.get('mean_score')) }}</span>{{ bar(g.get('mean_score')) }}</div>
+    <div class="stat"><span class="stat-label">Security &amp; compliance</span><span class="stat-value">{{ fmt.score(g.get('security_score')) }}</span>{{ bar((g.get('security_score') / 100) if g.get('security_score') is not none else None) }}</div>
+{% if g.get('stack_fit_score') is not none %}
+    <div class="stat"><span class="stat-label">Stack fit</span><span class="stat-value">{{ fmt.score(g.get('stack_fit_score')) }}</span>{{ bar(g.get('stack_fit_score') / 100) }}</div>
+{% endif %}
+    <div class="stat"><span class="stat-label">Avg build · deploy</span><span class="stat-value stat-small">{{ fmt.duration(g.get('mean_build_s')) }} · {{ fmt.duration(g.get('mean_deploy_s')) }}</span><span class="stat-note">per app</span></div>
+    <div class="stat"><span class="stat-label">Agent cost</span><span class="stat-value">{{ fmt.usd(g.get('agent_usd')) }}</span><span class="stat-note">{{ fmt.tokens(g.get('tokens')) }} tokens, all apps</span></div>
+    <div class="stat"><span class="stat-label">Hosting / month</span>{% for label, cost in hosting(g) %}<span class="stat-line"><strong>{{ cost }}</strong> <span class="muted">{{ label | lower }}</span></span>{% endfor %}</div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>What a person had to do</h2>
+{% set steps = human_steps(cells) %}
+{% if steps %}
+  <p class="muted">Before the agent could deploy, a person had to do, or would have to do, the following. Each is done once per account, so the total is what it takes to deploy all the apps.</p>
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Step</th><th class="num">Minutes</th><th class="num">Needed for</th></tr></thead>
+    <tbody>
+{% for step in steps %}
+      <tr><td>{{ step.description }}</td><td class="num">{{ fmt.minutes(step.minutes) }}</td><td class="num">{{ step.apps }} of {{ cells | length }} {{ 'app' if cells | length == 1 else 'apps' }}</td></tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  <p>Nothing. The agent signed up and got its own credentials, with no person involved.</p>
+{% endif %}
+  <p class="muted small">Every deploy is first tried with no credentials. When that can't finish, the cloud's credentials are provided and the same session tries again. <a href="/methodology/">How human steps are counted</a>.</p>
+</section>
+
+<section class="section">
+  <h2>Each app</h2>
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>App</th>{% if latest.info.get('trials', 1) > 1 %}<th class="num">Trial</th>{% endif %}<th>Result</th><th>Without a human</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Stack fit</th><th class="num">Build</th><th class="num">Deploy</th><th class="num">Agent cost</th><th>Hosting / month</th><th>Built with</th></tr></thead>
+    <tbody>
+{% for cell in cells %}
+      <tr{% if cell.status != 'missing' %} class="row-link" data-href="{{ cell.href }}"{% endif %}>
+        <td class="nowrap">{% if cell.status != 'missing' %}<a href="{{ cell.href }}">{{ app_name(cell.app) }}</a>{% else %}{{ app_name(cell.app) }}{% endif %}</td>
+{% if latest.info.get('trials', 1) > 1 %}<td class="num">{{ cell.trial }}</td>{% endif %}
+        <td>{{ ui.badge(cell, small=True) }}</td>
+        <td class="nowrap">{{ ui.outcome(cell.without_human) }}</td>
+        <td class="num">{{ cell.checks_passed }}/{{ cell.checks_total }}</td>
+        <td class="num nowrap">{{ fmt.count(cell.human_steps | length if cell.human_steps is not none else None) }} · {{ fmt.minutes(cell.human_minutes) }}</td>
+        <td class="num">{{ fmt.score(cell.security_score) }}</td>
+        <td class="num">{{ fmt.score(cell.stack_fit_score) }}</td>
+        <td class="num">{{ fmt.duration(cell.build_s) }}</td>
+        <td class="num">{{ fmt.duration(cell.deploy_s) }}</td>
+        <td class="num">{{ fmt.usd(cell.agent_usd) }}</td>
+        <td>{{ ui.hosting_lines(cell.summary) }}</td>
+        <td>{{ ui.chips(cell.stack_headline) }}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small">Open an app for its checks, security review, cost breakdown, the commands the agent ran and screenshots of the live deployment.</p>
+</section>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2>Every run</h2>
+      <p class="muted">Each run that included {{ cloud_name(cloud) }}, newest first. Open a result for that app's details.</p>
+    </div>
+    <a class="link-arrow" href="/trends/">Trends</a>
+  </div>
+{% if history %}
+{% set apps = cfg.apps %}
+  <div class="table-scroll">
+  <table class="data">
+    <thead><tr><th>Run</th><th>Scope</th>{% if cfg.models | length > 1 %}<th>Model</th>{% endif %}<th class="num">Success</th><th>Without a human</th><th class="num">Checks</th><th class="num">Human</th><th class="num">Security</th><th class="num">Agent cost</th>{% for app in apps %}<th>{{ app.short or app.name }}</th>{% endfor %}</tr></thead>
+    <tbody>
+{% for run in history | reverse %}
+{% for model in run.info.get('models', []) %}
+{% set g = run.group(model, cloud) %}
+{% if g %}
+{% set people = human(g) %}
+      <tr>
+        <td class="nowrap"><a href="{{ run.href }}"><strong>{{ run.label }}</strong></a>{% if run.inherited(model, cloud) %}<br><span class="pill" title="This run reran other clouds; these results are copied from an earlier run">copied from #{{ run.cloud_cells(model, cloud)[0].from_run.number }}</span>{% endif %}</td>
+        <td>{% if run.full %}<span class="pill pill-accent">Full run</span>{% else %}<span class="pill" title="{{ run.scope }}">Partial</span>{% endif %}</td>
+{% if cfg.models | length > 1 %}<td>{{ model_name(model) }}</td>{% endif %}
+        <td class="num">{{ g.get('success', 0) }}/{{ g.get('cells', 0) }}</td>
+        <td class="nowrap">{{ ui.deploys(g.get('deploys_without_human')) }}</td>
+        <td class="num">{{ fmt.pct(g.get('mean_score')) }}</td>
+        <td class="num nowrap">{{ fmt.count(people[0]) }} · {{ fmt.minutes(people[1]) }}</td>
+        <td class="num">{{ fmt.score(g.get('security_score')) }}</td>
+        <td class="num">{{ fmt.usd(g.get('agent_usd')) }}</td>
+{% for app in apps %}
+{% set cell = run.cell(model, cloud, app.id) %}
+        <td>{% if cell and cell.status != 'missing' %}<a class="plain" href="{{ cell.href }}" aria-label="{{ app_name(app.id) }} in run {{ run.label }}">{{ ui.badge(cell, small=True) }}</a>{% elif cell %}{{ ui.badge(cell, small=True) }}{% else %}<span class="muted">—</span>{% endif %}</td>
+{% endfor %}
+      </tr>
+{% endif %}
+{% endfor %}
+{% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  <p class="notice">No run has included {{ cloud_name(cloud) }} yet.</p>
+{% endif %}
+</section>
+{% endblock %}
