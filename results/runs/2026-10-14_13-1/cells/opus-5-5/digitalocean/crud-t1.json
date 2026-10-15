@@ -1,0 +1,736 @@
+{
+  "schema": 8,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "Database-Backed CRUD App"
+  },
+  "run_id": "38652763755-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "crud",
+  "trial": 1,
+  "prefix": "adb-sdx0i-crud",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 76.8,
+    "tokens": 339783,
+    "agent_usd": 0.252682
+  },
+  "url": "https://adb-sdx0i-crud-kqceu.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 19,
+  "checks_total": 19,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 86.7,
+      "tokens": 438043,
+      "cost_usd": 0.402854
+    },
+    "status": "completed",
+    "score": 78.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "The DATABASE_URL and CA cert are injected at runtime through App Platform bindings (.do/app.yaml envs), the transcripts never show the DO token, and no .env existed or was baked into the image. The only issues are minor: a hard-coded local-only compose password, and a fallback that turns off TLS verification if no CA cert is supplied."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "The image is built from the agent's local workspace and pushed to the owner's DOCR, and the deploy references it by a timestamp tag rather than a digest. The base image node:24-alpine is a floating tag. Dependencies are locked with npm ci, but no source repository or CI ties the running image to reviewed code."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 8,
+        "rationale": "A paid App Platform plan suits a commercial app, and nothing sleeps or expires. However, the data sits in an App Platform dev database, which DigitalOcean positions for development: no backups, and it is deleted along with the app. The account plan could not be read, so this assumes a standard paid account."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "The container runs as the non-root node user and only the web service is public. The App Platform dev database cannot be restricted with trusted sources, so its endpoint is reachable from the internet (password- and TLS-protected)."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, HTTP 301-redirects to HTTPS, and the session cookie is Secure, HttpOnly and SameSite=Lax. Responses carry no HSTS, X-Content-Type-Options, frame protection or CSP, which the app could have added itself."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes for .env, .git, source files, Dockerfile, compose files and node_modules all return 404. Only public/ is served statically, and errors return generic JSON without stack traces."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "All queries are parameterized, every todo query is scoped by user_id, input is validated (types, lengths, ID format), bcrypt cost is 12 with a dummy hash against timing attacks, session tokens are stored hashed, and the UI renders with textContent. Login and signup have no rate limiting or lockout."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Locally built image deployed by mutable tag with floating base image",
+        "evidence": "app/scripts/deploy.sh: docker build ... -t registry.digitalocean.com/$REGISTRY/$PREFIX-web:$TAG && docker push; process/resources.json image.tag \"20261014232707\" (no digest); app/Dockerfile line 1 'FROM node:24-alpine'",
+        "recommendation": "Build from a git repository the owner controls (App Platform git source or CI), pin the base image by digest, and deploy by image digest."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on login/signup",
+        "evidence": "app/app.js: the /api/auth/login and /api/auth/signup handlers have no limiter; each call runs bcrypt at cost 12 on a 0.5 GB/1 vCPU instance, so they are open to credential guessing and CPU exhaustion",
+        "recommendation": "Add per-IP and per-account rate limiting (e.g. express-rate-limit) on the auth endpoints."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Dev database endpoint is publicly reachable",
+        "evidence": "app/.do/app.yaml databases: engine PG, production: false. App Platform dev databases do not support trusted sources or VPC-only access",
+        "recommendation": "Use a managed PostgreSQL cluster attached to the app with trusted sources limited to the app (or a VPC)."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial data stored in a non-production dev database",
+        "evidence": "process/deployment.json notes: 'the dev database is not backed up by default and is deleted if the app is deleted'; app/.do/app.yaml production: false. STACK.md had chosen a managed PostgreSQL with backups",
+        "recommendation": "Move to a production managed PostgreSQL cluster with automated backups, as STACK.md intended."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -sI https://adb-sdx0i-crud-kqceu.ondigitalocean.app/ returns no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy",
+        "recommendation": "Add helmet (or equivalent middleware) to set HSTS, nosniff, frame protection and a CSP."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "TLS verification disabled when no CA cert is provided",
+        "evidence": "app/db.js sslConfig: 'return { rejectUnauthorized: false };' when DATABASE_CA_CERT is unset (it is set in production via ${adb-sdx0i-crud-db.CA_CERT})",
+        "recommendation": "Fail closed: require a CA cert or use system CAs with rejectUnauthorized: true."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "Hard-coded local development DB password",
+        "evidence": "app/docker-compose.yml: POSTGRES_PASSWORD: todos (local compose only, not used in production)",
+        "recommendation": "Read local credentials from an untracked .env file."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Stored XSS payload rendered safely; ownership enforced",
+        "evidence": "POST /api/todos {title:'<img src=x onerror=alert(1)>'} -> 201 stored as text; index.html uses textContent; PATCH /api/todos/6 with another user's token -> 404",
+        "recommendation": "None."
+      }
+    ],
+    "summary": "A small, carefully written Express + PostgreSQL todo app on DigitalOcean App Platform. Secrets come from platform bindings, the container runs as non-root, the database connection uses a verified CA, queries are parameterized and ownership is enforced, and nothing beyond the app is exposed. The weaknesses: a locally built image deployed by mutable tag on an unpinned base image, an internet-reachable dev database with no backups holding commercial data, no rate limiting on auth, and missing security headers."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 83.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 8,
+        "rationale": "Express with pg and bcryptjs, plus a static HTML/fetch UI, covers the requirements well, and PostgreSQL is a durable store that survives redeploys. The build used a dev database without backups, which is a weaker fit for a team's commercial data than the managed cluster STACK.md chose."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "Three runtime dependencies, one stateless service and one database, with no unneeded frameworks or services."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "A stateless container on App Platform with a bound database and platform-managed TLS uses what the platform does well. Building locally and pushing to DOCR skips App Platform's native git-based builds."
+      }
+    ],
+    "summary": "Node/Express + PostgreSQL on App Platform is a well-proportioned, sensible stack for a multi-user CRUD app. The main departure from STACK.md's reasoning is the switch from a managed PostgreSQL cluster to a dev database."
+  },
+  "timing": {
+    "build_s": 159.4,
+    "deploy_s": 438.3,
+    "deploy_nohuman_s": 76.8,
+    "agent_s": 674.5,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 67.3
+  },
+  "tokens": {
+    "build": {
+      "input": 3932,
+      "output": 14297,
+      "cache_read": 447853,
+      "cache_write": 22231,
+      "total": 488313
+    },
+    "deploy": {
+      "input": 490,
+      "output": 3222,
+      "cache_read": 410178,
+      "cache_write": 5648,
+      "total": 419538
+    },
+    "deploy_nohuman": {
+      "input": 23657,
+      "output": 7356,
+      "cache_read": 299184,
+      "cache_write": 9586,
+      "total": 339783
+    },
+    "total": {
+      "input": 28079,
+      "output": 24875,
+      "cache_read": 1157215,
+      "cache_write": 37465,
+      "total": 1247634
+    }
+  },
+  "cost": {
+    "agent_usd": 0.931752,
+    "agent_build_usd": 0.502394,
+    "agent_deploy_usd": 0.176676,
+    "agent_nohuman_deploy_usd": 0.252682,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 12.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 12
+  },
+  "activity": {
+    "turns": {
+      "build": 15,
+      "deploy": 7
+    },
+    "tool_calls": {
+      "Bash": 15,
+      "Write": 5
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 6
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T23:22:17+00:00",
+      "wall_time_s": 159.4,
+      "api_time_s": 126.4,
+      "turns": 15,
+      "tokens": {
+        "input": 3932,
+        "output": 14297,
+        "cache_read": 447853,
+        "cache_write": 22231,
+        "total": 488313
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.502394,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3932,
+          "output": 14297,
+          "cache_read": 447853,
+          "cache_write": 22231,
+          "cost_usd": 0.5023936,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9,
+        "Write": 5
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T23:26:14+00:00",
+      "wall_time_s": 438.3,
+      "api_time_s": 34.6,
+      "turns": 7,
+      "tokens": {
+        "input": 490,
+        "output": 3222,
+        "cache_read": 410178,
+        "cache_write": 5648,
+        "total": 419538
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.176676,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 490,
+          "output": 3222,
+          "cache_read": 410178,
+          "cache_write": 5648,
+          "cost_usd": 0.17667559999999993,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 6
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The multi-user todo app is built and working locally against a real PostgreSQL database. The automated tests pass, and I checked every endpoint with curl against the running app in Docker. All containers are stopped now.\n\n**Stack** (the options I compared are in `STACK.md`): Node.js 24 with Express 4 and PostgreSQL. For step 2 the plan is to run it on DigitalOcean App Platform with a DigitalOcean managed PostgreSQL database.\n\n- **Passwords** are hashed with bcrypt (cost 12) and are never returned.\n- **Login tokens** are random and stored only as hashes in a `sessions` table. They work as `Authorization: Bearer` and as an HttpOnly cookie for the web UI.\n- **Ownership:** every todo query is limited to the caller's own todos, so another user's todo returns `404`.\n- **Database setup:** the tables are created automatically when the app starts.\n- **Web UI:** `GET /` serves one HTML page where you can sign up, log in, log out, and create, rename, complete/uncomplete and delete todos.\n- **Extras** beyond the spec: `POST /api/auth/logout`, `GET /api/me` (used by the UI to show who is signed in), and a `GET /healthz` health check.\n\n**What was checked:**\n- `npm test` covers the whole API: the `400`/`401`/`404`/`409` errors, oldest-first ordering, one user being blocked from another's todos, the stored hash being bcrypt, and logout invalidating the token.\n- With curl against the Docker setup: signup, create, restart the app container, log in again and the todo is still there, then rename + complete, duplicate signup gives `409`, and delete gives `204`.\n\n**How to run:**\n- With Docker, from this directory: `docker compose up --build`, then open http://localhost:8080.\n- With your own Postgres: `npm install`, then `DATABASE_URL=postgres://... npm start`. It listens on `PORT`, default 8080.\n- Tests: `DATABASE_URL=... npm test` (they need a running Postgres).\n- For DigitalOcean: by default the app connects to a remote database over TLS without verifying the certificate. Set `DATABASE_CA_CERT` to the managed database's CA certificate to have it verified. `DATABASE_SSL=false` turns TLS off.\n\nThere's a `Dockerfile` for deployment, and `README.md` has the run instructions.",
+    "deploy": "The app is live at **https://adb-sdx0i-crud-kqceu.ondigitalocean.app**, and every `TASK.md` requirement passed when I tested it through that URL.\n\n**What's deployed** (about $12/month):\n- **Web service** `adb-sdx0i-crud-web` on App Platform, smallest instance ($5/mo). HTTPS comes with App Platform. App ID `39fcdee2-bec0-42d5-a220-cbcb8b945256`.\n- **PostgreSQL** `adb-sdx0i-crud-db`, an App Platform development database ($7/mo). The app's connection to it is encrypted and the certificate is checked.\n- **Container registry** `adb-sdx0i-crud`, free Starter tier, holding the app's Docker image.\n\n**Testing through the public URL:**\n- `scripts/smoke.sh` passed every check:\n  - signup returns `201`, `400` for a bad email or short password, and `409` for a duplicate;\n  - login returns `200`, or `401` for wrong credentials;\n  - creating, listing, renaming, completing/uncompleting and deleting todos returns the right success and error codes;\n  - todos are listed oldest first;\n  - one user can't see or change another user's todos.\n- A todo I created was still there after a redeploy.\n- Cookie login, which the web UI uses, works.\n- `/healthz` reports the database is reachable.\n\n**What went wrong along the way:** the first deploy failed because the image tag (a timestamp) was read as a number. I quoted it in `.do/app.yaml` and the second run succeeded. To redeploy, re-run `scripts/deploy.sh`.\n\n**Limitations:**\n- The development database isn't backed up by default and is deleted if the app is deleted. It does survive restarts and redeploys. For real use, a managed PostgreSQL cluster costs about $15/month.\n- The test accounts I created (`persist@example.com` and several `smoke\u2026@example.com`) are still in the database.\n\nNo human steps were needed, and I didn't create any new credentials, so there's no `.env` file. Everything above is recorded in `deployment.json`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-sdx0i-crud-kqceu.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app with web service (HTTPS on ondigitalocean.app)",
+        "name": "adb-sdx0i-crud (service adb-sdx0i-crud-web)",
+        "id": "39fcdee2-bec0-42d5-a220-cbcb8b945256",
+        "plan": "apps-s-1vcpu-0.5gb, 1 instance, region nyc",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "PostgreSQL database (App Platform dev database)",
+        "name": "adb-sdx0i-crud-db",
+        "id": "component of app 39fcdee2-bec0-42d5-a220-cbcb8b945256",
+        "plan": "dev database, 512 MB",
+        "monthly_cost_usd": 7
+      },
+      {
+        "type": "Container registry (DOCR)",
+        "name": "adb-sdx0i-crud (repository adb-sdx0i-crud-web)",
+        "id": "adb-sdx0i-crud",
+        "plan": "starter (free, 500 MB), nyc3",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 12,
+    "human_steps": [],
+    "notes": "Node.js/Express image built locally, pushed to DOCR and deployed to App Platform from .do/app.yaml via scripts/deploy.sh (re-run it to redeploy). The database URL and CA cert come from App Platform's bindings, so the app uses verified TLS to Postgres and tables are created on startup. scripts/smoke.sh passed every TASK.md check against the public URL: signup 201/400/409, login 200/401, todos CRUD with 400/401/404, oldest-first ordering, per-user isolation and 204 delete. A todo also survived a redeploy, and cookie auth for the web UI works. Limitation: the dev database is not backed up by default and is deleted if the app is deleted; it survives restarts and redeploys. For production, switch to a managed PostgreSQL cluster (~$15/mo). Test accounts like persist@example.com and smoke*@example.com remain in the database."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 93
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 58,
+      "p90_ms": 67
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 48
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 49
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the web app as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 60
+      },
+      {
+        "id": "signup",
+        "description": "POST /api/auth/signup creates an account and returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 668
+      },
+      {
+        "id": "signup_validation",
+        "description": "Signup rejects an invalid email and a short password with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 112
+      },
+      {
+        "id": "signup_duplicate",
+        "description": "Signing up twice with the same email returns 409",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 642
+      },
+      {
+        "id": "login",
+        "description": "POST /api/auth/login returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 563
+      },
+      {
+        "id": "login_wrong_password",
+        "description": "Login with a wrong password returns 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 672
+      },
+      {
+        "id": "auth_required",
+        "description": "/api/todos requires a valid token (401)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 143
+      },
+      {
+        "id": "create",
+        "description": "POST /api/todos creates a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 149
+      },
+      {
+        "id": "create_validation",
+        "description": "An empty title is rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 63
+      },
+      {
+        "id": "list",
+        "description": "GET /api/todos lists the caller's todos",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "list_order",
+        "description": "Todos are listed oldest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "update",
+        "description": "PATCH /api/todos/{id} renames and completes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 170
+      },
+      {
+        "id": "isolation",
+        "description": "Users can't see or modify each other's todos (404)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 767
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /api/todos/{id} removes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 168
+      },
+      {
+        "id": "persistence",
+        "description": "Data is still there a minute later, with a fresh login",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59407
+      },
+      {
+        "id": "browser_ui",
+        "description": "The web UI renders a login or signup form",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 813
+      }
+    ],
+    "browser": true,
+    "duration_s": 67.3
+  },
+  "screenshots": [
+    {
+      "name": "signin",
+      "caption": "The web app before signing in",
+      "url": "https://adb-sdx0i-crud-kqceu.ondigitalocean.app/",
+      "file": "crud-t1/signin.jpg"
+    },
+    {
+      "name": "todos",
+      "caption": "The todo list after signing in through the web UI as the test user",
+      "url": "https://adb-sdx0i-crud-kqceu.ondigitalocean.app/",
+      "file": "crud-t1/todos.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "39fcdee2-bec0-42d5-a220-cbcb8b945256",
+      "name": "adb-sdx0i-crud",
+      "plan": "adb-sdx0i-crud-web: apps-s-1vcpu-0.5gb x 1, adb-sdx0i-crud-db: dev database",
+      "url": "https://adb-sdx0i-crud-kqceu.ondigitalocean.app",
+      "monthly_usd": 12.0,
+      "pricing": "adb-sdx0i-crud-web: apps-s-1vcpu-0.5gb x 1; adb-sdx0i-crud-db: dev database",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T23:27:13Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-sdx0i-crud",
+      "name": "adb-sdx0i-crud",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T23:26:31Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 16,
+    "lines": {
+      "JavaScript": 312,
+      "HTML": 129,
+      "Shell": 62,
+      "YAML": 45,
+      "Markdown": 35,
+      "JSON": 33,
+      "Docker": 9
+    },
+    "code_lines": 512,
+    "dependencies": {
+      "npm": 4,
+      "python": 0
+    },
+    "frameworks": [
+      "bcryptjs",
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      "docker-compose.yml",
+      ".dockerignore",
+      ".do/app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "npm_dev": [
+        "supertest"
+      ],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:24-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      ".do",
+      "public",
+      "scripts",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Data": [
+      "PostgreSQL (App Platform dev database)"
+    ],
+    "Libraries": [
+      "node-postgres",
+      "bcrypt.js"
+    ],
+    "Dev tools": [
+      "SuperTest"
+    ],
+    "Packaging": [
+      "Docker (node:24-alpine)",
+      "Docker Compose",
+      "App spec (.do/app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}

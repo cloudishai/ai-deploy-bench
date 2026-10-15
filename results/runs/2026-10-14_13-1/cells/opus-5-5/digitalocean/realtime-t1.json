@@ -1,0 +1,658 @@
+{
+  "schema": 8,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "38652763755-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-9tydh-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 50.8,
+    "tokens": 293589,
+    "agent_usd": 0.182518
+  },
+  "url": "https://adb-9tydh-realtime-9x954.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 13,
+  "checks_total": 13,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 69.5,
+      "tokens": 354592,
+      "cost_usd": 0.337603
+    },
+    "status": "completed",
+    "score": 89.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no runtime secrets, and none appear in the source, image or transcripts. doctl used existing authentication, and deploy.sh reads the DO token from a .env file that is git-ignored and docker-ignored."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The image is built from the agent's own source and pushed to the owner's private DOCR registry, and its push digest is recorded. But the app spec deploys the mutable `:latest` tag, the base image `node:22-alpine` is not pinned to a digest, and `ws` is a caret range."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 10,
+        "rationale": "This is a personal club app on a paid App Platform Basic instance ($5/mo, always on, no sleeping) with a free Starter registry. Both fit DigitalOcean's standard terms for this use."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "The container runs as the non-root `node` user. There is one public web service and no data store, and the registry is private. The only nit is that `COPY . .` puts unneeded docs (README, STACK, TASK, deployment.json) in the image."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS only: HTTP returns a 301 to HTTPS, the certificate is valid (Google Trust Services, expires Dec 2026), and WebSockets use wss://. The app sets none of HSTS, X-Content-Type-Options, frame protection or CSP, though it could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Only the routes the app defines respond. Probes for .env, .git, package.json, server.js, Dockerfile and /admin returned JSON 404s, with no directory listings or stack traces. Error responses are generic."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Input is validated well: 1-1000 character text, name and room length limits, a 16 KB body cap, WS maxPayload, and the UI renders with textContent so stored XSS is blocked. There is no rate limiting, no cap on rooms, WebSocket or SSE connections, and no WebSocket Origin check."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting or resource caps on public endpoints",
+        "evidence": "server.js:18-27 creates a room in an unbounded Map for any valid name, including on GET /events (server.js:161). server.js:140-151 accepts POSTs with no throttling, and there are no connection limits on /ws or SSE streams. On a 0.5 GB instance, an anonymous client could exhaust memory or flood rooms.",
+        "recommendation": "Add per-IP rate limits for POST and WS messages, cap the number of rooms and connections (or evict idle rooms), and limit SSE/WS connections per IP."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "WebSocket upgrade does not check Origin",
+        "evidence": "server.js:189-203 accepts any upgrade with valid room and user params and never inspects req.headers.origin, so any website can open sockets and post as any name. Impact is limited because the app has no authentication.",
+        "recommendation": "Reject upgrades whose Origin isn't the app's own host."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Mutable :latest image tag and unpinned base image",
+        "evidence": ".do/app.yaml: `tag: latest`. Dockerfile:1 `FROM node:22-alpine` has no digest. package.json `\"ws\": \"^8.22.0\"`. The deploy pushed digest sha256:121964b5..., but the spec doesn't reference it.",
+        "recommendation": "Deploy by immutable tag or digest (for example the git SHA), pin the base image by digest, and commit package-lock.json."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "`curl -sI https://adb-9tydh-realtime-9x954.ondigitalocean.app/` returns content-type, cache-control and Cloudflare headers only. There is no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy, and the app's writeHead calls (server.js:86-90, 119) set none.",
+        "recommendation": "Set HSTS, X-Content-Type-Options: nosniff, frame-ancestors/X-Frame-Options and a restrictive CSP on HTML and JSON responses."
+      },
+      {
+        "severity": "info",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Lockfile not present in delivered sources",
+        "evidence": "The Dockerfile runs `npm ci --omit=dev`, which requires package-lock.json. The build succeeded, so the lockfile existed locally, but it isn't in app/ and isn't kept alongside the source.",
+        "recommendation": "Commit package-lock.json so dependency resolution can be reproduced."
+      },
+      {
+        "severity": "info",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Non-root container, minimal resources",
+        "evidence": "Dockerfile: `USER node`. resources.json shows only one App Platform service and a private DOCR registry. .dockerignore excludes .env, .git, .do and deploy.sh.",
+        "recommendation": "Optionally copy only server.js and public/ into the image."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Stored script payload rendered safely",
+        "evidence": "A POST to /api/rooms/reviewprobe/messages with text `<script>alert(1)</script>` returned 201 and stored it verbatim. public/index.html:78-81 renders user and text via textContent, so the script does not execute.",
+        "recommendation": "None required. Keep using textContent."
+      }
+    ],
+    "summary": "The agent deployed a small Node.js + ws chat server to a paid DigitalOcean App Platform Basic instance from its own image in a private registry. The app needs no secrets and none leaked. The container runs as non-root, HTTPS is enforced with a valid certificate, and nothing beyond the app is exposed. Remaining weaknesses are minor: a mutable :latest tag and an unpinned base image, no security headers, and no rate limiting or connection caps on the anonymous endpoints."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 82.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 7,
+        "rationale": "Node with `ws` is a strong fit for WebSocket broadcast, and SSE is included as a fallback. But history is kept only in memory, so a room's recent history is lost on every restart or redeploy, and the service cannot scale past one instance."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "There is one process, one runtime dependency, and the static HTML is served by the same server, with no needless services. The in-memory store is an honest, documented simplification rather than a disguised fake database."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "App Platform supports long-lived WebSockets on a container service with managed TLS, health checks and always-on Basic instances, which suits this app. A source or GitHub-based App Platform deploy would have avoided the separate registry and the :latest tag."
+      }
+    ],
+    "summary": "A minimal Node.js + ws server on one App Platform service fits a hobby-club chat well and is well reasoned in STACK.md. Its main gap is that message history lives only in memory, so it isn't durable across restarts."
+  },
+  "timing": {
+    "build_s": 129.9,
+    "deploy_s": 105.4,
+    "deploy_nohuman_s": 50.8,
+    "agent_s": 286.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 17.0
+  },
+  "tokens": {
+    "build": {
+      "input": 3740,
+      "output": 12683,
+      "cache_read": 395523,
+      "cache_write": 20501,
+      "total": 432447
+    },
+    "deploy": {
+      "input": 317,
+      "output": 2401,
+      "cache_read": 318037,
+      "cache_write": 4634,
+      "total": 325389
+    },
+    "deploy_nohuman": {
+      "input": 319,
+      "output": 4698,
+      "cache_read": 282412,
+      "cache_write": 6160,
+      "total": 293589
+    },
+    "total": {
+      "input": 4376,
+      "output": 19782,
+      "cache_read": 995972,
+      "cache_write": 31295,
+      "total": 1051425
+    }
+  },
+  "cost": {
+    "agent_usd": 0.768813,
+    "agent_build_usd": 0.45023,
+    "agent_deploy_usd": 0.136065,
+    "agent_nohuman_deploy_usd": 0.182518,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 5.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 5.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 5
+  },
+  "activity": {
+    "turns": {
+      "build": 12,
+      "deploy": 6
+    },
+    "tool_calls": {
+      "Bash": 13,
+      "Write": 3
+    },
+    "shell_commands": {
+      "build": 8,
+      "deploy": 5
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-15T00:01:42+00:00",
+      "wall_time_s": 129.9,
+      "api_time_s": 114.0,
+      "turns": 12,
+      "tokens": {
+        "input": 3740,
+        "output": 12683,
+        "cache_read": 395523,
+        "cache_write": 20501,
+        "total": 432447
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.45023,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3740,
+          "output": 12683,
+          "cache_read": 395523,
+          "cache_write": 20501,
+          "cost_usd": 0.4502296,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8,
+        "Write": 3
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-15T00:04:44+00:00",
+      "wall_time_s": 105.4,
+      "api_time_s": 33.2,
+      "turns": 6,
+      "tokens": {
+        "input": 317,
+        "output": 2401,
+        "cache_read": 318037,
+        "cache_write": 4634,
+        "total": 325389
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.136065,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 317,
+          "output": 2401,
+          "cache_read": 318037,
+          "cache_write": 4634,
+          "cost_usd": 0.1360653999999999,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 5
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The chat app is built and works locally. All 7 automated tests pass, I checked every endpoint by hand with curl, and the Docker image builds and passes its health check. All servers and containers are stopped.\n\n**Stack** (reasoning is in `STACK.md`): Node.js with the `ws` WebSocket library as its only dependency, on a plain Node HTTP server. The web page is one HTML file served by the same process. The plan is to deploy it as a single DigitalOcean App Platform service from the `Dockerfile`, where the platform handles `wss://`. I considered Python with a managed Redis/Valkey database, and Go on a Droplet, but both add services or maintenance a hobby club doesn't need.\n\n**Limitation:** messages are kept in memory, so the last 50 per room are lost whenever the app restarts or is redeployed. It also only works as a single instance, since a second copy wouldn't see the first one's messages.\n\n**What it does:**\n- **Web page (`GET /`):** pick a display name and room (or use `/?room=general`), see recent history and who's online, and get messages live. It reconnects automatically if the connection drops.\n- **WebSocket (`/ws?room=&user=`):** sends the room's history when you connect, then every message to everyone in that room, including the sender. Empty, over-1000-character or malformed messages get a `{\"type\":\"error\"}` reply.\n- **History and posting:** `GET /api/rooms/<room>/messages` returns the last 50 messages, oldest first. `POST` to the same path returns `201`, or `400` for invalid input.\n- **Server-Sent Events:** `GET /api/rooms/<room>/events` also works, and gets the same messages as WebSocket clients.\n- **Health check:** `GET /healthz`.\n\n**Tests** (`node:test`) cover:\n- broadcasting to everyone, including the sender;\n- room isolation;\n- 4 clients each sending 5 messages at the same time, with every client receiving all 20;\n- rejecting invalid messages over WebSocket and HTTP;\n- the 50-message history limit and order;\n- the Server-Sent Events stream.\n\n**Run it:**\n```\nnpm install\nnpm start          # http://localhost:8080/?room=general  (set PORT to change the port)\nnpm test\n# or: docker build -t club-chat . && docker run -p 8080:8080 club-chat\n```",
+    "deploy": "The chat app is live at **https://adb-9tydh-realtime-9x954.ondigitalocean.app**, and every requirement in `TASK.md` worked when I tested it through that address.\n\n**What I deployed:**\n- **Web service:** App Platform app `adb-9tydh-realtime` (ID `7eb32aca-6d0b-455f-bba6-3c34bbd47cba`), one Basic instance (`apps-s-1vcpu-0.5gb`) in New York, about $5/month. App Platform provides the HTTPS and `wss://` address.\n- **Container registry:** `adb-9tydh-realtime` on the free Starter tier, holding the app's Docker image.\n- **Live connection URL:** `wss://adb-9tydh-realtime-9x954.ondigitalocean.app/ws`, recorded under `realtime` in `deployment.json`.\n\nEstimated total is about $5/month, and `human_steps` is empty.\n\n**Testing:** I ran `test/smoke.js` against the public URL and it passed. It checks:\n- the web page loads;\n- messages reach every client in the room, including the sender;\n- two users posting at the same time both get through;\n- rooms stay separate;\n- invalid messages are rejected over WebSocket;\n- posting over HTTP returns `201`, or `400` for invalid input;\n- history comes back correctly.\n\nI also checked the Server-Sent Events stream by hand with curl: a message posted over HTTP showed up in the stream.\n\n**One thing went wrong along the way:** the first attempt to create the app failed with \"Image does not exist or is private\" even though the image push had succeeded. Adding the registry name to `.do/app.yaml` fixed it, and the second attempt worked.\n\n**Limitation:** chat history (the last 50 messages per room) is kept in memory. It is lost whenever the app restarts or is redeployed, and the service has to stay at one instance.\n\nI didn't create any new credentials, so there is no `.env`. To redeploy, run `./deploy.sh`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-9tydh-realtime-9x954.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app / web service (Docker image, WebSockets)",
+        "name": "adb-9tydh-realtime / adb-9tydh-realtime-web",
+        "id": "7eb32aca-6d0b-455f-bba6-3c34bbd47cba",
+        "plan": "apps-s-1vcpu-0.5gb (Basic, 1 instance, nyc)",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "Container Registry (repository adb-9tydh-realtime-web)",
+        "name": "adb-9tydh-realtime",
+        "id": "adb-9tydh-realtime",
+        "plan": "starter (free, 500 MB)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 5,
+    "human_steps": [],
+    "realtime": {
+      "transport": "websocket",
+      "url": "wss://adb-9tydh-realtime-9x954.ondigitalocean.app/ws"
+    },
+    "notes": "Node.js + ws server on App Platform; HTTPS/WSS terminated by App Platform. Verified via public URL with test/smoke.js (UI, WebSocket broadcast incl. sender, concurrent posts, room isolation, validation errors, POST 201/400, history) plus a manual SSE check. Server-Sent Events endpoints also work. Message history (last 50 per room) is in memory, so it resets on redeploy/restart and the service must stay at 1 instance. Redeploy with ./deploy.sh."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 110
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 92,
+      "p90_ms": 143,
+      "delivery_latency_ms": 30
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 92
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 165
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over websocket",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1706
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1779
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 100
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2001
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 729
+      }
+    ],
+    "browser": true,
+    "duration_s": 17.0
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The room the verifier's clients chatted in, with its history",
+      "url": "https://adb-9tydh-realtime-9x954.ondigitalocean.app/?room=bench-2a3debed",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "7eb32aca-6d0b-455f-bba6-3c34bbd47cba",
+      "name": "adb-9tydh-realtime",
+      "plan": "adb-9tydh-realtime-web: apps-s-1vcpu-0.5gb x 1",
+      "url": "https://adb-9tydh-realtime-9x954.ondigitalocean.app",
+      "monthly_usd": 5.0,
+      "pricing": "adb-9tydh-realtime-web: apps-s-1vcpu-0.5gb x 1",
+      "matched_by": "prefix",
+      "created_at": "2026-10-15T00:05:36Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-9tydh-realtime",
+      "name": "adb-9tydh-realtime",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-15T00:05:19Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 396,
+      "HTML": 133,
+      "Markdown": 34,
+      "JSON": 28,
+      "Shell": 24,
+      "YAML": 16,
+      "Docker": 10
+    },
+    "code_lines": 563,
+    "dependencies": {
+      "npm": 1,
+      "python": 0
+    },
+    "frameworks": [
+      "ws"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      ".do/app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "ws"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:22-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      ".do",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 22"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Libraries": [
+      "ws"
+    ],
+    "Packaging": [
+      "Docker (node:22-alpine)",
+      "App spec (.do/app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}
