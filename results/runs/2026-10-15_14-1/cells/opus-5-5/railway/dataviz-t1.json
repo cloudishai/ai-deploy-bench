@@ -1,0 +1,364 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "38673129065-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-tssgs-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "failed",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 63.6,
+    "tokens": 393920,
+    "agent_usd": 0.167952
+  },
+  "url": null,
+  "url_source": null,
+  "score": 0.0,
+  "checks_passed": 0,
+  "checks_total": 0,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup",
+          "agent: Then run ./deploy.sh (it uses RAILWAY_API_TOKEN from the environment). It creates the project 'adb-tssgs-dataviz' and the service 'adb-tssgs-dataviz-web', runs `railway up` and generates the public *.up.railway.app HTTPS domain. (Finishes the deployment and produces the public URL.)"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "agent: Free up or raise the Railway workspace's resource quota. Either delete projects that are no longer needed in \"Javier Luraschi's Projects\" (currently adb-ytghj-static and adb-bbchf-static), or activate the workspace's Hobby plan/trial (its billing state is INACTIVE) by adding a payment method in the "
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [
+      {
+        "id": "payment_method",
+        "source": "agent",
+        "detail": "Free up or raise the Railway workspace's resource quota. Either delete projects that are no longer needed in \"Javier Luraschi's Projects\" (currently adb-ytghj-static and adb-bbchf-static), or activate the workspace's Hobby plan/trial (its billing state is INACTIVE) by adding a payment method in the ",
+        "blocking": true
+      },
+      {
+        "id": "api_token",
+        "source": "agent",
+        "detail": "Then run ./deploy.sh (it uses RAILWAY_API_TOKEN from the environment). It creates the project 'adb-tssgs-dataviz' and the service 'adb-tssgs-dataviz-web', runs `railway up` and generates the public *.up.railway.app HTTPS domain. (Finishes the deployment and produces the public URL.)",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "stack_fit": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "timing": {
+    "build_s": 149.9,
+    "deploy_s": 190.2,
+    "deploy_nohuman_s": 63.6,
+    "agent_s": 403.7,
+    "ready_after_deploy_s": null,
+    "verify_s": 0.0
+  },
+  "tokens": {
+    "build": {
+      "input": 4055,
+      "output": 13903,
+      "cache_read": 607801,
+      "cache_write": 27731,
+      "total": 653490
+    },
+    "deploy": {
+      "input": 1933,
+      "output": 4057,
+      "cache_read": 680461,
+      "cache_write": 8612,
+      "total": 695063
+    },
+    "deploy_nohuman": {
+      "input": 372,
+      "output": 2841,
+      "cache_read": 384144,
+      "cache_write": 6563,
+      "total": 393920
+    },
+    "total": {
+      "input": 6360,
+      "output": 20801,
+      "cache_read": 1672406,
+      "cache_write": 42906,
+      "total": 1742473
+    }
+  },
+  "cost": {
+    "agent_usd": 0.990471,
+    "agent_build_usd": 0.554495,
+    "agent_deploy_usd": 0.268024,
+    "agent_nohuman_deploy_usd": 0.167952,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      },
+      "busy": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 16,
+      "deploy": 11
+    },
+    "tool_calls": {
+      "Bash": 22,
+      "Skill": 1,
+      "Read": 1
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 10
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-15T03:09:44+00:00",
+      "wall_time_s": 149.9,
+      "api_time_s": 135.7,
+      "turns": 16,
+      "tokens": {
+        "input": 4055,
+        "output": 13903,
+        "cache_read": 607801,
+        "cache_write": 27731,
+        "total": 653490
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.554495,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 4055,
+          "output": 13903,
+          "cache_read": 607801,
+          "cache_write": 27731,
+          "cost_usd": 0.5544952000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12,
+        "Skill": 1,
+        "Read": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-15T03:13:19+00:00",
+      "wall_time_s": 190.2,
+      "api_time_s": 65.0,
+      "turns": 11,
+      "tokens": {
+        "input": 1933,
+        "output": 4057,
+        "cache_read": 680461,
+        "cache_write": 8612,
+        "total": 695063
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.268024,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 1933,
+          "output": 4057,
+          "cache_read": 680461,
+          "cache_write": 8612,
+          "cost_usd": 0.26802420000000005,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The sales dashboard is built and works locally. The 6 automated tests pass, and I checked the API with curl and looked at a screenshot of the page. I didn't click the filters in a real browser, so the in-page updates were only checked by reading the code. The server is stopped.\n\n**Stack** (the reasoning is in `STACK.md`): Node.js using only its built-in web server, with no dependencies, no install step and no build. The CSV is loaded into memory at startup. The page is plain HTML and JavaScript, and the charts are drawn by hand as SVG, so nothing loads from outside. I ruled out Python with pandas (heavy dependencies plus a chart library from a CDN) and a database (an extra Railway service for a small read-only file).\n\n**What's there:**\n- **Dashboard (`/`):** filters for region, category and a from/to date, plus a Reset button. Three tiles show total revenue, orders and units sold. There's a monthly revenue line chart and a revenue-by-category bar chart, both with hover tooltips. A table shows matching orders newest first, 50 per page, with previous/next buttons. Changing a filter refreshes everything without reloading the page.\n- **`/api/summary`:** follows the spec exactly. Revenue is added up in whole cents, so the 2-decimal totals come out exact. With no matches it returns zeros and empty lists. A badly formed date returns a `400` error.\n- **Extra endpoints I added:** `/api/orders` (feeds the table), `/api/options` (fills the filter dropdowns) and `/health`.\n- **Checked results:** with no filters, total revenue is $1,839,455.69 over 2,400 orders and 15,179 units. I also checked combined filters, a single-day range and a no-match query.\n- **Tests:** they cover the totals, combined filters, inclusive dates, the empty result, the bad date, the orders list and the page itself.\n\n**To run:**\n```\nnpm start    # http://localhost:3000, or set PORT\nnpm test\n```\nFor Railway, it needs Node 20 or later. It starts with `npm start` and listens on `0.0.0.0:$PORT`, so no extra configuration should be needed.",
+    "deploy": "The app isn't deployed: Railway refused to create the project, so there's no public URL and nothing was tested through one.\n\n**Why it's blocked:** the token works (the command-line tool shows it signed in as Javier Luraschi). But creating the project `adb-tssgs-dataviz` fails with \"Free plan resource provision limit exceeded. Please upgrade to provision more resources!\" It failed the same way through the command-line tool and through Railway's API. The workspace's trial billing is inactive, and two other projects, `adb-ytghj-static` and `adb-bbchf-static`, already use the quota.\n\nI didn't delete those projects, put this app inside one of them, or change the plan. Each would mean changing someone else's resources or the account's billing.\n\n**Current state:** nothing was created or changed on Railway. `deployment.json` has an empty `url`, the service is listed as planned, and the estimate is $0/month for one small web service with no database. The app is unchanged from step 1 and ready to deploy.\n\n**To finish, a person needs to:**\n1. Either delete the Railway projects that are no longer needed, or activate the workspace's Hobby plan by adding a payment method in the dashboard.\n2. Run `./deploy.sh`. It uses the `RAILWAY_API_TOKEN` already in the environment to create the project and the `adb-tssgs-dataviz-web` service, upload the code and generate the public HTTPS address.\n3. Put that address into `deployment.json` and check the dashboard and `/api/summary` through it."
+  },
+  "deployment_manifest": {
+    "url": "",
+    "resources": [
+      {
+        "type": "web service (planned, not created)",
+        "name": "adb-tssgs-dataviz-web",
+        "id": "",
+        "plan": "Railway usage-based, single smallest instance, no database",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Free up or raise the Railway workspace's resource quota. Either delete projects that are no longer needed in \"Javier Luraschi's Projects\" (currently adb-ytghj-static and adb-bbchf-static), or activate the workspace's Hobby plan/trial (its billing state is INACTIVE) by adding a payment method in the Railway dashboard.",
+        "why": "Railway rejects projectCreate with 'Free plan resource provision limit exceeded. Please upgrade to provision more resources!' (both from the CLI and the GraphQL API), so no project, service or public URL could be created. Deleting other teams' projects or changing the plan is not something the agent should do on its own.",
+        "blocking": true
+      },
+      {
+        "step": "Then run ./deploy.sh (it uses RAILWAY_API_TOKEN from the environment). It creates the project 'adb-tssgs-dataviz' and the service 'adb-tssgs-dataviz-web', runs `railway up` and generates the public *.up.railway.app HTTPS domain.",
+        "why": "Finishes the deployment and produces the public URL.",
+        "blocking": true
+      }
+    ],
+    "notes": "Not deployed: the Railway token is valid (whoami works) but the workspace hit its free-plan provisioning limit, so the project couldn't be created. Nothing was created on Railway and nothing was changed there. The app is ready to deploy: a zero-dependency Node.js server that Railpack auto-detects (railway.json sets `npm start` and a /health healthcheck). It binds 0.0.0.0:$PORT and serves the dataset from memory, so it needs a single small service and no database. All local tests pass. It has not been tested through a public URL because none exists."
+  },
+  "verification": {
+    "readiness": {
+      "ready": false
+    },
+    "checks": [],
+    "error": "no deployment URL found",
+    "duration_s": 0.0
+  },
+  "screenshots": [],
+  "resources": [],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 0,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 12,
+    "lines": {
+      "HTML": 236,
+      "JavaScript": 202,
+      "JSON": 42,
+      "Markdown": 21,
+      "Shell": 11
+    },
+    "code_lines": 449,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

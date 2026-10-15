@@ -1,0 +1,728 @@
+{
+  "schema": 8,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "DigitalOcean",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "38652763755-1",
+  "cloud": "digitalocean",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-5e3ks-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 66.1,
+    "tokens": 378182,
+    "agent_usd": 0.241762
+  },
+  "url": "https://adb-5e3ks-api-omhxz.ondigitalocean.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 66.0,
+      "tokens": 403453,
+      "cost_usd": 0.382903
+    },
+    "status": "completed",
+    "score": 81.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS is stored as an encrypted App Platform SECRET (EV[...] in the live spec) and DATABASE_URL is a platform binding. The spec template uses a placeholder, keys are injected into a temp file that is deleted afterwards, and no secret shows up in the transcripts or the source. The only small weakness is that the plaintext keys sit briefly in a temp spec file on the deploy machine."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The agent built the image from the reviewed source, pushed it to the owner's own DOCR registry, and pointed the spec at that unique timestamp tag. Direct dependencies are version-pinned, but the base image python:3.12-slim is not pinned by digest, transitive dependencies (pydantic, starlette) are unlocked, and there are no hashes. The spec references a tag, not an image digest."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 9,
+        "rationale": "The app is personal and runs on paid DigitalOcean App Platform ($5 basic instance) with a $7 dev database, both of which allow this use and stay up without sleeping. A dev database has limited capacity and no managed backups or HA, which is acceptable for a small side project but worth knowing about."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "The container runs as a non-root user, only the one web service is public, and the registry is private. The App Platform dev database cannot be limited to trusted sources, so it is reachable from the internet (protected by TLS and credentials). The app connects as the database owner and runs create_all at startup."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTP returns 301 to HTTPS, and the certificate is valid (Google Trust Services, expires Dec 2026). The responses carry no HSTS, X-Content-Type-Options, frame protection or CSP headers. Neither the app nor the platform sets them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Paths such as /.env, /.git/config, source paths, /admin, /debug and /redoc all return JSON 404s. A catch-all handler stops stack traces from leaking, and only the documented public endpoints exist. The Dockerfile copies only the app package."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Pydantic strict types and length limits validate input, SQLAlchemy Core parameterizes queries, and every query is scoped by owner, so other keys get 404. Each valid key is rate-limited to 60 requests per minute. However, body validation runs before the auth dependency, so unauthenticated requests get 400 instead of 401 and are never rate-limited. Keys are compared without constant-time comparison, and there is no per-key storage quota."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image and transitive dependencies not pinned",
+        "evidence": "app/Dockerfile:1 `FROM python:3.12-slim` (no @sha256 digest); app/requirements.txt pins only fastapi, uvicorn, sqlalchemy and psycopg, with no lockfile or --require-hashes; the spec references a tag (resources.json image.tag 20261014234806), not a digest",
+        "recommendation": "Pin the base image by digest, generate a fully locked requirements file with hashes (pip-compile --generate-hashes), and reference the image by digest in the app spec."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "platform",
+        "title": "Dev database is publicly reachable and has no trusted-source restriction",
+        "evidence": "app/.do/app.yaml databases: `production: false` (App Platform dev database); dev databases cannot have trusted sources configured, so the endpoint is reachable from the internet and protected only by TLS and credentials",
+        "recommendation": "For stronger isolation, use a managed database cluster with trusted sources limited to the app (or VPC). Optionally use a least-privileged role for the app."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers (HSTS, nosniff, frame protection, CSP)",
+        "evidence": "GET https://adb-5e3ks-api-omhxz.ondigitalocean.app/health and /docs: response headers include only content-type, server: cloudflare, cache-control: private, cf-* and alt-svc. There is no strict-transport-security, x-content-type-options, x-frame-options or content-security-policy.",
+        "recommendation": "Add a small middleware that sets HSTS, X-Content-Type-Options: nosniff, X-Frame-Options: DENY and a restrictive CSP (especially for the /docs HTML page)."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Body validation runs before authentication; unauthenticated requests are not rate-limited",
+        "evidence": "POST /v1/notes with `X-API-Key: bogus` and body `{bad` returned `HTTP/2 400 {\"error\":\"1: JSON decode error\"}` instead of 401. app/app/main.py:122-131 checks the key and rate limit only inside the dependency, which runs after body parsing, and 401s are never counted.",
+        "recommendation": "Do API-key checks (and an IP-based limit for failed auth) in middleware before body parsing, so unauthenticated callers always get 401 and cannot hammer the endpoint for free."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "API key compared without constant-time comparison, and no per-key storage quota",
+        "evidence": "app/app/main.py:124-125 `x_api_key not in valid` (set membership); app/app/db.py has no limit on the number of notes per owner (each note can be up to 100,000 chars of content)",
+        "recommendation": "Compare keys with hmac.compare_digest, and cap notes per key so a leaked key cannot fill the 512 MB-class dev database."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Rate limiter is in-memory and per instance",
+        "evidence": "app/app/ratelimit.py:12-13 keeps hits in a process-local dict; deployment.json notes say to keep instance_count at 1. Limits reset on every redeploy or restart.",
+        "recommendation": "Acceptable at one instance. Move to a shared store (e.g. Managed Valkey) or Postgres if the app ever scales out."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Dev database has limited durability guarantees",
+        "evidence": "process/deployment.json: `PostgreSQL 16 (App Platform dev database ...) plan: dev database (production: false)`",
+        "recommendation": "For a personal side project this is fine. Upgrade to a managed cluster if friends' data needs backups and point-in-time recovery."
+      }
+    ],
+    "summary": "The Notes API is a small, cleanly built FastAPI service on paid DigitalOcean App Platform with an attached Postgres dev database. API keys are stored as an encrypted platform secret, the container runs as non-root, it is served only over HTTPS, and probing found no exposed files, debug endpoints or stack traces. The remaining weaknesses are minor: the base image and transitive dependencies are not pinned, security headers are missing, the dev database is internet-reachable, and malformed bodies get 400 before the auth check, so unauthenticated requests are never rate-limited."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 87.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "FastAPI with Pydantic provides validation, the OpenAPI 3 document and docs out of the box, and Postgres is a durable store that survived a redeploy. The in-memory rate limiter is correct for the single instance it runs on. Storing tags as a JSON text column and filtering by tag in Python works but is not ideal."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "The stack is minimal: one service, one database and four direct dependencies, with no extra cache or queue. SQLite is used only for local tests."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "It uses App Platform's managed TLS, health checks, encrypted secrets and the database binding that injects DATABASE_URL. The agent built the image locally and pushed it to DOCR instead of letting App Platform build from a repo, which works but skips the platform's own build pipeline."
+      }
+    ],
+    "summary": "Python/FastAPI with SQLAlchemy Core on App Platform plus an attached Postgres dev database is a well-proportioned, idiomatic fit for a small authenticated JSON API, and STACK.md explains the choice soundly. The build matches the documented decision."
+  },
+  "timing": {
+    "build_s": 179.2,
+    "deploy_s": 535.0,
+    "deploy_nohuman_s": 66.1,
+    "agent_s": 780.3,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 67.2
+  },
+  "tokens": {
+    "build": {
+      "input": 3761,
+      "output": 15051,
+      "cache_read": 406722,
+      "cache_write": 24158,
+      "total": 449692
+    },
+    "deploy": {
+      "input": 594,
+      "output": 5003,
+      "cache_read": 627863,
+      "cache_write": 43905,
+      "total": 677365
+    },
+    "deploy_nohuman": {
+      "input": 370,
+      "output": 6412,
+      "cache_read": 363533,
+      "cache_write": 7867,
+      "total": 378182
+    },
+    "total": {
+      "input": 4725,
+      "output": 26466,
+      "cache_read": 1398118,
+      "cache_write": 75930,
+      "total": 1505239
+    }
+  },
+  "cost": {
+    "agent_usd": 1.207494,
+    "agent_build_usd": 0.518198,
+    "agent_deploy_usd": 0.447534,
+    "agent_nohuman_deploy_usd": 0.241762,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 12.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.0373 GiB out of a 50 GiB allowance"
+      },
+      "busy": {
+        "usd": 12.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 49 GiB out of a 50 GiB allowance"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 12
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 11
+    },
+    "tool_calls": {
+      "Bash": 20
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 10
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-14T23:37:03+00:00",
+      "wall_time_s": 179.2,
+      "api_time_s": 137.2,
+      "turns": 11,
+      "tokens": {
+        "input": 3761,
+        "output": 15051,
+        "cache_read": 406722,
+        "cache_write": 24158,
+        "total": 449692
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.518198,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3761,
+          "output": 15051,
+          "cache_read": 406722,
+          "cache_write": 24158,
+          "cost_usd": 0.5181984000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-14T23:41:09+00:00",
+      "wall_time_s": 535.0,
+      "api_time_s": 71.7,
+      "turns": 11,
+      "tokens": {
+        "input": 594,
+        "output": 5003,
+        "cache_read": 627863,
+        "cache_write": 43905,
+        "total": 677365
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.447534,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 594,
+          "output": 5003,
+          "cache_read": 627863,
+          "cache_write": 43905,
+          "cost_usd": 0.44753359999999975,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Notes API is built and works locally. I tested it against a real PostgreSQL running in Docker, and all 24 automated tests pass.\n\n**Stack** (the options and reasoning are in `STACK.md`): Python 3.12 with FastAPI and SQLAlchemy, storing notes in PostgreSQL. On DigitalOcean it's meant to run as a Docker container on App Platform with a Managed PostgreSQL database, which supplies `DATABASE_URL`. If `DATABASE_URL` isn't set, it falls back to a local SQLite file, which is only for development and tests.\n\n**What I checked with curl against the container and Postgres:**\n- `/health`, `/openapi.json` and `/docs` (an HTML page that needs no external assets) all return 200.\n- A missing or unknown key gets `401`.\n- Create, list (with `?tag=`, newest first), get, update and delete all return the right status codes, and bad input gets `400` with `{\"error\": ...}`.\n- Another key gets `404` on someone else's note.\n- Notes survive a container restart.\n- The 61st request in a minute gets `429` with `Retry-After`, while a second key is unaffected.\n\n**Things that behave differently from what you might assume:**\n- **Rate limit:** the count is kept in the app's memory. It's correct with one app instance; running more than one would need a shared store such as Redis/Valkey.\n- **Request bodies:** they're read as JSON even without a `Content-Type: application/json` header, so a plain `curl -d` works.\n- **Validation:** a title that's only spaces is rejected, and `content` is required on create. `PATCH` with no fields, or with `null` values, returns `400`.\n\n**How to run it:**\n```sh\npython3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt\nAPI_KEYS=key-one,key-two .venv/bin/uvicorn app.main:create_app --factory --port 8080\n.venv/bin/python -m pytest -q\n# or with Docker:\ndocker build -t notes-api . && docker run -p 8080:8080 -e API_KEYS=key-one -e DATABASE_URL=postgresql://... notes-api\n```\n`API_KEYS` is required. You can also set `PORT` and `RATE_LIMIT_PER_MINUTE`. The `notes` table is created automatically on startup. The `README.md` has the details.\n\nI've stopped and removed all the containers I started.",
+    "deploy": "The Notes API is live at **https://adb-5e3ks-api-omhxz.ondigitalocean.app**, and every requirement in `TASK.md` passed when I tested it through that URL.\n\n**What's deployed (about $12/month):**\n- **Web service:** App Platform app `adb-5e3ks-api` (ID `45f53cd7-e62a-42f5-8066-1b0679a77ab8`), smallest size (`apps-s-1vcpu-0.5gb`, $5/month), one instance. HTTPS comes with App Platform's default address.\n- **Database:** PostgreSQL 16 as an App Platform dev database (`adb-5e3ks-api-db`, $7/month), attached to the app.\n- **Image registry:** `adb-5e3ks-api`, free starter tier.\n- **Keys:** `API_KEYS` is stored as an encrypted secret and set to exactly the keys in `BENCH_API_KEYS`.\n\n**What I checked through the public URL:**\n- `/health`, `/openapi.json` (OpenAPI 3.1) and the HTML `/docs` page all return 200.\n- A missing or unknown key gets `401`.\n- Creating, listing (including the tag filter), reading, updating and deleting notes all return the right status codes, and bad input gets `400`.\n- The second key gets `404` on the first key's note.\n- Over the limit, the first key got `429` with `Retry-After` while the second key still got `200`.\n- A note created before a redeploy was still there afterwards.\n\n**Problems along the way, all fixed:**\n- The first deploy failed because the image tag in `.do/app.yaml` needed quotes.\n- `/openapi.json` didn't list itself in its own document, so I added it and redeployed.\n- For a few seconds right after a deploy, DigitalOcean's front end returned 521 errors twice. It worked normally after that.\n\n**Limitation:** the rate limit is counted in the app's memory. It resets on each redeploy and only works correctly with one instance, so the instance count should stay at 1.\n\nNothing needed a person, so `human_steps` in `deployment.json` is empty. I didn't create any new credentials, so `.env` wasn't needed. To redeploy, run `./deploy.sh`; to test, run `./smoke.sh <url>`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-5e3ks-api-omhxz.ondigitalocean.app",
+    "resources": [
+      {
+        "type": "App Platform app with web service (Docker image from DOCR)",
+        "name": "adb-5e3ks-api / adb-5e3ks-api-web",
+        "id": "45f53cd7-e62a-42f5-8066-1b0679a77ab8",
+        "plan": "apps-s-1vcpu-0.5gb, 1 instance, region nyc",
+        "monthly_cost_usd": 5
+      },
+      {
+        "type": "PostgreSQL 16 (App Platform dev database attached to the app)",
+        "name": "adb-5e3ks-api-db",
+        "id": "",
+        "plan": "dev database (production: false)",
+        "monthly_cost_usd": 7
+      },
+      {
+        "type": "Container Registry",
+        "name": "adb-5e3ks-api",
+        "id": "adb-5e3ks-api",
+        "plan": "starter (free, 500 MB), nyc3",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 12,
+    "human_steps": [],
+    "notes": "Python/FastAPI app on App Platform, which serves HTTPS on its default ondigitalocean.app domain. API_KEYS is an encrypted App Platform secret set to exactly BENCH_API_KEYS. Notes are stored in the attached Postgres dev database; data survived a redeploy. Every requirement was checked through the public URL: health, openapi.json (OpenAPI 3.1, lists every endpoint), HTML docs, 401 for missing or unknown keys, the full set of note endpoints with tag filter, 400 validation, 404 across keys, and 429 with Retry-After per key while the other key was unaffected. Rate limiting is kept in memory: it applies per instance and resets on redeploy, so keep instance_count at 1. Right after a deploy the edge returned 521 a couple of times for a few seconds before it settled. Redeploy with ./deploy.sh (needs DIGITALOCEAN_ACCESS_TOKEN and BENCH_API_KEYS); test with ./smoke.sh <url>. No new credentials were created, so .env was not needed."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 103
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 67,
+      "p90_ms": 94
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 65
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 91
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 73
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 56
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 65
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 67
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 136
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 109
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 97
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 146
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 65
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 269
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 164
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59200
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 4441
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      }
+    ],
+    "browser": true,
+    "duration_s": 67.2
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-5e3ks-api-omhxz.ondigitalocean.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "app",
+      "id": "45f53cd7-e62a-42f5-8066-1b0679a77ab8",
+      "name": "adb-5e3ks-api",
+      "plan": "adb-5e3ks-api-web: apps-s-1vcpu-0.5gb x 1, adb-5e3ks-api-db: dev database",
+      "url": "https://adb-5e3ks-api-omhxz.ondigitalocean.app",
+      "monthly_usd": 12.0,
+      "pricing": "adb-5e3ks-api-web: apps-s-1vcpu-0.5gb x 1; adb-5e3ks-api-db: dev database",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T23:42:04Z",
+      "details": {
+        "region": "nyc",
+        "bandwidth_gib": 50.0
+      }
+    },
+    {
+      "kind": "registry",
+      "id": "adb-5e3ks-api",
+      "name": "adb-5e3ks-api",
+      "plan": "starter",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Container Registry starter tier (one per account)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-14T23:41:33Z",
+      "details": {}
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 16,
+    "lines": {
+      "Python": 387,
+      "Shell": 52,
+      "Markdown": 48,
+      "YAML": 29,
+      "JSON": 11,
+      "Docker": 10
+    },
+    "code_lines": 449,
+    "dependencies": {
+      "npm": 0,
+      "python": 6
+    },
+    "frameworks": [
+      "fastapi",
+      "psycopg",
+      "sqlalchemy",
+      "uvicorn"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore",
+      ".do/app.yaml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [
+        "fastapi",
+        "psycopg",
+        "sqlalchemy",
+        "uvicorn"
+      ],
+      "python_dev": [
+        "httpx",
+        "pytest"
+      ]
+    },
+    "base_images": [
+      "python:3.12-slim"
+    ],
+    "runtime_hints": {},
+    "builtins": [],
+    "manifests": [
+      "requirements-dev.txt",
+      "requirements.txt"
+    ],
+    "dirs": [
+      ".do",
+      "app",
+      "tests"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Python 3.12"
+    ],
+    "Frameworks": [
+      "FastAPI"
+    ],
+    "Data": [
+      "PostgreSQL (App Platform dev database)"
+    ],
+    "Libraries": [
+      "Uvicorn",
+      "psycopg",
+      "SQLAlchemy"
+    ],
+    "Dev tools": [
+      "HTTPX",
+      "pytest"
+    ],
+    "Packaging": [
+      "Docker (python:3.12-slim)",
+      "App spec (.do/app.yaml)"
+    ],
+    "Hosting": [
+      "App Platform service (apps-s-1vcpu-0.5gb)",
+      "DigitalOcean Container Registry (starter)"
+    ]
+  }
+}
