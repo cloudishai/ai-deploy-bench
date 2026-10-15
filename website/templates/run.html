@@ -47,12 +47,12 @@
     </thead>
     <tbody>
 {% for cell in run.cells %}
-      <tr>
+      <tr{% if cell.status != 'missing' %} class="row-link" data-href="{{ cell.href }}"{% endif %}>
         <td class="nowrap">{{ ui.dot(cell.cloud) }}{{ cloud_name(cell.cloud) }}</td>
         <td class="nowrap">{% if cell.status != 'missing' %}<a href="{{ cell.href }}">{{ app_name(cell.app) }}</a>{% else %}{{ app_name(cell.app) }}{% endif %}</td>
 {% if run.info.models | length > 1 %}<td>{{ model_name(cell.model) }}</td>{% endif %}
 {% if run.info.get('trials', 1) > 1 %}<td class="num">{{ cell.trial }}</td>{% endif %}
-        <td>{{ ui.badge(cell, small=True) }}</td>
+        <td>{% if cell.status != 'missing' %}<a class="plain" href="{{ cell.href }}" aria-label="Open {{ app_name(cell.app) }} on {{ cloud_name(cell.cloud) }}">{{ ui.badge(cell, small=True) }}</a>{% else %}{{ ui.badge(cell, small=True) }}{% endif %}</td>
         <td class="num">{{ cell.checks_passed }}/{{ cell.checks_total }}</td>
         <td class="num nowrap">{{ fmt.count(cell.human_steps | length if cell.human_steps is not none else None) }} · {{ fmt.minutes(cell.human_minutes) }}</td>
         <td class="num">{{ fmt.score(cell.security_score) }}</td>

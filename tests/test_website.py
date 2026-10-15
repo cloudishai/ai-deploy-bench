@@ -48,6 +48,23 @@ def test_every_run_and_cell_has_a_page(site):
         assert (site.out / path).is_file(), path
 
 
+def test_all_cells_table_rows_link_to_the_cell_page(site):
+    """Each finished cell's row in a run's 'All cells' table is clickable and lands on its drill-down
+    page (which carries the checks breakdown). data-href drives the row-wide click in app.js."""
+    hrefs = re.compile(r'<tr class="row-link" data-href="([^"]+)"')
+    for run in site.runs:
+        finished = [c for c in run.cells if c.status != "missing"]
+        if not finished:
+            continue
+        page = (site.out / "runs" / run.name / "index.html").read_text()
+        targets = hrefs.findall(page)
+        assert len(targets) == len(finished), run.name
+        for target in targets:
+            assert (site.out / target.strip("/") / "index.html").is_file(), target
+    # app.js carries the row-click behaviour (no inline script, per the CSP).
+    assert "tr.row-link" in (site.out / "static" / "app.js").read_text()
+
+
 def test_internal_links_resolve(site):
     broken = []
     for page in html_pages(site.out):
