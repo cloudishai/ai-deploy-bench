@@ -169,6 +169,11 @@ p { margin: 0 0 1em; }
 .badge-failed { color: var(--failed); background: var(--failed-bg); }
 .badge-human { color: var(--human); background: var(--human-bg); }
 .badge-error, .badge-missing { color: var(--error); background: var(--error-bg); }
+.outcome { font-weight: 650; white-space: nowrap; }
+.outcome-success { color: var(--success); }
+.outcome-failed { color: var(--failed); }
+.outcome-partial { color: var(--partial); }
+.outcome-not_needed, .outcome-not_tried { color: var(--muted); font-weight: 500; }
 .pill { display: inline-block; font-size: 0.78rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); vertical-align: 0.1em; }
 .pill-accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 

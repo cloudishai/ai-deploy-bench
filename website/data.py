@@ -65,6 +65,27 @@ class Cell:
         return stack.headline(self.record) if self.record else []
 
     @property
+    def without_human(self) -> str | None:
+        """How the deploy attempt with no credentials went: 'success' or 'failed'. None before
+        benchmark version 3, which added it."""
+        used = ((self.record or {}).get("no_human") or {}).get("used")
+        if used is None:
+            return None
+        return "success" if used == "no_credentials" and self.status == "success" else "failed"
+
+    @property
+    def with_human(self) -> str | None:
+        """How the deploy went once a person had provided the cloud's credentials: 'success' or 'failed';
+        'not_needed' when the attempt without them deployed, 'not_tried' when there were none to
+        provide. None before benchmark version 3."""
+        used = ((self.record or {}).get("no_human") or {}).get("used")
+        if used is None:
+            return None
+        if used == "no_credentials":
+            return "not_needed" if self.status == "success" else "not_tried"
+        return "success" if self.status == "success" else "failed"
+
+    @property
     def workflow_url(self) -> str | None:
         """The workflow run that produced the cell, which a merged run may have copied it from."""
         return (self.from_run or {}).get("url") or self.run.info.get("url")
@@ -132,6 +153,16 @@ class Run:
         mine = [c for c in self.cells if (c.model, c.cloud) == (model, cloud)]
         return bool(mine) and all(c.from_run for c in mine)
 
+    def with_human(self, model: str, cloud: str) -> dict[str, int] | None:
+        """Of the apps the agent couldn't deploy without credentials, how many it deployed once a person
+        provided them (any trial). None before benchmark version 3."""
+        mine = [c for c in self.finished if (c.model, c.cloud) == (model, cloud) and c.with_human is not None]
+        if not mine:
+            return None
+        needed = sorted({c.app for c in mine if c.with_human in ("success", "failed")})
+        count = sum(any(c.with_human == "success" for c in mine if c.app == app) for app in needed)
+        return {"count": count, "total": len(needed)}
+
     def group(self, model: str, cloud: str) -> dict[str, Any] | None:
         return next((g for g in self.groups if (g["model"], g["cloud"]) == (model, cloud)), None)
 
@@ -170,6 +201,9 @@ def load(results: Path) -> list[Run]:
             record = json.loads(record_path.read_text()) if record_path.is_file() else None
             report = report_path.read_text() if report_path.is_file() else ""
             run.cells.append(Cell(run=run, summary=row, record=record, report=report, source=source))
+        # Derived from the cell records, since summary.json doesn't carry it.
+        for group in run.groups:
+            group["deploys_with_human"] = run.with_human(group["model"], group["cloud"])
         runs.append(run)
     return sorted(runs, key=lambda r: (r.info["date"], r.number, int(r.info.get("attempt") or 1)))
 
@@ -229,6 +263,12 @@ def metrics(cfg: config.Config) -> list[Metric]:
                "Apps the agent deployed with no credentials provided — no human signup or token. From benchmark version 3.",
                lambda g: (g.get("deploys_without_human") or {}).get("count"),
                lambda c: None if c.summary.get("deploys_without_human") is None else (1.0 if c.summary.get("deploys_without_human") else 0.0),
+               lambda v: fmt.DASH if v is None else f"{v:g}", lambda v: f"{v:g}", "higher", integer=True),
+        Metric("with_human", "Deploys with a human",
+               "Of the apps the agent couldn't deploy without credentials, how many it deployed once a person "
+               "provided them. From benchmark version 3.",
+               lambda g: (g.get("deploys_with_human") or {}).get("count"),
+               lambda c: {"success": 1.0, "failed": 0.0}.get(c.with_human),
                lambda v: fmt.DASH if v is None else f"{v:g}", lambda v: f"{v:g}", "higher", integer=True),
         Metric("security", "Security & compliance", "Score of the independent security and compliance review (0-100).",
                lambda g: g.get("security_score"), lambda c: c.summary.get("security_score"), fmt.score,

@@ -35,6 +35,13 @@ STATES = {
     "error": ("Error", "The agent or the harness couldn't run"),
     "missing": ("Missing", "No result was recorded"),
 }
+# A deploy attempt's outcome, with or without a person's help: (symbol, label, tooltip).
+OUTCOMES = {
+    "success": ("✓", "Deployed", "Deployed and passed every required check"),
+    "failed": ("✗", "Failed", "Didn't deploy an app that passed every required check"),
+    "not_needed": ("–", "Not needed", "Deployed without a person's help"),
+    "not_tried": ("–", "Not tried", "The cloud has no credentials for a person to provide"),
+}
 SEVERITIES = ("critical", "high", "medium", "low", "info")
 PREVIEW = ("success", "human_minutes", "security", "agent_usd")  # the charts on the overview
 COMMAND = re.compile(r"^- `([^`]*)` (❌ )?`(.*)`$")
@@ -113,7 +120,7 @@ class Site:
         )
         self.env.globals.update(
             cfg=self.cfg, runs=self.runs, fmt=fmt, github=GITHUB, site_url=SITE_URL, build=build_info(),
-            states=STATES, severities=SEVERITIES, state=state, markdown=markdown, bar=charts.bar, human=human,
+            states=STATES, outcomes=OUTCOMES, severities=SEVERITIES, state=state, markdown=markdown, bar=charts.bar, human=human,
             cloud_name=lambda c: data.cloud_name(self.cfg, c), cloud_url=lambda c: data.cloud_url(self.cfg, c),
             cloud_color=lambda c: data.cloud_color(self.cfg, c), app_name=lambda a, short=True: data.app_name(self.cfg, a, short),
             model_name=lambda m, label=False: data.model_name(self.cfg, m, label), metric_value=self.metric_value,
