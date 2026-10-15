@@ -127,6 +127,27 @@ def test_version_2_runs_show_stack_fit(tmp_path):
     assert "benchmark v2" in (built.out / "runs" / run.name / "index.html").read_text()
 
 
+def test_deploys_with_and_without_a_human_are_shown_from_version_3(site):
+    run = next(r for r in site.runs if r.name == "2026-10-15_15-1")
+    groups = {g["cloud"]: g for g in run.groups}
+    # Cloudish deployed everything without credentials; the others needed a person's token, and Vercel's
+    # CRUD app failed even with it.
+    assert groups["cloudish"]["deploys_with_human"] == {"count": 0, "total": 0}
+    assert groups["vercel"]["deploys_with_human"] == {"count": 4, "total": 5}
+    assert run.cell("opus-5-5", "cloudish", "static").with_human == "not_needed"
+    vercel_crud = run.cell("opus-5-5", "vercel", "crud")
+    assert (vercel_crud.without_human, vercel_crud.with_human) == ("failed", "failed")
+    page = (site.out / "runs" / run.name / "index.html").read_text()
+    assert "<th>With a human</th>" in page and "Not needed" in page
+    assert '<span class="outcome outcome-partial"><span aria-hidden="true">◐</span> 4/5</span>' in page
+    cell_page = (site.out / "runs" / run.name / vercel_crud.slug / "index.html").read_text()
+    assert "Deploy with a human" in cell_page
+    # Runs before version 3 didn't make the attempt without credentials, so they show neither.
+    old = site.runs[0]
+    assert all(c.with_human is None for c in old.cells)
+    assert "Deploys with a human" not in (site.out / "runs" / old.name / "index.html").read_text()
+
+
 def test_technologies_are_shown_for_every_cell_with_a_record(site):
     for run in site.runs:
         for cell in run.finished:

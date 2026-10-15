@@ -5,6 +5,19 @@
 <span class="badge badge-{{ s }}{% if small %} badge-sm{% endif %}" title="{{ states[s][1] }}">{{ states[s][0] }}</span>
 {%- endmacro %}
 
+{% macro outcome(value) -%}
+{%- if value is none %}<span class="muted">—</span>
+{%- else %}{% set o = outcomes[value] %}<span class="outcome outcome-{{ value }}" title="{{ o[2] }}"><span aria-hidden="true">{{ o[0] }}</span> {{ o[1] }}</span>
+{%- endif %}
+{%- endmacro %}
+
+{% macro deploys(entry) -%}
+{%- if entry is none %}<span class="muted">—</span>
+{%- elif entry.total == 0 %}<span class="muted nowrap">Not needed</span>
+{%- else %}{% set kind = 'success' if entry.count == entry.total else ('failed' if entry.count == 0 else 'partial') %}<span class="outcome outcome-{{ kind }}"><span aria-hidden="true">{{ {'success': '✓', 'failed': '✗', 'partial': '◐'}[kind] }}</span> {{ entry.count }}/{{ entry.total }}</span>
+{%- endif %}
+{%- endmacro %}
+
 {% macro hosting_lines(entry) -%}
 {% for label, cost in hosting(entry) %}<span class="nowrap block">{{ cost }} <span class="muted">{{ label | lower }}</span></span>{% endfor %}
 {%- endmacro %}
@@ -29,6 +42,10 @@
     <dl class="kv">
       <div><dt>Checks passed</dt><dd>{{ fmt.pct(g.get('mean_score')) }}</dd></div>
       <div><dt>Human steps</dt><dd>{{ fmt.count(people[0]) }} <span class="muted">· {{ fmt.minutes(people[1]) }}</span></dd></div>
+{% if g.get('deploys_with_human') is not none %}
+      <div><dt>Deploys without a human</dt><dd>{{ deploys(g.get('deploys_without_human')) }}</dd></div>
+      <div><dt>Deploys with a human</dt><dd>{{ deploys(g.get('deploys_with_human')) }}</dd></div>
+{% endif %}
       <div><dt>Security &amp; compliance</dt><dd>{{ fmt.score(g.get('security_score')) }}</dd></div>
 {% if g.get('stack_fit_score') is not none %}
       <div><dt>Stack fit</dt><dd>{{ fmt.score(g.get('stack_fit_score')) }}</dd></div>
