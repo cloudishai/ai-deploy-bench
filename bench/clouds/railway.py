@@ -11,21 +11,19 @@ from bench.clouds.base import HOURS_PER_MONTH, Cloud, Resource, api_for, fixed_c
 API = "https://backboard.railway.com"
 GRAPHQL_PATH = "/graphql/v2"
 
-# The token's projects, with the services and volumes inside each, in one query. A volume's size
-# lives on its volumeInstances (per environment), not on the Volume itself.
-PROJECTS_QUERY = """
-query {
-  me {
-    projects {
+# A project's services and volumes. A volume's size lives on its volumeInstances (per environment),
+# not on the Volume itself.
+PROJECT_FIELDS = """
       edges { node {
         id name createdAt
         services { edges { node { id name } } }
         volumes { edges { node { id name volumeInstances { edges { node { currentSizeMB } } } } } }
       } }
-    }
-  }
-}
 """
+# `me.projects` only has the account's personal projects, and the CLI creates projects in a
+# workspace, so each of the token's workspaces is listed as well.
+WORKSPACES_QUERY = "query { me { workspaces { id } projects {" + PROJECT_FIELDS + "} } }"
+WORKSPACE_PROJECTS_QUERY = "query($id: String!) { projects(workspaceId: $id) {" + PROJECT_FIELDS + "} }"
 PROJECT_DELETE = "mutation($id: String!) { projectDelete(id: $id) }"
 
 
@@ -55,8 +53,12 @@ class Railway(Cloud):
         return self.collect("projects", self._projects)
 
     def _projects(self) -> Iterable[Resource]:
-        data = self.gql(PROJECTS_QUERY)
-        for project in nodes(((data.get("me") or {}).get("projects"))):
+        me = self.gql(WORKSPACES_QUERY).get("me") or {}
+        projects = {p["id"]: p for p in nodes(me.get("projects"))}
+        for workspace in me.get("workspaces") or []:
+            data = self.gql(WORKSPACE_PROJECTS_QUERY, id=workspace["id"])
+            projects.update({p["id"]: p for p in nodes(data.get("projects"))})
+        for project in projects.values():
             services = nodes(project.get("services"))
             volumes = nodes(project.get("volumes"))
             volume_mb = sum((vi.get("currentSizeMB") or 0)

@@ -252,7 +252,14 @@ def test_railway_prices_projects_and_deletes(fake):
         if "projectDelete" in body["query"]:
             deleted.append(body["variables"]["id"])
             return {"data": {"projectDelete": True}}
-        return {"data": {"me": {"projects": {"edges": [
+        if "workspaceId" in body["query"]:
+            assert body["variables"] == {"id": "w1"}
+            return {"data": {"projects": {"edges": [
+                {"node": {"id": "p3", "name": "adb-k3x9f-crud-cache", "createdAt": "2026-10-12T10:00:00Z",
+                          "services": {"edges": [{"node": {"id": "s3", "name": "cache"}}]}, "volumes": {"edges": []}}},
+            ]}}}
+        # The account's personal projects; the CLI puts new projects in a workspace (listed above).
+        return {"data": {"me": {"workspaces": [{"id": "w1"}], "projects": {"edges": [
             {"node": {"id": "p1", "name": "adb-k3x9f-crud", "createdAt": "2026-10-12T10:00:00Z",
                       "services": {"edges": [{"node": {"id": "s1", "name": "web"}},
                                              {"node": {"id": "s2", "name": "db"}}]},
@@ -269,10 +276,10 @@ def test_railway_prices_projects_and_deletes(fake):
     project = by_name(result)["adb-k3x9f-crud"]
     # 2 services x (1 vCPU $20 + 0.5 GB $10/GB) + 1 GB volume at $0.15/GB.
     assert project["monthly_usd"] == pytest.approx(50.15, abs=0.01)
-    assert set(by_name(result)) == {"adb-k3x9f-crud"}  # the unrelated project is left alone
+    assert set(by_name(result)) == {"adb-k3x9f-crud", "adb-k3x9f-crud-cache"}  # the unrelated project is left alone
     assert result["usage"][usage.id]["usd"] is not None
     base.teardown(cloud, result["resources"], retry_delay=0)
-    assert deleted == ["p1"]
+    assert sorted(deleted) == ["p1", "p3"]
 
 
 def test_railway_surfaces_api_errors(fake):
