@@ -6,6 +6,7 @@ lists its cells with the path of each cell's full record, and every file carries
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import re
 import shutil
@@ -88,6 +89,7 @@ def compact(record: dict[str, Any]) -> dict[str, Any]:
         "security_score": (record.get("security") or {}).get("score"),
         "stack_fit_score": (record.get("stack_fit") or {}).get("score"),
         "screenshots": [Path(shot["file"]).name for shot in record.get("screenshots") or [] if shot.get("file")],
+        "from_run": None,
     }
 
 
@@ -98,7 +100,7 @@ def missing(cell: dict[str, Any]) -> dict[str, Any]:
             "hosting_monthly_usd": None, "hosting_usage_usd": {}, "hosting_usage_incomplete": [], "path": None,
             "report": None, "shell_commands": 0, "agent_version": None, "build_tokens": None, "deploy_tokens": None, "stack": [], "technologies": [], "code_lines": None, "dependencies": 0, "deploy_config": [],
             "human_steps": [], "deploys_without_human": False, "security_score": None, "stack_fit_score": None,
-            "screenshots": []}
+            "screenshots": [], "from_run": None}
 
 
 def mean(values: Iterable[float | None]) -> float | None:
@@ -265,6 +267,22 @@ def run_title(run: dict[str, Any]) -> str:
     return f"{run['date']} · #{run['number']}" if run.get("number") else run["name"]
 
 
+def merged_note(run: dict[str, Any], link_prefix: str) -> str:
+    """'Reran clouds: railway; the other cells are from [2026-10-14 · #13](...)', for merged runs."""
+    base = run.get("base_run")
+    if not base:
+        return ""
+    return (f"Reran {run.get('rerun', 'some cells')}; the other cells are copied unchanged from "
+            f"[{run_title(base)}]({link_prefix}{base['name']}/summary.md)")
+
+
+def run_scope(run: dict[str, Any]) -> str:
+    """The run's scope, and for a merged run what was rerun and on top of which run."""
+    if base := run.get("base_run"):
+        return f"{run.get('scope', 'full')} ({run.get('rerun')} rerun on {run_title(base)})"
+    return run.get("scope", "full")
+
+
 def run_order(summary: dict[str, Any]) -> tuple:
     run = summary["run"]
     return run.get("date", ""), int(run.get("number") or 0), int(run.get("attempt") or 0)
@@ -284,6 +302,8 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     ]
     if run.get("url"):
         lines.append(f"- Workflow run: {run['url']}")
+    if note := merged_note(run, "../"):
+        lines.append(f"- {note}")
     lines += ["", "## Summary", ""] + headline_table(summary, cfg)
     lines += ["## By app", "", MATRIX_LEGEND, ""] + app_matrix(summary, cfg, link_prefix="")
     lines += [
@@ -295,6 +315,8 @@ def render_summary(summary: dict[str, Any], cfg: config.Config) -> str:
     ]
     for c in summary["cells"]:
         report = f"[{fmt.status(c['status'])} {c['status']}]({cell_path(c)}.md)" if c["status"] != "missing" else "❔ missing"
+        if c.get("from_run"):
+            report += f" (from {run_title(c['from_run'])})"
         people = human_setup([c]) if c["status"] != "missing" else None
         lines.append(
             f"| {c['model']} | {c['cloud']} | {c['app']} | {c['trial']} | {report} | {c['checks_passed']}/{c['checks_total']} | "
@@ -389,7 +411,7 @@ def render_index(runs: list[dict[str, Any]], cfg: config.Config) -> str:
         run, cells = summary["run"], summary["cells"]
         agent_usd, _ = total(c["agent_usd"] for c in cells)
         lines.append(
-            f"| [{run_title(run)}](runs/{run['name']}/summary.md) | {run.get('scope', 'full')} | {', '.join(run['models'])} | "
+            f"| [{run_title(run)}](runs/{run['name']}/summary.md) | {run_scope(run)} | {', '.join(run['models'])} | "
             f"{sum(c['status'] == 'success' for c in cells)}/{len(cells)} | "
             f"{fmt.pct(mean(c['score'] for c in cells))} | {fmt.usd(agent_usd)} |"
         )
@@ -403,7 +425,7 @@ def render_json_index(runs: list[dict[str, Any]]) -> dict[str, Any]:
         run, cells = summary["run"], summary["cells"]
         entries.append({
             **{k: run.get(k) for k in ("name", "date", "number", "attempt", "url", "scope", "models", "trials",
-                                       "benchmark_version", "agent_versions")},
+                                       "benchmark_version", "agent_versions", "base_run", "rerun")},
             "schema": summary.get("schema", 1),
             "cells": len(cells),
             "success": sum(c["status"] == "success" for c in cells),
@@ -422,7 +444,7 @@ def render_readme_section(summary: dict[str, Any], cfg: config.Config, runs_coun
         f"{cfg.agent.get('name', 'Claude Code')} {', '.join(run['agent_versions']) or cfg.agent.get('version', '')} · "
         f"{', '.join(cfg.model(m).label for m in run['models'])}",
         "",
-    ] + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
+    ] + ([merged_note(run, "results/runs/") + ".", ""] if run.get("base_run") else []) + headline_table(summary, cfg) + app_matrix(summary, cfg, link_prefix=base) + [
         "Success counts deployments that passed every required check. *Human steps* and *human time* are what a "
         "person had to do, or would have to do, for the agent to deploy all the apps: distinct steps and estimated "
         "minutes. *Security & compliance* is the average score of an independent review of each deployment's security "
@@ -457,15 +479,78 @@ def scope(planned: list[dict[str, Any]], cfg: config.Config) -> str:
     return " · ".join(parts)
 
 
+# -- reruns ------------------------------------------------------------------------------------
+
+# How old a base run may be. Cells in a merged run should come from roughly the same time, since
+# clouds change their products, prices and limits.
+MAX_BASE_AGE_DAYS = 7
+
+
+def load_base(results_dir: Path, name: str, run: dict[str, Any], cfg: config.Config) -> dict[str, Any]:
+    """The summary of the run a rerun completes, after checking its cells can stand beside new ones."""
+    path = results_dir / "runs" / name / "summary.json"
+    if not path.is_file():
+        raise ValueError(f"base run {name}: no {path}")
+    base = json.loads(path.read_text())
+    info = base["run"]
+    problems = []
+    if info.get("scope", "full") != "full":
+        problems.append(f"it isn't a full run (scope: {info.get('scope')})")
+    if info.get("benchmark_version") != cfg.version:
+        problems.append(f"it ran benchmark v{info.get('benchmark_version')}, not v{cfg.version}")
+    if info.get("agent_versions") and info["agent_versions"] != [cfg.agent.get("version")]:
+        problems.append(f"it ran Claude Code {', '.join(info['agent_versions'])}, not {cfg.agent.get('version')}")
+    if set(info.get("models") or []) != {m.id for m in cfg.models}:
+        problems.append(f"it ran models {', '.join(info.get('models') or [])}")
+    age = (dt.date.fromisoformat(run["date"]) - dt.date.fromisoformat(info["date"])).days
+    if age > MAX_BASE_AGE_DAYS:
+        problems.append(f"it is {age} days old (at most {MAX_BASE_AGE_DAYS})")
+    if problems:
+        raise ValueError(f"base run {name} can't be merged: " + "; ".join(problems))
+    return base
+
+
+def inherit(base: dict[str, Any], results_dir: Path, run_dir: Path) -> list[dict[str, Any]]:
+    """Copies the base run's cells (records, reports and screenshots) into this run, unchanged, and
+    returns their summary rows marked with the run that produced them."""
+    source_dir = results_dir / "runs" / base["run"]["name"]
+    origin = {k: base["run"].get(k) for k in ("name", "date", "number", "attempt", "url")}
+    rows = []
+    for row in base["cells"]:
+        if row["status"] != "missing":
+            target = run_dir / cell_path(row)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            for suffix in (".json", ".md"):
+                if (source_dir / cell_path(row)).with_suffix(suffix).is_file():
+                    shutil.copyfile((source_dir / cell_path(row)).with_suffix(suffix), target.with_suffix(suffix))
+            if (source_dir / cell_path(row)).is_dir():
+                shutil.copytree(source_dir / cell_path(row), target, dirs_exist_ok=True)
+        # A cell already inherited by the base run keeps pointing at the run that produced it.
+        rows.append({**row, "from_run": row.get("from_run") or origin})
+    return rows
+
+
 # -- entry point -------------------------------------------------------------------------------
 
-def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: Path, run: dict[str, Any]) -> dict[str, Any]:
+def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: Path, run: dict[str, Any],
+              base_run: str | None = None) -> dict[str, Any]:
+    """With `base_run`, the planned cells replace that run's cells and the rest are copied from it, so
+    rerunning part of a full run (say, one cloud after a fix to its adapter) yields a full run again."""
     cfg = config.load()
     run_dir = results_dir / "runs" / run["name"]
     found = load_results(artifacts)
-    planned = sorted(plan["cells"], key=lambda c: (
-        [m.id for m in cfg.models].index(c["model"]), [x.id for x in cfg.clouds].index(c["cloud"]),
-        [a.id for a in cfg.apps].index(c["app"]), int(c["trial"])))
+    order = lambda c: ([m.id for m in cfg.models].index(c["model"]), [x.id for x in cfg.clouds].index(c["cloud"]),
+                       [a.id for a in cfg.apps].index(c["app"]), int(c["trial"]))
+    planned = sorted(plan["cells"], key=order)
+    inherited = []
+    if base_run:
+        base = load_base(results_dir, base_run, run, cfg)
+        rerun = {cell_key(c) for c in planned}
+        base = {**base, "cells": [c for c in base["cells"] if cell_key(c) not in rerun]}
+        inherited = inherit(base, results_dir, run_dir)
+        run = {**run, "base_run": {k: base["run"].get(k) for k in ("name", "date", "number", "attempt", "url")},
+               # What was rerun, without the dimensions it covered in full ("clouds: railway").
+               "rerun": " · ".join(p for p in scope(planned, cfg).split(" · ") if not p.endswith(": all"))}
     cells = []
     for cell in planned:
         key = cell_key(cell)
@@ -481,11 +566,14 @@ def aggregate(artifacts: Path, plan: dict[str, Any], results_dir: Path, readme: 
         if report.exists():
             target.with_suffix(".md").write_text(report_text)
         cells.append(compact(record))
-    run = {**run, "models": sorted({c["model"] for c in planned}, key=[m.id for m in cfg.models].index),
-           "trials": max((int(c["trial"]) for c in planned), default=1), "scope": scope(planned, cfg)}
+    # Only the cells this run produced decide whether it's worth committing.
+    fresh = cells
+    cells = sorted(cells + inherited, key=order)
+    run = {**run, "models": sorted({c["model"] for c in cells}, key=[m.id for m in cfg.models].index),
+           "trials": max((int(c["trial"]) for c in cells), default=1), "scope": scope(cells, cfg)}
     summary = summarize(run, cells, cfg)
     # A run where no agent could work at all (say, a bad API key) says nothing about the clouds.
-    summary["run"]["commit"] = any(c["status"] not in ("error", "missing") for c in cells)
+    summary["run"]["commit"] = any(c["status"] not in ("error", "missing") for c in fresh)
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     (run_dir / "summary.md").write_text(render_summary(summary, cfg))

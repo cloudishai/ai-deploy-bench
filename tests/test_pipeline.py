@@ -1,13 +1,14 @@
 """End to end: every cell step with a fake `claude`, a real local app, then run aggregation."""
 
 import json
+import shutil
 import sys
 import textwrap
 from pathlib import Path
 
 import pytest
 
-from bench import aggregate, cell, config, result
+from bench import aggregate, cell, config, plan, result
 from tests.reference_apps import Server, static_app
 
 FIXTURES = Path(__file__).parent / "fixtures" / "stream"
@@ -268,3 +269,84 @@ def test_screenshots_reach_the_report_and_the_committed_results(tmp_path, monkey
     assert json.loads((copied / "static-t1.json").read_text())["screenshots"][0]["file"] == "static-t1/home.jpg"
     gallery = (run_dir / "summary.md").read_text().split("## Screenshots", 1)[1]
     assert '[<img src="cells/opus-5-5/vercel/static-t1/home.jpg" width="220" alt="Static site on Vercel">]' in gallery
+
+
+BASE_RUN = "2026-10-14_13-1"
+
+
+def rerun_railway(tmp_path, date="2026-10-15"):
+    """Reruns Railway on top of committed run #13, its cells standing in for the new ones."""
+    results = tmp_path / "results"
+    shutil.copytree(Path(__file__).parent.parent / "results", results)
+    source = results / "runs" / BASE_RUN / "cells" / "opus-5-5" / "railway"
+    for app in config.load().apps:
+        record = json.loads((source / f"{app.id}-t1.json").read_text())
+        out = tmp_path / "artifacts" / app.id
+        out.mkdir(parents=True)
+        (out / "result.json").write_text(json.dumps({**record, "run_id": "999-1", "screenshots": []}))
+        (out / "report.md").write_text(f"# Railway {app.id}, rerun\n")
+    readme = tmp_path / "README.md"
+    readme.write_text("# Bench\n\n<!-- results:start -->\nold\n<!-- results:end -->\n")
+    run = {"name": f"{date}_14-1", "date": date, "number": 14, "attempt": 1, "url": "https://example.com/14"}
+    cells = plan.plan(config.load(), clouds="railway")["cells"]
+    return results, readme, run, {"cells": cells}
+
+
+def test_a_rerun_of_one_cloud_completes_its_base_run(tmp_path):
+    results, readme, run, rerun = rerun_railway(tmp_path)
+    summary = aggregate.aggregate(tmp_path / "artifacts", rerun, results, readme, run, base_run=BASE_RUN)
+
+    base = json.loads((results / "runs" / BASE_RUN / "summary.json").read_text())
+    assert summary["run"]["scope"] == "full" and summary["run"]["rerun"] == "clouds: railway"
+    assert summary["run"]["base_run"]["name"] == BASE_RUN and len(summary["cells"]) == len(base["cells"])
+    for cell in summary["cells"]:
+        assert (cell["from_run"] is None) == (cell["cloud"] == "railway")
+        assert cell["cloud"] == "railway" or cell["from_run"]["url"] == base["run"]["url"]
+    # The other clouds' results are the base run's, files included.
+    groups = {g["cloud"]: g for g in summary["groups"]}
+    for group in base["groups"]:
+        if group["cloud"] != "railway":
+            assert groups[group["cloud"]] == group
+    run_dir = results / "runs" / run["name"]
+    for cell in base["cells"]:
+        if cell["cloud"] != "railway":
+            assert (run_dir / cell["path"]).read_bytes() == (results / "runs" / BASE_RUN / cell["path"]).read_bytes()
+            for shot in cell["screenshots"]:
+                assert (run_dir / aggregate.cell_path(cell) / shot).is_file()
+    assert "rerun" in (run_dir / "cells/opus-5-5/railway/static-t1.md").read_text()
+    assert json.loads((run_dir / "cells/opus-5-5/railway/static-t1.json").read_text())["run_id"] == "999-1"
+
+    # A merged run is full, so it updates the README, and says what it's made of everywhere.
+    text = readme.read_text()
+    assert "Latest full run: [2026-10-15 · #14]" in text and "old" not in text
+    assert f"copied unchanged from [2026-10-14 · #13](results/runs/{BASE_RUN}/summary.md)" in text
+    report = (run_dir / "summary.md").read_text()
+    assert f"[2026-10-14 · #13](../{BASE_RUN}/summary.md)" in report and "(from 2026-10-14 · #13)" in report
+    assert "full (clouds: railway rerun on 2026-10-14 · #13)" in (results / "README.md").read_text()
+    listed = json.loads((results / "index.json").read_text())["runs"][0]
+    assert listed["base_run"]["name"] == BASE_RUN and listed["scope"] == "full"
+
+    # Trends skip the copied clouds, so the base run's results aren't plotted twice.
+    from website import data
+    runs = data.load(results)
+    merged = next(r for r in runs if r.name == run["name"])
+    assert merged.inherited("opus-5-5", "cloudish") and not merged.inherited("opus-5-5", "railway")
+    success = next(m for m in data.metrics(config.load()) if m.id == "success")
+    scoped, series = data.trend(runs, success, config.load())
+    at = scoped.index(merged)
+    values = {s.key: s.values[at] for s in series}
+    assert values["opus-5-5/cloudish"] is None and values["opus-5-5/railway"] is not None
+    assert merged.cell("opus-5-5", "cloudish", "static").workflow_url == base["run"]["url"]
+    assert merged.cell("opus-5-5", "railway", "static").workflow_url == run["url"]
+
+
+def test_a_rerun_refuses_a_base_run_it_cannot_stand_beside(tmp_path):
+    results, readme, run, rerun = rerun_railway(tmp_path, date="2026-10-30")
+    with pytest.raises(ValueError, match="16 days old"):
+        aggregate.aggregate(tmp_path / "artifacts", rerun, results, readme, run, base_run=BASE_RUN)
+    run = {**run, "date": "2026-10-15"}
+    with pytest.raises(ValueError, match="isn't a full run.*benchmark v"):
+        aggregate.aggregate(tmp_path / "artifacts", rerun, results, readme, run, base_run="2026-10-13_4-1")
+    with pytest.raises(ValueError, match="no "):
+        aggregate.aggregate(tmp_path / "artifacts", rerun, results, readme, run, base_run="2026-01-01_1-1")
+    assert not (results / "runs" / run["name"]).exists() and "old" in readme.read_text()

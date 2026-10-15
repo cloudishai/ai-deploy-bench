@@ -65,6 +65,11 @@ class Cell:
         return stack.headline(self.record) if self.record else []
 
     @property
+    def workflow_url(self) -> str | None:
+        """The workflow run that produced the cell, which a merged run may have copied it from."""
+        return (self.from_run or {}).get("url") or self.run.info.get("url")
+
+    @property
     def human_minutes(self) -> float | None:
         steps = self.summary.get("human_steps")
         return None if steps is None else sum(step.get("minutes") or 0 for step in steps)
@@ -120,6 +125,12 @@ class Run:
 
     def cell(self, model: str, cloud: str, app: str, trial: int = 1) -> Cell | None:
         return next((c for c in self.cells if (c.model, c.cloud, c.app, int(c.trial)) == (model, cloud, app, trial)), None)
+
+    def inherited(self, model: str, cloud: str) -> bool:
+        """Whether every cell of a model x cloud was copied from an earlier run, so trends skip it
+        rather than plot the same results twice."""
+        mine = [c for c in self.cells if (c.model, c.cloud) == (model, cloud)]
+        return bool(mine) and all(c.from_run for c in mine)
 
     def group(self, model: str, cloud: str) -> dict[str, Any] | None:
         return next((g for g in self.groups if (g["model"], g["cloud"]) == (model, cloud)), None)
@@ -265,10 +276,11 @@ def trend(runs: list[Run], metric: Metric, cfg: config.Config, app: str | None =
             values = []
             for run in scoped:
                 if app is None:
-                    group = run.group(model, cloud)
+                    group = None if run.inherited(model, cloud) else run.group(model, cloud)
                     values.append(metric.group(group) if group else None)
                 else:
-                    found = [metric.cell(c) for c in run.finished if (c.model, c.cloud, c.app) == (model, cloud, app)]
+                    found = [metric.cell(c) for c in run.finished
+                             if (c.model, c.cloud, c.app) == (model, cloud, app) and not c.from_run]
                     found = [v for v in found if v is not None]
                     values.append(statistics.fmean(found) if found else None)
             if any(v is not None for v in values):
