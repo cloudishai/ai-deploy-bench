@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from bench import aggregate, cell, config, janitor, plan
+from bench.clouds import ADAPTERS, base
 from bench.verify import VERIFIERS
 from bench.verify.browser import Browser
 
@@ -28,11 +29,28 @@ def check_base_run(results: Path, name: str, date: str) -> None:
         sys.exit(f"::error::{error}")
 
 
+def check_credentials(cfg: config.Config, cloud_ids: list[str]) -> None:
+    """Exits when a planned cloud's credentials are missing or rejected, before any agent is paid for."""
+    problems = []
+    for cloud_id in cloud_ids:
+        if not cfg.cloud(cloud_id).provided_credentials:
+            continue  # agents get their own (Cloudish)
+        problems += [f"{cloud_id}: {p}" for p in base.check_credentials(ADAPTERS[cloud_id](os.environ))]
+    if problems:
+        for problem in problems:
+            print(f"::error::{problem}")
+        sys.exit("cloud credentials failed a read-only check; update the secrets, or leave those clouds out")
+    print("credentials ok: " + (", ".join(cloud_ids) or "none"))
+
+
 def cmd_plan(args: argparse.Namespace) -> None:
     # Checked before any cell runs, so a run that couldn't be merged doesn't spend anything.
     if args.base_run:
         check_base_run(Path(args.results), args.base_run, dt.date.today().isoformat())
-    result = plan.plan(config.load(), args.clouds, args.models, args.apps, args.trials, args.max_parallel)
+    cfg = config.load()
+    result = plan.plan(cfg, args.clouds, args.models, args.apps, args.trials, args.max_parallel)
+    if args.check_credentials:
+        check_credentials(cfg, [entry["cloud"] for entry in result["clouds"]])
     result["run"] = {"name": args.run_name} if args.run_name else {}
     Path(args.out).write_text(json.dumps(result, indent=2))
     write_github_output(clouds=json.dumps(result["clouds"]), cells=str(len(result["cells"])))
@@ -113,6 +131,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--max-parallel", type=int, default=None)
     p.add_argument("--run-name", default="")
     p.add_argument("--base-run", default="", help="check that this run can be completed by the planned cells")
+    p.add_argument("--check-credentials", action="store_true",
+                   help="check each planned cloud's credentials (from the environment) with a read-only listing")
     p.add_argument("--results", default="results")
     p.add_argument("--out", default="plan.json")
     p.set_defaults(func=cmd_plan)

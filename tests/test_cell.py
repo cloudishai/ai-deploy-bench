@@ -80,6 +80,32 @@ def test_teardown_spares_declared_resources_that_predate_the_cell(tmp_path, monk
     assert report["cloud"]["leftovers"] == []
 
 
+def test_inventory_flags_only_the_benchmarks_own_credentials_being_rejected(tmp_path, monkeypatch):
+    current = cell.prepare(tmp_path / "cell", tmp_path / "work", "9-3", "railway", "opus-5-5", "static", 1)
+
+    class Fake(base.Cloud):
+        id = "fake"
+
+        def __init__(self, error):
+            super().__init__({})
+            self.error = error
+
+        def configured(self):
+            return True
+
+        def list_resources(self):
+            return self.collect("projects", self._fail) if self.error else []
+
+        def _fail(self):
+            raise RuntimeError(self.error)
+
+    # A key the agent saved and that was later revoked is the agent's business, not the harness's.
+    monkeypatch.setattr(cell, "adapters", lambda _: [("cloud", Fake(None)), ("cloud", Fake("Railway API error: Not Authorized"))])
+    assert "credentials_rejected" not in cell.inventory(current)["cloud"]
+    monkeypatch.setattr(cell, "adapters", lambda _: [("cloud", Fake("Railway API error: Not Authorized"))])
+    assert cell.inventory(current)["cloud"]["credentials_rejected"] == "listing projects failed: Railway API error: Not Authorized"
+
+
 def test_credentials_the_agent_saved_are_inventoried_and_hidden(tmp_path, monkeypatch):
     monkeypatch.setenv("CLOUDISH_API_KEY", "cld_provided_0123456789")
     current = cell.prepare(tmp_path / "cell", tmp_path / "work", "9-2", "cloudish", "opus-5-5", "static", 1)

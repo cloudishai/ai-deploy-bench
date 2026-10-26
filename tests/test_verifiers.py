@@ -1,8 +1,9 @@
 """Runs each verifier against a correct reference app and against deliberately broken ones."""
 
+import httpx
 import pytest
 
-from bench.verify import VERIFIERS
+from bench.verify import VERIFIERS, api
 from bench.verify.browser import Browser
 from tests.reference_apps import Server, api_app, crud_app, dataviz_app, realtime_app, static_app
 
@@ -136,6 +137,21 @@ def test_api_without_rate_limit():
 def test_api_with_global_rate_limit():
     result = verify("api", api_app(KEYS, frozenset({"global_rate_limit"})), inputs={"api_keys": KEYS})
     assert "rate_limit_per_key" in failures(result)
+
+
+def test_api_waits_out_a_rate_limit_left_by_the_agent(monkeypatch):
+    # The agent's own rate-limit test can leave a key throttled seconds before verification starts
+    # (run 2026-10-26_16-1, Cloudish API). Shrink the window and the wait so the test stays fast.
+    monkeypatch.setattr(api, "COOLDOWN_S", 2.5)
+    with Server(api_app(KEYS, window_s=2)) as url:
+        for _ in range(61):
+            httpx.get(url + "/v1/notes", headers={"X-API-Key": KEYS[1]})
+        verifier = VERIFIERS["api"](url, inputs={"api_keys": KEYS}, require_https=False, min_persistence_delay=0,
+                                    ready_timeout=10)
+        result = verifier.run_all()
+    assert failures(result) == {}
+    assert result["notes"] == ["1 of 2 API keys were rate-limited before the first check, by requests made "
+                               "before verification; waited 2.5s for the limit to reset"]
 
 
 def test_dataviz_with_wrong_counts():

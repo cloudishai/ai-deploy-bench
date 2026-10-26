@@ -282,6 +282,46 @@ def test_railway_prices_projects_and_deletes(fake):
     assert sorted(deleted) == ["p1", "p3"]
 
 
+def test_railway_lists_a_workspace_tokens_projects(fake):
+    def route(request):
+        query = json.loads(request.content)["query"]
+        if "me {" in query:
+            return {"errors": [{"message": "Not Authorized"}]}  # workspace tokens can't read `me`
+        return {"data": {"projects": {"edges": [
+            {"node": {"id": "p1", "name": "adb-k3x9f-crud", "createdAt": "2026-10-12T10:00:00Z",
+                      "services": {"edges": []}, "volumes": {"edges": []}}},
+        ]}}}
+
+    fake({("POST", "backboard.railway.com/graphql/v2"): route})
+    result = base.inventory(ADAPTERS["railway"]({"RAILWAY_API_TOKEN": "workspace-token"}), PREFIX, [], None)
+    assert set(by_name(result)) == {"adb-k3x9f-crud"} and result["errors"] == []
+
+
+def test_credential_check_reports_rejected_and_missing_tokens(fake):
+    fake({("POST", "backboard.railway.com/graphql/v2"):
+          lambda request: {"errors": [{"message": "Not Authorized"}]}})
+    problems = base.check_credentials(ADAPTERS["railway"]({"RAILWAY_API_TOKEN": "revoked"}))
+    assert problems == ["listing projects failed: Railway API error: Not Authorized"]
+    assert base.rejected_credentials(problems) == problems[0]
+    assert base.check_credentials(ADAPTERS["railway"]({})) == ["RAILWAY_API_TOKEN not set"]
+    assert base.rejected_credentials(["listing projects failed: POST https://x -> HTTP 400: bad query"]) is None
+    assert base.rejected_credentials(["listing apps failed: GET https://x -> HTTP 401: Unable to authenticate"])
+
+
+def test_plan_stops_before_any_cell_when_a_token_is_rejected(fake, monkeypatch, capsys):
+    from bench.__main__ import check_credentials
+
+    fake({("POST", "backboard.railway.com/graphql/v2"):
+          lambda request: {"errors": [{"message": "Not Authorized"}]}})
+    monkeypatch.setenv("RAILWAY_API_TOKEN", "revoked")
+    monkeypatch.delenv("CLOUDISH_API_KEY", raising=False)
+    cfg = config.load()
+    check_credentials(cfg, ["cloudish"])  # agents mint their own Cloudish keys: nothing to check
+    with pytest.raises(SystemExit):
+        check_credentials(cfg, ["cloudish", "railway"])
+    assert "::error::railway: listing projects failed: Railway API error: Not Authorized" in capsys.readouterr().out
+
+
 def test_railway_surfaces_api_errors(fake):
     fake({("POST", "backboard.railway.com/graphql/v2"):
           lambda request: {"errors": [{"message": "Not Authorized"}]}})

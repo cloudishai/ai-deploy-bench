@@ -84,7 +84,10 @@ A cell is a **success** when its deployment answers on a public HTTPS URL and pa
 *required* check for its app. It is **partial** when it is reachable but at least one required
 check fails, and **failed** when there is no reachable deployment. The failure stage is recorded:
 `build`, `deploy`, or `human` when the agent couldn't finish without something only a person can
-do. Optional checks count toward the cell's **score**, which is checks passed
+do. A cell is an **error** at the stage `harness` when the benchmark itself failed it: the verifier
+crashed, or the cloud rejected the benchmark's own credentials (a revoked token, say) and the cell
+didn't succeed. The agent's blockers then describe the dead credentials, not the cloud, so they
+aren't counted as human steps. Optional checks count toward the cell's **score**, which is checks passed
 over checks run. Checks skipped because no browser was available don't count either way.
 
 Every app shares three required checks: the app answers with 2xx within `ready_timeout_minutes`
@@ -100,6 +103,12 @@ checked strictly where the spec names one, with close equivalents accepted (for 
 | [API](../apps/api/TASK.md) | health; OpenAPI 3 document; missing or unknown key is 401; create, validate, get, list with tag filter, partial update, delete; notes private per key; data still there after a minute; a burst past 60 requests per minute gets 429, and only for that key | `/docs` page, newest-first order, `Retry-After` header |
 | [Dashboard](../apps/dataviz/TASK.md) | dashboard served; `/api/summary` totals, monthly and per-category revenue match values computed independently from the CSV for five filter combinations (including an empty result); a chart renders in the browser | at least two charts, filter controls |
 | [Realtime chat](../apps/realtime/TASK.md) | UI served; clients connect (WebSocket or SSE, as declared in `deployment.json`); a message reaches another client within 5 s; rooms stay isolated; five users posting at once all receive every message within 10 s; history endpoint includes recent messages | transport declared, sender echo, over-long messages rejected, UI loads without errors |
+
+The API verifier calls the app with the same keys the agent had, and agents often test the rate
+limit through the public URL seconds before verification starts. So before its first request with
+a key, it sends one request per key, and if either is already throttled it waits 62 seconds, a full
+window, before checking anything. The wait is logged and recorded under `notes` in the cell's
+`verify.json`.
 
 The verifiers are tested against reference implementations of all five apps, and against broken
 variants to prove each check catches what it should ([`tests/`](../tests)).

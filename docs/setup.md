@@ -27,6 +27,10 @@ gets the model API key.
 | `VERCEL_TEAM_ID` | variable, optional | Vercel cells, when the token can see several teams |
 | `RENDER_OWNER_ID` | variable, optional | Render cells, when the key can see several workspaces |
 
+Before any cell starts, the `plan` job lists each planned cloud's resources once with these
+credentials (read-only) and fails the run if a token is missing or rejected, so a revoked token
+costs nothing. Rerun with the secret updated, or leave that cloud out of `clouds`.
+
 ## Anthropic
 
 An API key from the [Claude Console](https://platform.claude.com) with access to every model in
@@ -85,8 +89,9 @@ claiming the key and adding prepaid credits.
 
 - **Prerequisites:** sign up at [railway.com](https://railway.com) and create an **account or
   workspace** API token (Account Settings → Tokens). A project-scoped token can only deploy to an
-  existing project, so it can't be used here. Set it as `RAILWAY_API_TOKEN`. Sign up with GitHub to
-  avoid the Limited Trial, which restricts outbound network access.
+  existing project, so it can't be used here. Set it as `RAILWAY_API_TOKEN`. A workspace token
+  can't read the account (`me`), so the harness lists that workspace's projects instead. Sign up
+  with GitHub to avoid the Limited Trial, which restricts outbound network access.
 - `railway up` uploads the local folder and builds it on Railway, so **no Git hosting is needed** —
   agents don't need the GitHub scratch account.
 - The free trial ($5 of credit for 30 days, no card) covers a benchmark deployment, but it caps a

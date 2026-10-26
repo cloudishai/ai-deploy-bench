@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from bench import agent, config, fmt, human
-from bench.clouds.base import parse_time
+from bench.clouds.base import parse_time, rejected_credentials
 
 if TYPE_CHECKING:
     from bench.cell import Cell
@@ -75,7 +75,12 @@ def build(cell: "Cell") -> dict[str, Any]:
     deployment = cell.deployment()
     cloud_inventory = inventory.get("cloud") or {}
     status, stage = outcome(built, deployed, verification)
-    people = human.assess(cell, inventory, deployment, succeeded=status == "success")
+    # The benchmark's own credentials were refused (revoked, say), so the agent's blockers are the
+    # harness's failure, not the cloud's.
+    harness_failed = status != "success" and bool(cloud_inventory.get("credentials_rejected"))
+    if harness_failed:
+        status, stage = "error", "harness"
+    people = human.assess(cell, inventory, deployment, succeeded=status == "success", harness_failed=harness_failed)
     if people["blocked"] and status != "success":
         stage = "human"  # it couldn't finish without something only a person can do
     # Deployed with no human help: the no-credentials attempt won and the app passed its checks.
@@ -193,12 +198,27 @@ def no_human_lines(record: dict[str, Any]) -> list[str]:
     if record.get("deploys_without_human"):
         return ["**Deployed without a human:** the agent deployed with no credentials provided — "
                 "no human signup or token needed.", ""]
+    if nh.get("used") == "no_credentials":
+        return ["**Deployed without credentials, but not working:** the agent deployed with no credentials "
+                "provided, but the app failed required checks, so it doesn't count as deployed without a human.", ""]
     extra = ""
     if nh.get("deploy_s") is not None:
         extra = (f" (that attempt took {fmt.duration(nh['deploy_s'])}, {fmt.tokens(nh.get('tokens'))} tokens, "
                  f"{fmt.usd(nh.get('agent_usd'))})")
     return ["**Needed a human:** the no-credentials attempt didn't produce a working public URL, so the "
             f"cloud's credentials were provided and the agent redeployed{extra}.", ""]
+
+
+def harness_lines(record: dict[str, Any]) -> list[str]:
+    """Why a cell is a harness error when the cloud refused the benchmark's own credentials."""
+    if record["failure_stage"] != "harness" or record["verification"].get("harness_error"):
+        return []
+    rejected = rejected_credentials(record.get("inventory_errors") or [])
+    if not rejected:
+        return []
+    cloud = (record.get("names") or {}).get("cloud", record["cloud"])
+    return [f"**Harness error:** {cloud} rejected the benchmark's own credentials (`{rejected}`), so this cell "
+            f"says nothing about {cloud}. Update the secret and rerun it.", ""]
 
 
 def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
@@ -235,6 +255,7 @@ def render_report(record: dict[str, Any], cell: "Cell | None" = None) -> str:
         f"App answered {fmt.duration(t['ready_after_deploy_s'])} after the agent finished deploying.",
         "",
         *no_human_lines(record),
+        *harness_lines(record),
         *screenshot_lines(record.get("screenshots") or []),
         "## What was built",
         "",
