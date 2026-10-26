@@ -1,0 +1,732 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-uxt97-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "partial",
+  "failure_stage": "verify",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "no_credentials",
+    "url_answered": true,
+    "deploy_s": null,
+    "tokens": 0,
+    "agent_usd": null
+  },
+  "url": "https://adb-uxt97-api.cloudish.app",
+  "url_source": "deployment.json",
+  "score": 0.95,
+  "checks_passed": 19,
+  "checks_total": 20,
+  "required_failed": [
+    "isolation"
+  ],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Add credits to the Cloudish key 'adb-uxt97-api': mint a claim link with GET https://cloudish.ai/api/v1/credits/claim (Authorization: Bearer $CLOUDISH_API_KEY from .env), open it within 30 minutes, sign in and top up the balance. (The key started with 0.1 free credits, enough for about 9 hours of the",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": false
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 74.0,
+      "tokens": 442653,
+      "cost_usd": 0.445585
+    },
+    "status": "completed",
+    "score": 79.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The Cloudish key was written straight to a chmod-600 .env file without being printed, and that file was left out of the build context. API_KEYS was piped from BENCH_API_KEYS into Cloudish's encrypted secrets API and never echoed. No secrets appear in the source, the image or the transcripts."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The app was built server-side on Cloudish from a tarball of the agent's own workspace, and the redeploy was checked against the running container logs. However, the base image is a floating tag (python:3.12-slim, not pinned to a digest), and only the top-level Python dependencies are pinned. Transitive dependencies such as starlette and pydantic have no lock file."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "Personal use fits a prepaid-credit container host, and as far as I know Cloudish's terms don't rule it out, though I'm not certain of them. But the app runs on the 0.1 free starting credit, which buys about 9 hours awake (balance is now about $0.097). Once it reaches zero the app stops with 402s until a person tops it up. The agent disclosed this, but marked it non-blocking. After 24 h idle the app sleeps and the first call gets a 503."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There is one container with the SQLite database on a private volume, the smallest size, and no extra public resources. Public 'open' access is needed for a public API. The Dockerfile has no USER directive, so the app runs as root."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTP returns a 308 redirect to HTTPS, which is served with a valid certificate and HSTS from the platform. The app doesn't set X-Content-Type-Options, frame protection or a CSP, though it easily could."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "No source files, .env, .git or database file are reachable. Errors are JSON without stack traces, and TRACE is rejected. /redoc is exposed beyond the required /docs, and the docs pages load Swagger UI from a floating jsDelivr major version, but both are low impact."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "All SQL is parameterized, Pydantic enforces strict types, notes are scoped to the owning key and return 404 to other keys, and the per-key rate limit works. There are no length limits on title, content or tags. Key comparison isn't constant-time, and rate-limit counts reset whenever the container restarts."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "App runs on a 0.1 free credit that lasts about 9 hours awake",
+        "evidence": "process/deployment.json human_steps: '0.1 free credits, enough for about 9 hours... When the balance reaches zero Cloudish stops the app and requests get 402'; process/context.json balance_usd 0.096523; marked \"blocking\": false",
+        "recommendation": "Make topping up the credits (about $7.84/month) a blocking step before handing the app over, or choose funded hosting."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "app/Dockerfile has no USER directive (FROM python:3.12-slim ... CMD uvicorn)",
+        "recommendation": "Create an unprivileged user, give it ownership of /data, and add USER to the Dockerfile."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Sleeping app answers the first API call with a 503 HTML page",
+        "evidence": "deploy.md: first request returned the 'Starting up' 503 HTML page; deployment.json notes sleepAfterMinutes=1440",
+        "recommendation": "Use alwaysOn once funded, or document that clients should retry on 503."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image tag not pinned to a digest",
+        "evidence": "app/Dockerfile:1 FROM python:3.12-slim",
+        "recommendation": "Pin the base image to python:3.12-slim@sha256:<digest>."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Transitive Python dependencies unpinned, no hashes",
+        "evidence": "app/requirements.txt pins only fastapi==0.115.12 and uvicorn==0.34.2, so starlette, pydantic and anyio resolve at build time",
+        "recommendation": "Generate a full lock file (pip-compile --generate-hashes or uv lock) and install with --require-hashes."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No size limits on note fields",
+        "evidence": "app/app/main.py:148-161: title, content and tags have no max_length or max item count",
+        "recommendation": "Add max_length to title and content and cap the number and length of tags, and set a request body size limit."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -sI https://adb-uxt97-api.cloudish.app/health returns only content-type, content-length and strict-transport-security (no X-Content-Type-Options, X-Frame-Options or CSP)",
+        "recommendation": "Add middleware that sets X-Content-Type-Options: nosniff, X-Frame-Options: DENY and a restrictive CSP (relaxed for /docs)."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "API key comparison not constant-time; rate-limit state in memory",
+        "evidence": "app/app/main.py:198 'if key not in _api_keys()'; main.py:181 _hits kept in memory, so counts reset on restart or wake",
+        "recommendation": "Compare keys with hmac.compare_digest. In-memory counts are acceptable with a single instance."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "Docs pages load third-party scripts from a floating CDN version; /redoc also exposed",
+        "evidence": "GET /docs references https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js; GET /redoc returns 200",
+        "recommendation": "Pin the Swagger UI version (or self-host it), and turn off /redoc if it isn't needed (redoc_url=None)."
+      }
+    ],
+    "summary": "The Notes API is a FastAPI + SQLite app in a single Cloudish container with a persistent volume, and its secrets were handled well: the Cloudish key stayed in a local .env left out of the build context, and API_KEYS went into Cloudish's encrypted secrets without ever being printed. The live service has HTTPS only, HSTS, owner-scoped access, parameterized SQL and no exposed files. The main weaknesses: the app runs on a 0.1 free credit that lasts about 9 hours of uptime, the container runs as root, build inputs aren't fully pinned, and there are minor gaps in security headers and input size limits."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "FastAPI generates the required OpenAPI document and docs and handles validation. SQLite in WAL mode on a persistent volume is a real, durable database for a few friends' scripts. An in-memory per-key limiter is correct with exactly one instance."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "Two pinned runtime dependencies and the standard-library sqlite3 make up one process with no extra services. This is about as simple as the requirements allow, and nothing is a stand-in that only looks like it works."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "Cloudish runs long-lived containers built from a Dockerfile, with volumes for persistence and no managed database, so a single container plus a volume is the natural fit. STACK.md reasons through this correctly, and the build followed it."
+      }
+    ],
+    "summary": "Python 3.12, FastAPI, Uvicorn and SQLite on a Cloudish volume fit the job well: they deliver durable storage, auto-generated OpenAPI and docs, and correct single-instance rate limiting with minimal moving parts. The build matches the reasoning recorded in STACK.md."
+  },
+  "timing": {
+    "build_s": 183.8,
+    "deploy_s": 262.2,
+    "deploy_nohuman_s": null,
+    "agent_s": 446.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 69.1
+  },
+  "tokens": {
+    "build": {
+      "input": 13864,
+      "output": 16188,
+      "cache_read": 681972,
+      "cache_write": 26025,
+      "total": 738049
+    },
+    "deploy": {
+      "input": 932,
+      "output": 9348,
+      "cache_read": 997213,
+      "cache_write": 27423,
+      "total": 1034916
+    },
+    "deploy_nohuman": {},
+    "total": {
+      "input": 14796,
+      "output": 25536,
+      "cache_read": 1679185,
+      "cache_write": 53448,
+      "total": 1772965
+    }
+  },
+  "cost": {
+    "agent_usd": 1.115858,
+    "agent_build_usd": 0.588612,
+    "agent_deploy_usd": 0.527246,
+    "agent_nohuman_deploy_usd": null,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 7.84
+  },
+  "activity": {
+    "turns": {
+      "build": 18,
+      "deploy": 15
+    },
+    "tool_calls": {
+      "Bash": 28,
+      "Write": 2,
+      "WebFetch": 1
+    },
+    "shell_commands": {
+      "build": 14,
+      "deploy": 14
+    },
+    "tool_errors": 4,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T20:15:33+00:00",
+      "wall_time_s": 183.8,
+      "api_time_s": 143.4,
+      "turns": 18,
+      "tokens": {
+        "input": 13864,
+        "output": 16188,
+        "cache_read": 681972,
+        "cache_write": 26025,
+        "total": 738049
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.588612,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 4217,
+          "output": 15188,
+          "cache_read": 681972,
+          "cache_write": 26025,
+          "cost_usd": 0.5871473999999999,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 9647,
+          "output": 1000,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0014647,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 14,
+        "WebFetch": 1,
+        "Write": 2
+      },
+      "tool_errors": 4,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T20:18:38+00:00",
+      "wall_time_s": 262.2,
+      "api_time_s": 101.7,
+      "turns": 15,
+      "tokens": {
+        "input": 932,
+        "output": 9348,
+        "cache_read": 997213,
+        "cache_write": 27423,
+        "total": 1034916
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.527246,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 932,
+          "output": 9348,
+          "cache_read": 997213,
+          "cache_write": 27423,
+          "cost_usd": 0.5272455999999999,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 14
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Notes API is built and every requirement checked out locally. The 22 automated tests pass, and curl confirmed the same behaviour against both the local server and the Docker container. Nothing is deployed yet, and every server and container I started has been stopped.\n\n**Stack** (reasoning in `STACK.md`): Python 3.12, FastAPI and Uvicorn, with notes stored in SQLite at `DATABASE_PATH` (`/data/notes.db` in the image). I chose it because Cloudish runs Docker containers and has no managed database, only a persistent volume at `/data`. SQLite on that volume is the simplest option that survives restarts and redeploys. FastAPI also generates `/openapi.json` and `/docs` from the code. The other options I considered were Node with Express and SQLite, and Postgres running inside the container.\n\n**What was checked:**\n- **Auth:** missing or unknown `X-API-Key` returns `401 {\"error\": ...}`, and another key's notes return `404`.\n- **Rate limit:** the 61st request in a minute returns `429` with a `Retry-After` header, and other keys are unaffected.\n- **Endpoints:** create, list (newest first, with `?tag=` filter), get, patch and delete all work. Bad input returns `400 {\"error\": ...}` instead of FastAPI's default `422`.\n- **Persistence:** notes survived restarting the local server and replacing the container on the same volume.\n\n**Behaviour you might not expect:**\n- `/v1` request bodies are read as JSON even without a `Content-Type: application/json` header, so `curl -d` works. Without this, those requests got a `400`.\n- `content` is required when creating a note. A `PATCH` with an empty body or a `null` field returns `400`.\n- The rate-limit counts are kept in memory, so they reset when the app restarts and only work with a single instance. That matches Cloudish, which runs one container when a volume is attached.\n- The `/docs` page loads Swagger UI from a CDN, so viewing it needs internet access. The endpoint itself always returns `200`.\n\n**Run it:**\n```bash\npython3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt\nAPI_KEYS=key-one,key-two .venv/bin/uvicorn app.main:app --port 8000\n.venv/bin/pytest -q\n```\n**Or in Docker:**\n```bash\ndocker build -t notes-api .\ndocker run -p 8000:8000 -e API_KEYS=key-one,key-two -v notesdata:/data notes-api\n```\nFor step 2, the Cloudish deployment needs `API_KEYS` set and a volume mounted at `/data`.",
+    "deploy": "The Notes API is live at **https://adb-uxt97-api.cloudish.app**. Every requirement in `TASK.md` passed when tested through that URL with the two `BENCH_API_KEYS` keys. The main open issue is credit: the free balance only covers about 9 hours of the app being awake.\n\n**What's deployed:**\n- **Cloudish key `adb-uxt97-api`:** created without signup through Cloudish's API and saved in `.env`. It came with 0.1 free credits (credits are dollars).\n- **App `adb-uxt97-api-web`:** built on Cloudish from the Dockerfile. It runs on the smallest size (`shared`, 0.1 CPU, 0.2 GB) and costs $0.0107 per hour while awake, about $7.84 a month if it never sleeps.\n- **Storage:** the SQLite database is on a 1 GB volume at `/data`, which isn't billed. A note I created before a redeploy was still there afterwards.\n- **`API_KEYS`:** set to exactly the `BENCH_API_KEYS` value, stored as an encrypted secret. It isn't in the image or in plain config, and no secret was printed.\n- **HTTPS:** plain HTTP redirects to HTTPS.\n\n**What was tested on the public URL:**\n- `/health`, `/openapi.json` and `/docs` work without a key.\n- A missing or unknown key gets `401`.\n- Create, list, get, update and delete all work. List is newest first and the `tag` filter works.\n- Bad input, including malformed JSON, gets `400`.\n- Another key's notes return `404` for get, update, delete and list.\n- The 61st request in a minute gets `429` with `Retry-After`, and the other key keeps working.\n\n**Things to know:**\n- **Credit runs out:** when the balance hits zero, Cloudish stops the app and requests get `402`; the stored notes are kept. Adding credit is the one human step in `deployment.json`, and it isn't blocking. Someone has to open a claim link and top up. I didn't create the link because it expires 30 minutes after it's made; the call that creates one is in `deployment.json`.\n- **Wake-up delay:** to save credit, the app sleeps after 24 hours without requests (the longest Cloudish allows). The first request to a sleeping app gets a `503` \"starting up\" page for a few seconds, then requests work normally.\n- **Rate-limit counts reset:** they are kept in memory, so a restart or wake-up clears them. This is accurate only because the app runs as a single container, which Cloudish requires when a volume is attached."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-uxt97-api.cloudish.app",
+    "resources": [
+      {
+        "type": "API key / credit account",
+        "name": "adb-uxt97-api",
+        "id": "186",
+        "plan": "prepaid credits (0.1 free starting credit)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Docker container, built server-side from Dockerfile)",
+        "name": "adb-uxt97-api-web",
+        "id": "project 200 / docker app 590",
+        "plan": "shared (0.1 CPU, 0.2 GB), sleepAfterMinutes=1440, $0.010733/h while awake",
+        "monthly_cost_usd": 7.84
+      },
+      {
+        "type": "persistent volume (SQLite at /data/notes.db)",
+        "name": "adb-uxt97-api-web volume",
+        "id": "attached to docker app 590",
+        "plan": "1 GB",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "subdomain",
+        "name": "adb-uxt97-api.cloudish.app",
+        "id": "",
+        "plan": "included",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 7.84,
+    "human_steps": [
+      {
+        "step": "Add credits to the Cloudish key 'adb-uxt97-api': mint a claim link with GET https://cloudish.ai/api/v1/credits/claim (Authorization: Bearer $CLOUDISH_API_KEY from .env), open it within 30 minutes, sign in and top up the balance.",
+        "why": "The key started with 0.1 free credits, enough for about 9 hours of the container being awake. When the balance reaches zero Cloudish stops the app and requests get 402 (data on the volume is kept). Keeping the API up long-term costs about $7.84/month if it stays awake around the clock.",
+        "blocking": false
+      }
+    ],
+    "notes": "FastAPI + SQLite in a single Cloudish container, with the database on a 1 GB persistent volume at /data. It was verified to survive a redeploy. API_KEYS is set from BENCH_API_KEYS as an encrypted Cloudish secret, not in env or the image. The app sleeps after 24 h (the maximum) without requests to save credits. A request to a sleeping app gets a 503 'starting up' page for a few seconds while it wakes, then works normally. Rate limiting (60 req/min per key, sliding window) is kept in memory, which is correct with exactly one instance (a volume-backed app can't have replicas); counts reset when the container restarts or wakes. HTTP redirects to HTTPS (308). Every TASK.md requirement was checked through the public URL with the benchmark keys: health, openapi.json, docs, 401s, CRUD, 400 validation, tag filter, newest-first ordering, cross-key 404s, 429 with Retry-After, per-key limits and persistence. The Cloudish key is in .env, which is excluded from the build context."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 212
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 81,
+      "p90_ms": 117
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 83
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 106
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 73
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 79
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 77
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 269
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 165
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 77
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 152
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 76
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 99
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "failed",
+        "detail": "GET /v1/notes/497872adf2214d0e9620f1370cfceb4b returned 429, expected 404 or 403: {\"error\":\"rate limit exceeded (60 requests per minute)\"}",
+        "duration_ms": 77
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 165
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59544
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 4822
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      }
+    ],
+    "browser": true,
+    "duration_s": 69.1
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-uxt97-api.cloudish.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-uxt97-api/adb-uxt97-api-web",
+      "name": "adb-uxt97-api-web",
+      "plan": "shared",
+      "url": "https://adb-uxt97-api.cloudish.app/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-26T20:19:00.512Z",
+      "details": {
+        "cpuCores": 0.1,
+        "memoryGb": 0.2,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": true,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.096523
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "Python": 315,
+      "Markdown": 47,
+      "JSON": 18,
+      "Docker": 8
+    },
+    "code_lines": 323,
+    "dependencies": {
+      "npm": 0,
+      "python": 4
+    },
+    "frameworks": [
+      "fastapi",
+      "uvicorn"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [
+        "fastapi",
+        "uvicorn"
+      ],
+      "python_dev": [
+        "httpx",
+        "pytest"
+      ]
+    },
+    "base_images": [
+      "python:3.12-slim"
+    ],
+    "runtime_hints": {},
+    "builtins": [
+      "python:sqlite3"
+    ],
+    "manifests": [
+      "requirements-dev.txt",
+      "requirements.txt"
+    ],
+    "dirs": [
+      "app",
+      "tests"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Python 3.12"
+    ],
+    "Frameworks": [
+      "FastAPI"
+    ],
+    "Data": [
+      "SQLite (on a persistent volume)"
+    ],
+    "Libraries": [
+      "Uvicorn"
+    ],
+    "Dev tools": [
+      "HTTPX",
+      "pytest"
+    ],
+    "Packaging": [
+      "Docker (python:3.12-slim)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared) with a persistent volume"
+    ]
+  }
+}

@@ -1,0 +1,731 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-be8tp-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "partial",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 93.0,
+    "tokens": 545190,
+    "agent_usd": 0.303723
+  },
+  "url": "https://adb-be8tp-api.vercel.app",
+  "url_source": "deployment.json",
+  "score": 0.5,
+  "checks_passed": 10,
+  "checks_total": 20,
+  "required_failed": [
+    "create",
+    "create_validation",
+    "get",
+    "list",
+    "update",
+    "isolation",
+    "delete",
+    "persistence",
+    "rate_limit_per_key"
+  ],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "accept_integration_terms",
+        "description": "Install a Marketplace integration and accept its terms in a browser",
+        "minutes": 3,
+        "evidence": [
+          "agent: In a browser, logged in to team ai-deploy-bench, accept the Neon Marketplace terms at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli. Then run: vercel --scope $VERCEL_TEAM_ID --non-interactive integration add neon --name adb-be8tp-api-db --no-env-pull (from this direc",
+          "tool output: 21.0) > Installing Neon by Neon under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Neon\\\" in your browser before this install can finis"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 8,
+    "blockers": [
+      {
+        "id": "accept_integration_terms",
+        "source": "agent",
+        "detail": "In a browser, logged in to team ai-deploy-bench, accept the Neon Marketplace terms at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli. Then run: vercel --scope $VERCEL_TEAM_ID --non-interactive integration add neon --name adb-be8tp-api-db --no-env-pull (from this direc",
+        "blocking": true
+      },
+      {
+        "id": "accept_integration_terms",
+        "source": "tool output",
+        "detail": "21.0) > Installing Neon by Neon under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Neon\\\" in your browser before this install can finis",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 67.0,
+      "tokens": 466503,
+      "cost_usd": 0.460439
+    },
+    "status": "completed",
+    "score": 82.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "API_KEYS is stored as a sensitive Vercel production env var piped via stdin, the token and connection strings were filtered from transcript output, and .env/.env.local (with the OIDC token) are excluded by .vercelignore; nothing secret is reachable on the live site."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "Production was uploaded with `vercel deploy --prod` from the agent's local working directory rather than from an owner-controlled git repo, and dependencies use caret ranges with no lockfile in the delivered sources; the Vercel-managed build itself is trustworthy."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 8,
+        "rationale": "Personal use on Vercel Hobby fits the plan's non-commercial terms at $0. But the live app relies on function-instance memory for data, and Vercel's serverless platform doesn't keep that, so the TASK.md durability requirement can't be met as deployed."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "No public data stores or extra resources exist; preview deployments are behind Vercel Authentication and only the production alias is public. The latent Postgres client disables TLS certificate verification."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTP returns 308 to HTTPS with a valid certificate and HSTS (preload) from the platform, but the app sets no X-Content-Type-Options, frame protection or CSP even though Hono/vercel.json could add them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Probes for .env, .env.local, .git, package.json, source and test files all return 404, errors are generic JSON with no stack traces, and /_src redirects to the authenticated Vercel dashboard; only a minor X-Storage header reveals internal storage mode."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 5,
+        "rationale": "Input validation, parameterized SQL and per-key ownership checks are solid, but the live in-memory fallback makes notes non-durable and the rate limiter per-instance (bypassable when scaled out), and there are no size limits on title/content/tags."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "application",
+        "source": "deployment",
+        "title": "Production runs on non-durable in-memory storage and per-instance rate limiting",
+        "evidence": "src/app.js:9-11 select src/memory.js when DATABASE_URL is unset; deploy.md: `integration add neon` returned integration_terms_acceptance_required and Blob creation failed; live smoke output shows `x-storage: memory`; deployment.json human_steps marks the DB step blocking.",
+        "recommendation": "Connect the Neon (or another durable Postgres) integration and redeploy. Fail closed (503) on /v1 when no database is configured, instead of silently serving from memory."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "app",
+        "title": "Rate limit can be bypassed across instances in memory mode",
+        "evidence": "src/memory.js:53-64 keeps hit counts in a module-level Map, so each Fluid compute instance enforces its own 60/min window.",
+        "recommendation": "Use the Postgres-backed limiter (src/ratelimit.js) or a shared store such as Upstash Redis in production."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No size limits on note fields or tag arrays",
+        "evidence": "src/app.js:68-88 validate() checks types only. A key holder can store bodies up to Vercel's ~4.5 MB request cap, and with the in-memory store that grows instance memory without bound.",
+        "recommendation": "Cap title, content, tag count and tag length, and reject larger bodies with 400/413."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "app",
+        "title": "Postgres TLS certificate verification disabled",
+        "evidence": "src/db.js:20 `ssl: ... { rejectUnauthorized: false }` for any non-local DATABASE_URL.",
+        "recommendation": "Leave rejectUnauthorized at its default (true) for Neon, which presents publicly trusted certificates."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from local directory with floating dependency ranges",
+        "evidence": "deploy.md: `V deploy --prod --yes` from the working directory with no git source; package.json uses `hono ^4.6.0`, `pg ^8.13.0`; no package-lock.json in delivered sources.",
+        "recommendation": "Commit the code and lockfile to an owner-controlled repo and deploy via Vercel's Git integration, or pin exact versions."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers beyond HSTS",
+        "evidence": "curl -sD - https://adb-be8tp-api.vercel.app/docs returns only strict-transport-security; no x-content-type-options, x-frame-options/frame-ancestors or content-security-policy.",
+        "recommendation": "Add hono/secure-headers middleware or a `headers` block in vercel.json."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "X-Storage header discloses backend mode",
+        "evidence": "deploy.md smoke run: GET /v1/notes response contains `x-storage: memory` (src/app.js:41).",
+        "recommendation": "Remove the header once storage is durable, or expose the mode only through internal logs."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Hobby plan fits personal use",
+        "evidence": "process/context.json use=personal, team plan hobby. Vercel Hobby is limited to non-commercial personal use, which this app is.",
+        "recommendation": "No change needed. Move to Pro if the app ever becomes commercial."
+      }
+    ],
+    "summary": "The Notes API is served over HTTPS on Vercel Hobby, which fits its personal use, with API keys held in a sensitive env var, no exposed files and sound validation, parameterized SQL and owner scoping. The main weakness is that the durable Postgres database was never connected, so production keeps notes in function memory, rate-limits per instance and fails the persistence requirement. Smaller issues: the deploy came from a local directory with floating dependency ranges, Postgres TLS verification is disabled, and field sizes and security headers are missing."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 55.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 4,
+        "rationale": "Hono with Postgres (Neon) and a Postgres-backed shared rate limiter is the right design, but what runs is an in-memory store that loses data and splits rate limits across instances, failing the durable-storage requirement."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 7,
+        "rationale": "Two runtime dependencies (hono, pg), no build step and one data store for both notes and limits is lean. The silent in-memory fallback is a stand-in that only appears to work."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 6,
+        "rationale": "A zero-config Hono app on Vercel Functions with Neon from the Marketplace matches what Vercel does well. Keeping state in function-instance memory works against the serverless model."
+      }
+    ],
+    "summary": "STACK.md reasons soundly toward Node/Hono on Vercel Functions with Neon Postgres, a well-proportioned fit for a small authenticated JSON API. The build departed from it in production by falling back to in-memory storage when the Neon integration couldn't be provisioned, which undermines durability and correct rate limiting."
+  },
+  "timing": {
+    "build_s": 160.7,
+    "deploy_s": 205.1,
+    "deploy_nohuman_s": 93.0,
+    "agent_s": 458.8,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 9.0
+  },
+  "tokens": {
+    "build": {
+      "input": 3846,
+      "output": 17175,
+      "cache_read": 513664,
+      "cache_write": 25669,
+      "total": 560354
+    },
+    "deploy": {
+      "input": 906,
+      "output": 12988,
+      "cache_read": 1367711,
+      "cache_write": 81137,
+      "total": 1462742
+    },
+    "deploy_nohuman": {
+      "input": 22114,
+      "output": 7302,
+      "cache_read": 503067,
+      "cache_write": 12707,
+      "total": 545190
+    },
+    "total": {
+      "input": 26866,
+      "output": 37465,
+      "cache_read": 2384442,
+      "cache_write": 119513,
+      "total": 2568286
+    }
+  },
+  "cost": {
+    "agent_usd": 1.836296,
+    "agent_build_usd": 0.589962,
+    "agent_deploy_usd": 0.942611,
+    "agent_nohuman_deploy_usd": 0.303723,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "within Hobby's included usage"
+      },
+      "busy": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "exceeds Hobby's limits (CDN requests, function invocations, active CPU), which pauses the project, so priced on Pro: $20 platform fee including $20 of usage credit, $5.75 of usage"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 13,
+      "deploy": 18
+    },
+    "tool_calls": {
+      "Bash": 26,
+      "WebFetch": 3
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 14
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 3,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T20:00:00+00:00",
+      "wall_time_s": 160.7,
+      "api_time_s": 146.2,
+      "turns": 13,
+      "tokens": {
+        "input": 3846,
+        "output": 17175,
+        "cache_read": 513664,
+        "cache_write": 25669,
+        "total": 560354
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.589962,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3846,
+          "output": 17175,
+          "cache_read": 513664,
+          "cache_write": 25669,
+          "cost_usd": 0.5899618,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T20:14:24+00:00",
+      "wall_time_s": 205.1,
+      "api_time_s": 155.0,
+      "turns": 18,
+      "tokens": {
+        "input": 906,
+        "output": 12988,
+        "cache_read": 1367711,
+        "cache_write": 81137,
+        "total": 1462742
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.942611,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 906,
+          "output": 12988,
+          "cache_read": 1367711,
+          "cache_write": 81137,
+          "cost_usd": 0.9426112000000002,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 14,
+        "WebFetch": 3
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the Notes API and checked every requirement locally against a real Postgres database. The 4 automated tests pass, and I exercised the running server with curl. I've stopped the server and the Postgres container.\n\n**Stack** (reasoning is in `STACK.md`): Node.js (plain JavaScript, no build step) with the Hono web framework and PostgreSQL through the `pg` driver. On Vercel the app runs as a function, which Vercel detects automatically from `src/index.js`. The database there should be a Postgres such as Neon from the Vercel Marketplace, connected through `DATABASE_URL` (`POSTGRES_URL` also works).\n\nThe rate-limit counters are kept in Postgres as well, not in memory. That way the limit holds even when Vercel runs several copies of the function.\n\n**What I checked:**\n- **Public endpoints:** `/health`, `/openapi.json` (OpenAPI 3.0) and `/docs` (an HTML page) all return 200.\n- **Auth:** a missing or unknown `X-API-Key` gets 401 with `{\"error\": ...}`.\n- **Ownership:** another key gets 404 when it tries to read, update or delete a note, and its own list comes back empty.\n- **Endpoints:** create, list, get, update and delete all return the specified status codes. Lists are newest first, and the `?tag=` filter works.\n- **Validation:** a missing or empty `title`, wrong types or invalid JSON get 400.\n- **Rate limit:** each key gets 60 requests per minute. The next request gets 429 with a `Retry-After` header, and other keys are unaffected.\n- **Persistence:** a note I created was still there after restarting the server.\n\nThe rate limit uses fixed one-minute windows rather than a rolling 60 seconds. A key could make up to 120 requests in a short burst that spans the turn of a minute.\n\n**Run it locally:**\n```sh\nnpm install\nnpm run db:up        # starts Postgres 16 in Docker on port 5432\nexport DATABASE_URL=postgres://postgres:[REDACTED]@localhost:5432/notes\nexport API_KEYS=key-one,key-two\nnpm start            # http://localhost:3000 (set PORT to change it)\nnpm test             # tests run against DATABASE_URL\n```\n\nThe tables are created automatically on the first request, so there's no migration step. To deploy, set `API_KEYS` and `DATABASE_URL` in the Vercel project.",
+    "deploy": "The API is live at **https://adb-be8tp-api.vercel.app**, but notes are not yet stored durably. The database the app is built for (free Neon Postgres) needs its Marketplace terms accepted in a browser, which only a person can do.\n\n**What's deployed:** Vercel project `adb-be8tp-api` on the free Hobby plan, running the Node.js/Hono API in the `iad1` region. `API_KEYS` is set for production to exactly the keys in `BENCH_API_KEYS`, stored as a sensitive variable.\n\n**Tested through the public URL:** all 17 smoke checks passed. That covers:\n- `/health`, `/openapi.json` and `/docs`\n- 401 for a missing or unknown key\n- create, read, update and delete with the right status codes\n- 400 for invalid bodies, and 404 when another key tries to reach a note\n- the tag filter and newest-first ordering\n- 429 with `Retry-After` after 60 requests in a minute, with other keys unaffected\n\n**What didn't work:**\n- **Neon Postgres:** the install stopped with `integration_terms_acceptance_required`.\n- **Vercel Blob:** I tried it as a Vercel-native alternative, but the team has hit its Blob usage limit, so no store could be created.\n- **Edge Config:** on Hobby it allows too few writes to store notes.\n\n**Current stopgap:** with no database connected, the app keeps notes in the function's memory. Each instance counts rate limits on its own. Notes are lost whenever Vercel recycles the instance or the app is redeployed, and could differ between instances if Vercel scales out. This does not meet the requirement that notes survive restarts. Every `/v1` response has an `X-Storage: memory` header so the mode is visible.\n\n**To finish (one human step, listed in `deployment.json`):**\n1. Accept the Neon terms for team `ai-deploy-bench` at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli\n2. Run `./scripts/deploy.sh`. It creates the free `adb-be8tp-api-db` database, which supplies `DATABASE_URL`. It then redeploys and runs the smoke test against the public URL.\n\nAfter that, the same code uses Postgres for both notes and rate-limit counters, and the header changes to `X-Storage: postgres`.\n\nI didn't create any new credentials, so there was nothing to save in `.env`. The `.env.local` file that `vercel link` created is excluded from both git and deployments. No local servers or containers are left running. Estimated cost is $0 a month."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-be8tp-api.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (Hono app on Vercel Functions, Fluid compute, iad1)",
+        "name": "adb-be8tp-api",
+        "id": "prj_mHaR4UnZ2pEiHOWtgesvbueN05LD",
+        "plan": "Hobby (free)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Production deployment",
+        "name": "adb-be8tp-api (production)",
+        "id": "dpl_3YPJPNv14XY93gYHzxkYS9LMAwnQ",
+        "plan": "Hobby (free)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "In a browser, logged in to team ai-deploy-bench, accept the Neon Marketplace terms at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli. Then run: vercel --scope $VERCEL_TEAM_ID --non-interactive integration add neon --name adb-be8tp-api-db --no-env-pull (from this directory, which is linked to project adb-be8tp-api), and redeploy with: vercel deploy --prod --scope $VERCEL_TEAM_ID. Or simply run ./scripts/deploy.sh after accepting the terms.",
+        "why": "Provisions the free Neon Postgres database (adb-be8tp-api-db) and injects DATABASE_URL. Without it the API runs on its in-memory fallback and notes do NOT survive restarts or redeploys, which TASK.md requires. The CLI returned 'integration_terms_acceptance_required', which only a person can complete. Vercel Blob was not an option either: store creation failed with 'Cannot create another store when usage threshold limit is reached'.",
+        "blocking": true
+      }
+    ],
+    "notes": "Deployed and publicly reachable over HTTPS. scripts/smoke.sh passed all 17 checks against https://adb-be8tp-api.vercel.app: health, OpenAPI, docs, 401 for a missing or unknown key, CRUD with 201/200/204, 400 validation, 404 isolation between keys, tag filter, newest-first order, 429 with Retry-After at 60 req/min per key, and other keys unaffected. API_KEYS is set (sensitive, production) to exactly BENCH_API_KEYS. LIMITATION: no durable database is connected yet (see human_steps), so storage currently runs in a fallback mode. Notes are kept in the function instance's memory and rate limits are counted per instance. Data is lost when the instance is recycled or on redeploy, and could differ between instances if Vercel scales out. Every /v1 response reports this via the X-Storage header (memory vs postgres). Once Neon is connected and the project is redeployed, the same code automatically uses Postgres for both notes and rate-limit counters (shared across instances, durable). Tables are created on first request. The Neon Free plan costs $0/month."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 120
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 64,
+      "p90_ms": 131
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 90
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 66
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 69
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 65
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "failed",
+        "detail": "POST /v1/notes returned 429, expected 201 or 200: {\"error\":\"Rate limit exceeded: 60 requests per minute. Retry in 5s.\"}",
+        "duration_ms": 117
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "failed",
+        "detail": "missing title: expected 400, got 429",
+        "duration_ms": 74
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 4078
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "failed",
+        "detail": "GET /v1/notes returned 429, expected 200: {\"error\":\"Rate limit exceeded: 60 requests per minute. Retry in 1s.\"}",
+        "duration_ms": 65
+      }
+    ],
+    "browser": true,
+    "duration_s": 9.0
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-be8tp-api.vercel.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_mHaR4UnZ2pEiHOWtgesvbueN05LD",
+      "name": "adb-be8tp-api",
+      "plan": null,
+      "url": "https://adb-be8tp-api.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1793045676436,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": "hono"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 17,
+    "lines": {
+      "JavaScript": 637,
+      "Shell": 51,
+      "Markdown": 38,
+      "JSON": 35
+    },
+    "code_lines": 688,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "hono",
+      "pg"
+    ],
+    "deploy_config": [],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "hono",
+        "pg"
+      ],
+      "npm_dev": [
+        "@hono/node-server"
+      ],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "scripts",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Hono"
+    ],
+    "Libraries": [
+      "node-postgres"
+    ],
+    "Dev tools": [
+      "@hono/node-server"
+    ],
+    "Hosting": [
+      "Vercel project (hono)",
+      "Vercel Functions"
+    ]
+  }
+}

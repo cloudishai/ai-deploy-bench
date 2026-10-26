@@ -1,0 +1,650 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-3pi5y-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": true,
+  "no_human": {
+    "attempted": true,
+    "used": "no_credentials",
+    "url_answered": true,
+    "deploy_s": null,
+    "tokens": 0,
+    "agent_usd": null
+  },
+  "url": "https://adb-3pi5y-realtime-web.cloudish.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 13,
+  "checks_total": 13,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Open a claim link (mint one with GET https://cloudish.ai/api/v1/credits/claim using the key in .env) and add credits to key adb-3pi5y-realtime (The free 0.1 starting credits pay for about 9 hours of awake time. After that, requests get 402 until credits are added. Not needed for the app to work now.",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 67.6,
+      "tokens": 386098,
+      "cost_usd": 0.364472
+    },
+    "status": "completed",
+    "score": 84.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The Cloudish API key was written straight to a chmod-600 .env without being printed, kept out of the uploaded build context with --exclude='.env*', and appears in no source or deployed file. The app needs no secrets at runtime."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 8,
+        "rationale": "The image was built server-side from a tarball of the agent's own source, and the transcript lists the context's contents. Dependencies are locked with package-lock.json and npm ci. The base image node:24-slim is a floating tag rather than a digest."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "Prepaid pay-as-you-go hosting fits personal or club use, and sleeping after 30 idle minutes is acceptable for a hobby chat. But the only funding is the 0.1 free starting credit, about 9 awake hours, after which Cloudish stops the app and returns 402. The agent labelled topping up as 'not blocking', which understates the risk."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "There is a single container running as the non-root node user, with a private volume holding only the SQLite file and no extra public services. Public 'open' access is required for a public chat app."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "The app is served over HTTPS with a valid Let's Encrypt wildcard certificate. HTTP gets a 308 redirect to HTTPS, and the platform adds HSTS. The app sets no CSP, X-Content-Type-Options or frame protection, though it could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Source, .env, .git and package files all return the app's JSON 404, and there are no directory listings, debug endpoints or stack traces. The only extras are a trivial /healthz endpoint and the platform's generic nginx 400 page for malformed percent-encoding."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Input validation is solid: lengths are checked, SQL is parameterized, message text is rendered with textContent, and bodies and WebSocket frames are capped. The public, unauthenticated endpoints have no rate or connection limits, the WebSocket Origin is not checked, and storage can grow without bound across any number of rooms."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Hosting runs on about 9 hours of free starter credit with no funding in place",
+        "evidence": "process/deployment.json human_steps: 'The free 0.1 starting credits pay for about 9 hours of awake time. After that, requests get 402 until credits are added.' Marked blocking:false. process/context.json shows balance_usd 0.098694. llms.txt (deploy.md): 'at zero ... its running apps stop within a minute'.",
+        "recommendation": "Tell the owner plainly that the app will go offline within hours of use unless the key is claimed and funded. Mark this step as required to keep the app running."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned by digest",
+        "evidence": "app/Dockerfile:1 `FROM node:24-slim`",
+        "recommendation": "Pin the base image to a digest, e.g. `FROM node:24-slim@sha256:...`, and update it deliberately."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting, connection caps or retention on public endpoints",
+        "evidence": "app/server.js:134-142 (POST messages) and 182-194 (WebSocket messages) insert every valid message into SQLite with no per-client throttling. Lines 126-130 accept any room name up to 100 characters, and nothing prunes old rows (openStore, lines 18-42), so anyone can fill the 1 GB volume or flood rooms.",
+        "recommendation": "Add per-IP or per-connection message rate limits, cap concurrent connections, and prune history beyond what the API serves (e.g. keep the last N messages per room)."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing CSP, X-Content-Type-Options and frame protection",
+        "evidence": "GET https://adb-3pi5y-realtime-web.cloudish.app/?room=general -> 200 with only content-type, cache-control and strict-transport-security (HSTS added by the platform). app/server.js:121 sets no security headers.",
+        "recommendation": "Send Content-Security-Policy (default-src 'self'; connect-src 'self' wss:), X-Content-Type-Options: nosniff and frame-ancestors 'none' / X-Frame-Options: DENY from the Node server."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "WebSocket upgrade does not check Origin",
+        "evidence": "app/server.js:164-173 upgrades any request with a valid room and user, whatever its Origin. Any website can open sockets and post as any display name.",
+        "recommendation": "Accept upgrades only from the app's own origin. Display-name impersonation is inherent to the spec's unauthenticated design."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "Platform nginx error page on malformed URLs",
+        "evidence": "GET /api/rooms/%ZZ/messages -> 400 HTML page with an 'nginx' footer, generated by the Cloudish ingress rather than the app.",
+        "recommendation": "No action needed from the agent. The platform could serve a neutral error page."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "HEAD requests return 404",
+        "evidence": "curl -I https://adb-3pi5y-realtime-web.cloudish.app/ -> HTTP/2 404 (server.js:120 only matches GET)",
+        "recommendation": "Treat HEAD like GET for / and /healthz."
+      }
+    ],
+    "summary": "The chat app is a small, well-built Node.js container on Cloudish. Its API key was kept out of the build context and logs, it runs as non-root with dependencies installed from the lockfile, its history sits on a private volume, and it is served only over HTTPS with nothing extra exposed. The main weakness is hosting continuity: the app runs on about 9 hours of free starter credit and stops once that is spent, unless the owner funds the account. Smaller issues are an unpinned base image, no rate limiting or history retention, and missing security headers that the app could set."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "The ws library gives the preferred WebSocket transport, with SSE as an extra. Built-in node:sqlite on a persistent volume is a durable store for message history, and in-process fan-out per room meets the 2-second delivery requirement."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "One process and one runtime dependency (ws) serve the UI, API, WebSocket and SSE, with no extra services. The optional SSE path adds a little code, but nothing needless."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "A long-running container with WebSockets and a volume-backed SQLite file is the model Cloudish is designed for. Running one replica matches the single-attach volume, and sleep-on-idle suits light club use."
+      }
+    ],
+    "summary": "Node.js 24 with ws and built-in SQLite in a single Cloudish container fits a small realtime chat well. It provides durable history, native WebSockets and minimal dependencies, and it follows the reasoning in STACK.md without departing from it."
+  },
+  "timing": {
+    "build_s": 141.3,
+    "deploy_s": 139.6,
+    "deploy_nohuman_s": null,
+    "agent_s": 280.9,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 14.8
+  },
+  "tokens": {
+    "build": {
+      "input": 13353,
+      "output": 14361,
+      "cache_read": 359926,
+      "cache_write": 21525,
+      "total": 409165
+    },
+    "deploy": {
+      "input": 653,
+      "output": 6873,
+      "cache_read": 718430,
+      "cache_write": 23560,
+      "total": 749516
+    },
+    "deploy_nohuman": {},
+    "total": {
+      "input": 14006,
+      "output": 21234,
+      "cache_read": 1078356,
+      "cache_write": 45085,
+      "total": 1158681
+    }
+  },
+  "cost": {
+    "agent_usd": 0.860644,
+    "agent_build_usd": 0.459086,
+    "agent_deploy_usd": 0.401558,
+    "agent_nohuman_deploy_usd": null,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 2
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 12
+    },
+    "tool_calls": {
+      "Bash": 18,
+      "Write": 2,
+      "WebFetch": 1
+    },
+    "shell_commands": {
+      "build": 7,
+      "deploy": 11
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T20:33:33+00:00",
+      "wall_time_s": 141.3,
+      "api_time_s": 122.9,
+      "turns": 11,
+      "tokens": {
+        "input": 13353,
+        "output": 14361,
+        "cache_read": 359926,
+        "cache_write": 21525,
+        "total": 409165
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.459086,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3717,
+          "output": 13152,
+          "cache_read": 359926,
+          "cache_write": 21525,
+          "cost_usd": 0.4575182,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 9636,
+          "output": 1209,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0015681000000000002,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 7,
+        "WebFetch": 1,
+        "Write": 2
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T20:35:55+00:00",
+      "wall_time_s": 139.6,
+      "api_time_s": 72.4,
+      "turns": 12,
+      "tokens": {
+        "input": 653,
+        "output": 6873,
+        "cache_read": 718430,
+        "cache_write": 23560,
+        "total": 749516
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.401558,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 653,
+          "output": 6873,
+          "cache_read": 718430,
+          "cache_write": 23560,
+          "cost_usd": 0.40155799999999986,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I built the chat app and ran it locally. All 6 automated tests pass, and every requirement worked when I exercised it against the Docker container with curl and a WebSocket client. One thing I didn't check is the web page in a real browser: I only confirmed `GET /` returns it, so the page's own JavaScript hasn't actually been run.\n\n**Stack** (reasoning is in `STACK.md`): one Node.js 24 server using the `ws` library for WebSockets and Node's built-in SQLite for message history, packaged as a single container. That fits Cloudish, which runs long-lived containers and supports WebSockets. I also looked at Python with FastAPI, and at splitting it into a static frontend plus a Postgres or Redis backend, but both add parts this app doesn't need.\n\n**What it does:**\n- **Web page (`/?room=general`):** you pick a name and a room, see recent history, and messages appear live. It reconnects automatically and shows who's online.\n- **WebSocket (`/ws?room=&user=`):** a client gets the room's history and presence when it connects. Every message goes to everyone in that room, including the sender. Invalid messages get a `{\"type\":\"error\",...}` reply and aren't broadcast.\n- **History (`GET /api/rooms/<room>/messages`):** returns the latest 50 messages, oldest first.\n- **Server-Sent Events:** also implemented. `GET /api/rooms/<room>/events` streams messages, and `POST /api/rooms/<room>/messages` returns `201`, or `400` for bad input.\n- **Validation:** messages must be 1\u20131000 characters, and whitespace-only messages are rejected. Missing names are rejected too, not defaulted.\n\n**Tests** (`test/chat.test.js`) cover broadcasting, room isolation, 5 users sending 50 messages at once, validation, history limits and order, and SSE.\n\n**To run it:**\n- Locally: `npm install && npm start`, then open http://localhost:8080/?room=general\n- Tests: `npm test`\n- Docker: `docker build -t club-chat . && docker run -p 8080:8080 club-chat`\n- Settings: `PORT` (default 8080) and `DB_PATH` (default `/data/chat.db` in Docker). History only survives a restart if a volume is mounted at `/data`, which matters for step 2. There's also a health check at `/healthz`.\n\nI've stopped the container I started, so nothing is running.",
+    "deploy": "The chat app is live at **https://adb-3pi5y-realtime-web.cloudish.app**, and every requirement in `TASK.md` passed when I tested it through that public URL.\n\n**What I deployed:**\n- **Account:** a Cloudish API key named `adb-3pi5y-realtime`, which I created myself with no signup. The key is saved in `.env` and isn't in the code I uploaded or in any other file.\n- **App:** project `adb-3pi5y-realtime-web`, built on Cloudish's servers from the Dockerfile. It runs on the smallest size (0.1 CPU, 0.2 GB, about $0.0107 an hour while awake).\n- **Storage:** a free 1 GB volume at `/data` holds the message history, so it survives restarts.\n- **WebSocket:** `wss://adb-3pi5y-realtime-web.cloudish.app/ws`. Server-Sent Events also work.\n\n**What I tested on the live site:**\n- **Live messages:** 4 clients sent 20 messages at the same time, and every client got all 20. The slowest arrived in 126 ms, well under the 2-second limit.\n- **Room isolation:** a client in another room received nothing.\n- **Rejecting bad messages:** empty and over-1000-character messages got `400` over HTTP and an error reply over WebSocket.\n- **History:** returns up to 50 messages, oldest first.\n- **Server-Sent Events:** messages streamed correctly through Cloudish.\n- **Web page:** in a headless browser, two users joined the same room and saw each other's messages and who's online. HTML typed into a message showed up as plain text.\n\n**Things to know:**\n- **Waking up:** to keep costs down, the app sleeps after 30 idle minutes. The first request after that takes a few seconds while it wakes. Running it around the clock instead would cost about $7.84 a month.\n- **Cost:** I estimated about $2 a month, assuming a few awake hours a day.\n- **Credits (the one human step, not blocking):** the key's free 0.1 credits cover about 9 hours of awake time. After that the app returns `402` until someone uses a claim link to add credits. This is listed under `human_steps` in `deployment.json`.\n- **Single container:** it runs as one container, because a volume can only attach to one. That's plenty for a hobby club.\n\nNothing failed, and I didn't leave any local servers running."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-3pi5y-realtime-web.cloudish.app",
+    "realtime": {
+      "transport": "websocket",
+      "url": "wss://adb-3pi5y-realtime-web.cloudish.app/ws"
+    },
+    "resources": [
+      {
+        "type": "API key / credit account",
+        "name": "adb-3pi5y-realtime",
+        "id": "188",
+        "plan": "prepaid credits (0.1 free starting credits)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Docker container, built server-side from Dockerfile)",
+        "name": "adb-3pi5y-realtime-web",
+        "id": "project 202 / docker app 594",
+        "plan": "shared (0.1 CPU, 0.2 GB, $0.0107/h while awake), sleeps after 30 min idle",
+        "monthly_cost_usd": 2
+      },
+      {
+        "type": "persistent volume (SQLite message history at /data)",
+        "name": "adb-3pi5y-realtime-web volume",
+        "id": "attached to docker app 594",
+        "plan": "1 GB",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 2,
+    "human_steps": [
+      {
+        "step": "Open a claim link (mint one with GET https://cloudish.ai/api/v1/credits/claim using the key in .env) and add credits to key adb-3pi5y-realtime",
+        "why": "The free 0.1 starting credits pay for about 9 hours of awake time. After that, requests get 402 until credits are added. Not needed for the app to work now.",
+        "blocking": false
+      }
+    ],
+    "notes": "One Node.js 24 container (ws + node:sqlite), served at the Cloudish subdomain over HTTPS/WSS. History persists on a 1 GB volume. The app sleeps after 30 idle minutes to save money, so the first request after a sleep takes a few seconds to wake it; set alwaysOn=true (about $7.84/month) to avoid that. The cost estimate assumes light hobby-club use, a few awake hours a day. Only one container runs, because a volume can't be shared across replicas, which is fine at this scale. Verified through the public URL: GET / (including a headless-browser test with two users), WebSocket broadcast with 4 concurrent clients (126 ms max latency), room isolation, validation (400 over HTTP, error frames over WebSocket), the history API (50 max, oldest first) and SSE. The SSE endpoints are also implemented."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 202
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 82,
+      "p90_ms": 214,
+      "delivery_latency_ms": 64
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 79
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 76
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over websocket",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1734
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 101
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1952
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 216
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 829
+      }
+    ],
+    "browser": true,
+    "duration_s": 14.8
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The room the verifier's clients chatted in, with its history",
+      "url": "https://adb-3pi5y-realtime-web.cloudish.app/?room=bench-8f1aff92",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-3pi5y-realtime/adb-3pi5y-realtime-web",
+      "name": "adb-3pi5y-realtime-web",
+      "plan": "shared",
+      "url": "https://adb-3pi5y-realtime-web.cloudish.app/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-26T20:36:13.117Z",
+      "details": {
+        "cpuCores": 0.1,
+        "memoryGb": 0.2,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": true,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.098694
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 10,
+    "lines": {
+      "JavaScript": 295,
+      "HTML": 125,
+      "Markdown": 34,
+      "JSON": 29,
+      "Docker": 11
+    },
+    "code_lines": 431,
+    "dependencies": {
+      "npm": 1,
+      "python": 0
+    },
+    "frameworks": [
+      "ws"
+    ],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "ws"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:24-slim"
+    ],
+    "runtime_hints": {
+      "node": ">=22.13"
+    },
+    "builtins": [
+      "node:http",
+      "node:sqlite"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Data": [
+      "SQLite (on a persistent volume)"
+    ],
+    "Libraries": [
+      "ws"
+    ],
+    "Packaging": [
+      "Docker (node:24-slim)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared) with a persistent volume"
+    ]
+  }
+}

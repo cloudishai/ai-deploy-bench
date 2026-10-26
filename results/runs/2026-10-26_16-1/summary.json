@@ -1,0 +1,1690 @@
+{
+  "schema": 9,
+  "run": {
+    "name": "2026-10-26_16-1",
+    "date": "2026-10-26",
+    "number": 16,
+    "attempt": 1,
+    "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/40387893074",
+    "models": [
+      "opus-5-5"
+    ],
+    "trials": 1,
+    "scope": "full",
+    "benchmark_version": 3,
+    "agent_versions": [
+      "2.1.296"
+    ],
+    "commit": true
+  },
+  "groups": [
+    {
+      "model": "opus-5-5",
+      "cloud": "cloudish",
+      "cells": 5,
+      "success": 4,
+      "partial": 1,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 0,
+        "minutes": 0
+      },
+      "deploys_without_human": {
+        "count": 4,
+        "total": 5
+      },
+      "security_score": 80.8,
+      "stack_fit_score": 91.4,
+      "success_rate": 0.8,
+      "mean_score": 0.99,
+      "mean_build_s": 145.38,
+      "mean_deploy_s": 216.64000000000001,
+      "tokens": 7047350,
+      "agent_usd": 4.72,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 39.2,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 0.55,
+        "busy": 39.2
+      },
+      "hosting_usage_incomplete": []
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "digitalocean",
+      "cells": 5,
+      "success": 5,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 3,
+        "minutes": 7
+      },
+      "deploys_without_human": {
+        "count": 0,
+        "total": 5
+      },
+      "security_score": 84.1,
+      "stack_fit_score": 85.4,
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 123.05999999999999,
+      "mean_deploy_s": 269.7,
+      "tokens": 5636716,
+      "agent_usd": 4.52,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 39.0,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 39.0,
+        "busy": 39.0
+      },
+      "hosting_usage_incomplete": []
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "railway",
+      "cells": 5,
+      "success": 0,
+      "partial": 0,
+      "failed": 5,
+      "blocked_on_human": 5,
+      "human_steps": {
+        "count": 3,
+        "minutes": 7
+      },
+      "deploys_without_human": {
+        "count": 0,
+        "total": 5
+      },
+      "security_score": null,
+      "stack_fit_score": null,
+      "success_rate": 0.0,
+      "mean_score": 0.0,
+      "mean_build_s": 132.62,
+      "mean_deploy_s": 291.18,
+      "tokens": 7046795,
+      "agent_usd": 4.72,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": []
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "render",
+      "cells": 5,
+      "success": 5,
+      "partial": 0,
+      "failed": 0,
+      "blocked_on_human": 0,
+      "human_steps": {
+        "count": 2,
+        "minutes": 5
+      },
+      "deploys_without_human": {
+        "count": 0,
+        "total": 5
+      },
+      "security_score": 70.3,
+      "stack_fit_score": 79.8,
+      "success_rate": 1.0,
+      "mean_score": 1.0,
+      "mean_build_s": 123.32000000000001,
+      "mean_deploy_s": 231.87999999999997,
+      "tokens": 6998059,
+      "agent_usd": 4.97,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 35.65
+      },
+      "hosting_usage_incomplete": []
+    },
+    {
+      "model": "opus-5-5",
+      "cloud": "vercel",
+      "cells": 5,
+      "success": 3,
+      "partial": 2,
+      "failed": 0,
+      "blocked_on_human": 2,
+      "human_steps": {
+        "count": 3,
+        "minutes": 8
+      },
+      "deploys_without_human": {
+        "count": 0,
+        "total": 5
+      },
+      "security_score": 76.6,
+      "stack_fit_score": 77.6,
+      "success_rate": 0.6,
+      "mean_score": 0.76316,
+      "mean_build_s": 143.62,
+      "mean_deploy_s": 140.66,
+      "tokens": 14058101,
+      "agent_usd": 8.27,
+      "agent_usd_incomplete": false,
+      "hosting_monthly_usd": 0.0,
+      "hosting_incomplete": false,
+      "hosting_usage_usd": {
+        "light": 60.0,
+        "busy": 100.0
+      },
+      "hosting_usage_incomplete": []
+    }
+  ],
+  "cells": [
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-wqm8g-static-web.cloudish.app",
+      "path": "cells/opus-5-5/cloudish/static-t1.json",
+      "report": "cells/opus-5-5/cloudish/static-t1.md",
+      "build_s": 93.5,
+      "deploy_s": 138.1,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 758077,
+      "agent_usd": 0.594829,
+      "hosting_monthly_usd": 7.84,
+      "hosting_usage_usd": {
+        "light": 0.11,
+        "busy": 7.84
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 14,
+      "agent_version": "2.1.296",
+      "build_tokens": 270309,
+      "deploy_tokens": 487768,
+      "stack": [],
+      "technologies": [
+        "Node.js 24",
+        "Node.js http"
+      ],
+      "code_lines": 355,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [],
+      "deploys_without_human": true,
+      "security_score": 84.5,
+      "stack_fit_score": 93.0,
+      "screenshots": [
+        "home.jpg",
+        "contact.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "crud",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 19,
+      "checks_total": 19,
+      "required_failed": [],
+      "url": "https://adb-4a8nv-crud.cloudish.app",
+      "path": "cells/opus-5-5/cloudish/crud-t1.json",
+      "report": "cells/opus-5-5/cloudish/crud-t1.md",
+      "build_s": 150.2,
+      "deploy_s": 403.9,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1806153,
+      "agent_usd": 1.187236,
+      "hosting_monthly_usd": 7.84,
+      "hosting_usage_usd": {
+        "light": 0.11,
+        "busy": 7.84
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 25,
+      "agent_version": "2.1.296",
+      "build_tokens": 470119,
+      "deploy_tokens": 1336034,
+      "stack": [],
+      "technologies": [
+        "Node.js 24",
+        "Node.js http",
+        "SQLite"
+      ],
+      "code_lines": 532,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [],
+      "deploys_without_human": true,
+      "security_score": 74.5,
+      "stack_fit_score": 87.0,
+      "screenshots": [
+        "signin.jpg",
+        "todos.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "api",
+      "trial": 1,
+      "status": "partial",
+      "failure_stage": "verify",
+      "score": 0.95,
+      "checks_passed": 19,
+      "checks_total": 20,
+      "required_failed": [
+        "isolation"
+      ],
+      "url": "https://adb-uxt97-api.cloudish.app",
+      "path": "cells/opus-5-5/cloudish/api-t1.json",
+      "report": "cells/opus-5-5/cloudish/api-t1.md",
+      "build_s": 183.8,
+      "deploy_s": 262.2,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1772965,
+      "agent_usd": 1.115858,
+      "hosting_monthly_usd": 7.84,
+      "hosting_usage_usd": {
+        "light": 0.11,
+        "busy": 7.84
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 28,
+      "agent_version": "2.1.296",
+      "build_tokens": 738049,
+      "deploy_tokens": 1034916,
+      "stack": [
+        "fastapi",
+        "uvicorn"
+      ],
+      "technologies": [
+        "Python 3.12",
+        "FastAPI",
+        "SQLite"
+      ],
+      "code_lines": 323,
+      "dependencies": 4,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [],
+      "deploys_without_human": false,
+      "security_score": 79.5,
+      "stack_fit_score": 90.0,
+      "screenshots": [
+        "docs.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "dataviz",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 12,
+      "checks_total": 12,
+      "required_failed": [],
+      "url": "https://adb-9jbgh-dataviz-web.cloudish.app",
+      "path": "cells/opus-5-5/cloudish/dataviz-t1.json",
+      "report": "cells/opus-5-5/cloudish/dataviz-t1.md",
+      "build_s": 158.1,
+      "deploy_s": 139.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1551474,
+      "agent_usd": 0.96526,
+      "hosting_monthly_usd": 7.84,
+      "hosting_usage_usd": {
+        "light": 0.11,
+        "busy": 7.84
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 22,
+      "agent_version": "2.1.296",
+      "build_tokens": 706319,
+      "deploy_tokens": 845155,
+      "stack": [],
+      "technologies": [
+        "Node.js 20",
+        "Node.js http"
+      ],
+      "code_lines": 505,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [],
+      "deploys_without_human": true,
+      "security_score": 81.5,
+      "stack_fit_score": 97.0,
+      "screenshots": [
+        "dashboard.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "cloudish",
+      "model": "opus-5-5",
+      "app": "realtime",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 13,
+      "checks_total": 13,
+      "required_failed": [],
+      "url": "https://adb-3pi5y-realtime-web.cloudish.app",
+      "path": "cells/opus-5-5/cloudish/realtime-t1.json",
+      "report": "cells/opus-5-5/cloudish/realtime-t1.md",
+      "build_s": 141.3,
+      "deploy_s": 139.6,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1158681,
+      "agent_usd": 0.860644,
+      "hosting_monthly_usd": 7.84,
+      "hosting_usage_usd": {
+        "light": 0.11,
+        "busy": 7.84
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 18,
+      "agent_version": "2.1.296",
+      "build_tokens": 409165,
+      "deploy_tokens": 749516,
+      "stack": [
+        "ws"
+      ],
+      "technologies": [
+        "Node.js 24",
+        "Node.js http",
+        "SQLite"
+      ],
+      "code_lines": 431,
+      "dependencies": 1,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [],
+      "deploys_without_human": true,
+      "security_score": 84.0,
+      "stack_fit_score": 90.0,
+      "screenshots": [
+        "chat.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-cqdoh-static-ve78h.ondigitalocean.app",
+      "path": "cells/opus-5-5/digitalocean/static-t1.json",
+      "report": "cells/opus-5-5/digitalocean/static-t1.md",
+      "build_s": 100.5,
+      "deploy_s": 130.2,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1094132,
+      "agent_usd": 0.836826,
+      "hosting_monthly_usd": 5.0,
+      "hosting_usage_usd": {
+        "light": 5.0,
+        "busy": 5.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 17,
+      "agent_version": "2.1.296",
+      "build_tokens": 455296,
+      "deploy_tokens": 360648,
+      "stack": [],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
+      ],
+      "code_lines": 434,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore",
+        ".do/app.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 87.0,
+      "stack_fit_score": 84.0,
+      "screenshots": [
+        "home.jpg",
+        "contact.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "crud",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 19,
+      "checks_total": 19,
+      "required_failed": [],
+      "url": "https://adb-oc4q0-crud-eddj4.ondigitalocean.app",
+      "path": "cells/opus-5-5/digitalocean/crud-t1.json",
+      "report": "cells/opus-5-5/digitalocean/crud-t1.md",
+      "build_s": 144.4,
+      "deploy_s": 439.1,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1160838,
+      "agent_usd": 1.051254,
+      "hosting_monthly_usd": 12.0,
+      "hosting_usage_usd": {
+        "light": 12.0,
+        "busy": 12.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 14,
+      "agent_version": "2.1.296",
+      "build_tokens": 491256,
+      "deploy_tokens": 353562,
+      "stack": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 22",
+        "Express",
+        "PostgreSQL"
+      ],
+      "code_lines": 472,
+      "dependencies": 3,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore",
+        ".do/app.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 79.0,
+      "stack_fit_score": 87.0,
+      "screenshots": [
+        "signin.jpg",
+        "todos.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "api",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 20,
+      "checks_total": 20,
+      "required_failed": [],
+      "url": "https://adb-j9ibd-api-sqyx2.ondigitalocean.app",
+      "path": "cells/opus-5-5/digitalocean/api-t1.json",
+      "report": "cells/opus-5-5/digitalocean/api-t1.md",
+      "build_s": 140.8,
+      "deploy_s": 540.2,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1146624,
+      "agent_usd": 1.012218,
+      "hosting_monthly_usd": 12.0,
+      "hosting_usage_usd": {
+        "light": 12.0,
+        "busy": 12.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 16,
+      "agent_version": "2.1.296",
+      "build_tokens": 438447,
+      "deploy_tokens": 401493,
+      "stack": [
+        "fastapi",
+        "psycopg",
+        "sqlalchemy",
+        "uvicorn"
+      ],
+      "technologies": [
+        "Python 3.12",
+        "FastAPI",
+        "PostgreSQL"
+      ],
+      "code_lines": 358,
+      "dependencies": 6,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 81.0,
+      "stack_fit_score": 87.0,
+      "screenshots": [
+        "docs.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "dataviz",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 12,
+      "checks_total": 12,
+      "required_failed": [],
+      "url": "https://adb-kb60n-dataviz-cdqxy.ondigitalocean.app",
+      "path": "cells/opus-5-5/digitalocean/dataviz-t1.json",
+      "report": "cells/opus-5-5/digitalocean/dataviz-t1.md",
+      "build_s": 131.0,
+      "deploy_s": 127.6,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1387182,
+      "agent_usd": 0.930806,
+      "hosting_monthly_usd": 5.0,
+      "hosting_usage_usd": {
+        "light": 5.0,
+        "busy": 5.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 18,
+      "agent_version": "2.1.296",
+      "build_tokens": 645888,
+      "deploy_tokens": 448435,
+      "stack": [],
+      "technologies": [
+        "Node.js 20",
+        "Node.js http"
+      ],
+      "code_lines": 540,
+      "dependencies": 0,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore",
+        ".do/app.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 89.0,
+      "stack_fit_score": 90.0,
+      "screenshots": [
+        "dashboard.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "digitalocean",
+      "model": "opus-5-5",
+      "app": "realtime",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 13,
+      "checks_total": 13,
+      "required_failed": [],
+      "url": "https://adb-w4mhs-realtime-mplbp.ondigitalocean.app",
+      "path": "cells/opus-5-5/digitalocean/realtime-t1.json",
+      "report": "cells/opus-5-5/digitalocean/realtime-t1.md",
+      "build_s": 98.6,
+      "deploy_s": 111.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 847940,
+      "agent_usd": 0.690525,
+      "hosting_monthly_usd": 5.0,
+      "hosting_usage_usd": {
+        "light": 5.0,
+        "busy": 5.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 12,
+      "agent_version": "2.1.296",
+      "build_tokens": 343936,
+      "deploy_tokens": 264150,
+      "stack": [
+        "ws"
+      ],
+      "technologies": [
+        "Node.js 20",
+        "Node.js http"
+      ],
+      "code_lines": 442,
+      "dependencies": 1,
+      "deploy_config": [
+        "Dockerfile",
+        ".dockerignore",
+        ".do/app.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 84.5,
+      "stack_fit_score": 79.0,
+      "screenshots": [
+        "chat.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "failed",
+      "failure_stage": "human",
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 0,
+      "required_failed": [],
+      "url": null,
+      "path": "cells/opus-5-5/railway/static-t1.json",
+      "report": "cells/opus-5-5/railway/static-t1.md",
+      "build_s": 91.9,
+      "deploy_s": 601.4,
+      "ready_after_deploy_s": null,
+      "tokens": 1374008,
+      "agent_usd": 0.88229,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 22,
+      "agent_version": "2.1.296",
+      "build_tokens": 382741,
+      "deploy_tokens": 770189,
+      "stack": [],
+      "technologies": [
+        "Node.js 18+",
+        "Node.js http"
+      ],
+      "code_lines": 404,
+      "dependencies": 0,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": null,
+      "stack_fit_score": null,
+      "screenshots": [],
+      "from_run": null
+    },
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "crud",
+      "trial": 1,
+      "status": "failed",
+      "failure_stage": "human",
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 0,
+      "required_failed": [],
+      "url": null,
+      "path": "cells/opus-5-5/railway/crud-t1.json",
+      "report": "cells/opus-5-5/railway/crud-t1.md",
+      "build_s": 138.6,
+      "deploy_s": 39.6,
+      "ready_after_deploy_s": null,
+      "tokens": 1257585,
+      "agent_usd": 0.808003,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 17,
+      "agent_version": "2.1.296",
+      "build_tokens": 482787,
+      "deploy_tokens": 380990,
+      "stack": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express"
+      ],
+      "code_lines": 488,
+      "dependencies": 3,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": null,
+      "stack_fit_score": null,
+      "screenshots": [],
+      "from_run": null
+    },
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "api",
+      "trial": 1,
+      "status": "failed",
+      "failure_stage": "human",
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 0,
+      "required_failed": [],
+      "url": null,
+      "path": "cells/opus-5-5/railway/api-t1.json",
+      "report": "cells/opus-5-5/railway/api-t1.md",
+      "build_s": 129.6,
+      "deploy_s": 150.4,
+      "ready_after_deploy_s": null,
+      "tokens": 1211665,
+      "agent_usd": 0.825174,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 17,
+      "agent_version": "2.1.296",
+      "build_tokens": 407440,
+      "deploy_tokens": 608984,
+      "stack": [
+        "express",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express"
+      ],
+      "code_lines": 466,
+      "dependencies": 2,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        },
+        {
+          "id": "payment_method",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": null,
+      "stack_fit_score": null,
+      "screenshots": [],
+      "from_run": null
+    },
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "dataviz",
+      "trial": 1,
+      "status": "failed",
+      "failure_stage": "human",
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 0,
+      "required_failed": [],
+      "url": null,
+      "path": "cells/opus-5-5/railway/dataviz-t1.json",
+      "report": "cells/opus-5-5/railway/dataviz-t1.md",
+      "build_s": 156.4,
+      "deploy_s": 626.6,
+      "ready_after_deploy_s": null,
+      "tokens": 1993016,
+      "agent_usd": 1.365358,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 23,
+      "agent_version": "2.1.296",
+      "build_tokens": 724927,
+      "deploy_tokens": 950902,
+      "stack": [],
+      "technologies": [
+        "Node.js 20+",
+        "Node.js http"
+      ],
+      "code_lines": 534,
+      "dependencies": 0,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": null,
+      "stack_fit_score": null,
+      "screenshots": [],
+      "from_run": null
+    },
+    {
+      "cloud": "railway",
+      "model": "opus-5-5",
+      "app": "realtime",
+      "trial": 1,
+      "status": "failed",
+      "failure_stage": "human",
+      "score": 0.0,
+      "checks_passed": 0,
+      "checks_total": 0,
+      "required_failed": [],
+      "url": null,
+      "path": "cells/opus-5-5/railway/realtime-t1.json",
+      "report": "cells/opus-5-5/railway/realtime-t1.md",
+      "build_s": 146.6,
+      "deploy_s": 37.9,
+      "ready_after_deploy_s": null,
+      "tokens": 1210521,
+      "agent_usd": 0.839295,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 0.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 17,
+      "agent_version": "2.1.296",
+      "build_tokens": 498888,
+      "deploy_tokens": 403223,
+      "stack": [
+        "pg",
+        "ws"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Node.js http"
+      ],
+      "code_lines": 450,
+      "dependencies": 2,
+      "deploy_config": [
+        "railway.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": null,
+      "stack_fit_score": null,
+      "screenshots": [],
+      "from_run": null
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-hpd89-static-web.onrender.com",
+      "path": "cells/opus-5-5/render/static-t1.json",
+      "report": "cells/opus-5-5/render/static-t1.md",
+      "build_s": 96.0,
+      "deploy_s": 141.5,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1074117,
+      "agent_usd": 0.795762,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 7.13
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 18,
+      "agent_version": "2.1.296",
+      "build_tokens": 369998,
+      "deploy_tokens": 524865,
+      "stack": [],
+      "technologies": [
+        "Node.js 24",
+        "Node.js http"
+      ],
+      "code_lines": 421,
+      "dependencies": 0,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 72.5,
+      "stack_fit_score": 81.0,
+      "screenshots": [
+        "home.jpg",
+        "contact.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "crud",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 19,
+      "checks_total": 19,
+      "required_failed": [],
+      "url": "https://adb-iqb72-crud-web.onrender.com",
+      "path": "cells/opus-5-5/render/crud-t1.json",
+      "report": "cells/opus-5-5/render/crud-t1.md",
+      "build_s": 132.1,
+      "deploy_s": 283.9,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1707452,
+      "agent_usd": 1.169936,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 7.13
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 22,
+      "agent_version": "2.1.296",
+      "build_tokens": 436514,
+      "deploy_tokens": 920580,
+      "stack": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express",
+        "PostgreSQL"
+      ],
+      "code_lines": 498,
+      "dependencies": 3,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 63.5,
+      "stack_fit_score": 80.0,
+      "screenshots": [
+        "signin.jpg",
+        "todos.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "api",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 20,
+      "checks_total": 20,
+      "required_failed": [],
+      "url": "https://adb-zpbtt-api-web.onrender.com",
+      "path": "cells/opus-5-5/render/api-t1.json",
+      "report": "cells/opus-5-5/render/api-t1.md",
+      "build_s": 150.2,
+      "deploy_s": 357.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1611918,
+      "agent_usd": 1.130585,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 7.13
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 23,
+      "agent_version": "2.1.296",
+      "build_tokens": 484404,
+      "deploy_tokens": 814744,
+      "stack": [
+        "fastapi",
+        "psycopg",
+        "sqlalchemy",
+        "uvicorn"
+      ],
+      "technologies": [
+        "Python 3.12",
+        "FastAPI",
+        "PostgreSQL"
+      ],
+      "code_lines": 466,
+      "dependencies": 6,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 68.0,
+      "stack_fit_score": 81.0,
+      "screenshots": [
+        "docs.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "dataviz",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 12,
+      "checks_total": 12,
+      "required_failed": [],
+      "url": "https://adb-lt4yb-dataviz-web.onrender.com",
+      "path": "cells/opus-5-5/render/dataviz-t1.json",
+      "report": "cells/opus-5-5/render/dataviz-t1.md",
+      "build_s": 135.4,
+      "deploy_s": 275.4,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1618476,
+      "agent_usd": 1.037126,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 7.13
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 21,
+      "agent_version": "2.1.296",
+      "build_tokens": 544362,
+      "deploy_tokens": 843122,
+      "stack": [],
+      "technologies": [
+        "Node.js 22",
+        "Node.js http"
+      ],
+      "code_lines": 478,
+      "dependencies": 0,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 69.0,
+      "stack_fit_score": 81.0,
+      "screenshots": [
+        "dashboard.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "render",
+      "model": "opus-5-5",
+      "app": "realtime",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 13,
+      "checks_total": 13,
+      "required_failed": [],
+      "url": "https://adb-mlvy1-realtime-web.onrender.com",
+      "path": "cells/opus-5-5/render/realtime-t1.json",
+      "report": "cells/opus-5-5/render/realtime-t1.md",
+      "build_s": 102.9,
+      "deploy_s": 101.2,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 986096,
+      "agent_usd": 0.834779,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 7.13
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 14,
+      "agent_version": "2.1.296",
+      "build_tokens": 347853,
+      "deploy_tokens": 393911,
+      "stack": [
+        "ws"
+      ],
+      "technologies": [
+        "Node.js 18+",
+        "Node.js http"
+      ],
+      "code_lines": 481,
+      "dependencies": 1,
+      "deploy_config": [
+        "render.yaml"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 78.5,
+      "stack_fit_score": 76.0,
+      "screenshots": [
+        "chat.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "static",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 16,
+      "checks_total": 16,
+      "required_failed": [],
+      "url": "https://adb-8kbz7-static-web.vercel.app",
+      "path": "cells/opus-5-5/vercel/static-t1.json",
+      "report": "cells/opus-5-5/vercel/static-t1.md",
+      "build_s": 90.6,
+      "deploy_s": 61.5,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1636056,
+      "agent_usd": 1.098566,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 20.0,
+        "busy": 20.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 14,
+      "agent_version": "2.1.296",
+      "build_tokens": 379454,
+      "deploy_tokens": 391043,
+      "stack": [],
+      "technologies": [
+        "Node.js 18+",
+        "Vercel Functions"
+      ],
+      "code_lines": 406,
+      "dependencies": 0,
+      "deploy_config": [
+        "vercel.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 78.5,
+      "stack_fit_score": 100.0,
+      "screenshots": [
+        "home.jpg",
+        "contact.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "crud",
+      "trial": 1,
+      "status": "partial",
+      "failure_stage": "human",
+      "score": 0.3158,
+      "checks_passed": 6,
+      "checks_total": 19,
+      "required_failed": [
+        "signup",
+        "signup_duplicate",
+        "login",
+        "login_wrong_password",
+        "auth_required",
+        "create",
+        "create_validation",
+        "list",
+        "update",
+        "isolation",
+        "delete",
+        "persistence"
+      ],
+      "url": "https://adb-odsee-crud-web.vercel.app",
+      "path": "cells/opus-5-5/vercel/crud-t1.json",
+      "report": "cells/opus-5-5/vercel/crud-t1.md",
+      "build_s": 128.3,
+      "deploy_s": 87.3,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 1619593,
+      "agent_usd": 0.993764,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 20.0,
+        "busy": 20.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 18,
+      "agent_version": "2.1.296",
+      "build_tokens": 400910,
+      "deploy_tokens": 605239,
+      "stack": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Express"
+      ],
+      "code_lines": 426,
+      "dependencies": 4,
+      "deploy_config": [
+        "vercel.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        },
+        {
+          "id": "accept_integration_terms",
+          "minutes": 3
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 65.0,
+      "stack_fit_score": 80.0,
+      "screenshots": [
+        "signin.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "api",
+      "trial": 1,
+      "status": "partial",
+      "failure_stage": "human",
+      "score": 0.5,
+      "checks_passed": 10,
+      "checks_total": 20,
+      "required_failed": [
+        "create",
+        "create_validation",
+        "get",
+        "list",
+        "update",
+        "isolation",
+        "delete",
+        "persistence",
+        "rate_limit_per_key"
+      ],
+      "url": "https://adb-be8tp-api.vercel.app",
+      "path": "cells/opus-5-5/vercel/api-t1.json",
+      "report": "cells/opus-5-5/vercel/api-t1.md",
+      "build_s": 160.7,
+      "deploy_s": 205.1,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 2568286,
+      "agent_usd": 1.836296,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 20.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 26,
+      "agent_version": "2.1.296",
+      "build_tokens": 560354,
+      "deploy_tokens": 1462742,
+      "stack": [
+        "hono",
+        "pg"
+      ],
+      "technologies": [
+        "Node.js 20+",
+        "Hono"
+      ],
+      "code_lines": 688,
+      "dependencies": 3,
+      "deploy_config": [],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        },
+        {
+          "id": "accept_integration_terms",
+          "minutes": 3
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 82.0,
+      "stack_fit_score": 55.0,
+      "screenshots": [
+        "docs.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "dataviz",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 12,
+      "checks_total": 12,
+      "required_failed": [],
+      "url": "https://adb-dfzfy-dataviz-web.vercel.app",
+      "path": "cells/opus-5-5/vercel/dataviz-t1.json",
+      "report": "cells/opus-5-5/vercel/dataviz-t1.md",
+      "build_s": 153.8,
+      "deploy_s": 60.3,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 2090645,
+      "agent_usd": 1.193759,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 20.0,
+        "busy": 20.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 16,
+      "agent_version": "2.1.296",
+      "build_tokens": 623164,
+      "deploy_tokens": 445985,
+      "stack": [],
+      "technologies": [
+        "Node.js 18+",
+        "Vercel Functions"
+      ],
+      "code_lines": 475,
+      "dependencies": 0,
+      "deploy_config": [
+        "vercel.json"
+      ],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 75.0,
+      "stack_fit_score": 93.0,
+      "screenshots": [
+        "dashboard.jpg"
+      ],
+      "from_run": null
+    },
+    {
+      "cloud": "vercel",
+      "model": "opus-5-5",
+      "app": "realtime",
+      "trial": 1,
+      "status": "success",
+      "failure_stage": null,
+      "score": 1.0,
+      "checks_passed": 13,
+      "checks_total": 13,
+      "required_failed": [],
+      "url": "https://adb-4beic-realtime-web.vercel.app",
+      "path": "cells/opus-5-5/vercel/realtime-t1.json",
+      "report": "cells/opus-5-5/vercel/realtime-t1.md",
+      "build_s": 184.7,
+      "deploy_s": 289.1,
+      "ready_after_deploy_s": 0.0,
+      "tokens": 6143521,
+      "agent_usd": 3.144958,
+      "hosting_monthly_usd": 0.0,
+      "hosting_usage_usd": {
+        "light": 0.0,
+        "busy": 20.0
+      },
+      "hosting_usage_incomplete": [],
+      "shell_commands": 23,
+      "agent_version": "2.1.296",
+      "build_tokens": 564297,
+      "deploy_tokens": 1512288,
+      "stack": [
+        "@upstash/redis",
+        "next",
+        "react",
+        "ws"
+      ],
+      "technologies": [
+        "Node.js",
+        "Next.js",
+        "React"
+      ],
+      "code_lines": 836,
+      "dependencies": 6,
+      "deploy_config": [],
+      "human_steps": [
+        {
+          "id": "signup",
+          "minutes": 3
+        },
+        {
+          "id": "api_token",
+          "minutes": 2
+        }
+      ],
+      "deploys_without_human": false,
+      "security_score": 82.5,
+      "stack_fit_score": 60.0,
+      "screenshots": [
+        "chat.jpg"
+      ],
+      "from_run": null
+    }
+  ]
+}

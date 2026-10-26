@@ -1,0 +1,351 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-4j8af-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "failed",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 73.9,
+    "tokens": 317187,
+    "agent_usd": 0.151877
+  },
+  "url": null,
+  "url_source": null,
+  "score": 0.0,
+  "checks_passed": 0,
+  "checks_total": 0,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup",
+          "agent: Wait for Railway to lift its platform-wide pause on new deploys and projects (see https://status.railway.com, 'Railway Recovery after October 21 Incident'), or contact Railway support if this account's deploys are paused. Then re-run the deployment: create project `adb-4j8af-dataviz` with service `a"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "signup",
+        "source": "agent",
+        "detail": "Wait for Railway to lift its platform-wide pause on new deploys and projects (see https://status.railway.com, 'Railway Recovery after October 21 Incident'), or contact Railway support if this account's deploys are paused. Then re-run the deployment: create project `adb-4j8af-dataviz` with service `a",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "stack_fit": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "timing": {
+    "build_s": 156.4,
+    "deploy_s": 626.6,
+    "deploy_nohuman_s": 73.9,
+    "agent_s": 856.9,
+    "ready_after_deploy_s": null,
+    "verify_s": 0.0
+  },
+  "tokens": {
+    "build": {
+      "input": 4008,
+      "output": 16697,
+      "cache_read": 669395,
+      "cache_write": 34827,
+      "total": 724927
+    },
+    "deploy": {
+      "input": 5021,
+      "output": 5550,
+      "cache_read": 882571,
+      "cache_write": 57760,
+      "total": 950902
+    },
+    "deploy_nohuman": {
+      "input": 264,
+      "output": 2511,
+      "cache_read": 306554,
+      "cache_write": 7858,
+      "total": 317187
+    },
+    "total": {
+      "input": 9293,
+      "output": 24758,
+      "cache_read": 1858520,
+      "cache_write": 100445,
+      "total": 1993016
+    }
+  },
+  "cost": {
+    "agent_usd": 1.365358,
+    "agent_build_usd": 0.657986,
+    "agent_deploy_usd": 0.555495,
+    "agent_nohuman_deploy_usd": 0.151877,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      },
+      "busy": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 17,
+      "deploy": 13
+    },
+    "tool_calls": {
+      "Bash": 23,
+      "Skill": 1,
+      "Read": 1,
+      "WebFetch": 1,
+      "Monitor": 1
+    },
+    "shell_commands": {
+      "build": 13,
+      "deploy": 10
+    },
+    "tool_errors": 2,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T20:19:37+00:00",
+      "wall_time_s": 156.4,
+      "api_time_s": 149.2,
+      "turns": 17,
+      "tokens": {
+        "input": 4008,
+        "output": 16697,
+        "cache_read": 669395,
+        "cache_write": 34827,
+        "total": 724927
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.657986,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 4008,
+          "output": 16697,
+          "cache_read": 669395,
+          "cache_write": 34827,
+          "cost_usd": 0.6579860000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 13,
+        "Skill": 1,
+        "Read": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T20:23:28+00:00",
+      "wall_time_s": 626.6,
+      "api_time_s": 72.0,
+      "turns": 13,
+      "tokens": {
+        "input": 5021,
+        "output": 5550,
+        "cache_read": 882571,
+        "cache_write": 57760,
+        "total": 950902
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.555495,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 703,
+          "output": 4316,
+          "cache_read": 882571,
+          "cache_write": 57760,
+          "cost_usd": 0.5544462000000003,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 4318,
+          "output": 1234,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0010488,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10,
+        "WebFetch": 1,
+        "Monitor": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": true
+    }
+  },
+  "final_messages": {
+    "build": "The sales dashboard is built and working locally. All 6 automated tests pass, and a headless-browser check showed filters updating the KPIs, charts and table without a page reload, with no errors in the browser console. The server is stopped.\n\n**Stack:** Node.js 20 or newer, using only the standard library (`node:http`), so there's nothing to install. The CSV is loaded into memory at startup. The dashboard is one static HTML page with plain JavaScript that draws its own SVG charts, so nothing loads from a CDN. `STACK.md` compares this with Python FastAPI plus pandas, and with Express plus Postgres and a React frontend. I chose the zero-dependency option because it has the fewest moving parts for a small, read-only dataset, and Railway detects it automatically from `package.json`.\n\n**Run:**\n```\nnpm start    # listens on $PORT (default 3000), on all interfaces\nnpm test     # API tests with the built-in node:test runner\n```\n\n**What's there:**\n- **`GET /`:** the dashboard.\n  - Filters for start and end date, region and category.\n  - Three tiles: total revenue, orders and units.\n  - A revenue-by-month line chart with a hover readout, and a revenue-by-category bar chart.\n  - A table of matching orders, newest first, 50 per page.\n  - Filters are saved in the URL, so a filtered view can be shared.\n- **`GET /api/summary`:** returns the response format given in `TASK.md`, with all filters combined. Revenue is added up in whole cents and then rounded to 2 decimals. If nothing matches, it returns zeros and empty lists.\n  - I checked one filtered query against a separate Python calculation and the results matched exactly.\n  - One choice of mine: a badly formed `start` or `end` date returns `400` instead of being ignored.\n- **Extra endpoints:** `/api/orders` (filtered, paginated orders for the table), `/api/options` (values for the filter menus) and `/healthz` (a health check for Railway).\n\nThe main files are `server.js`, `lib.js` (filtering and totals), `public/index.html` and `test/api.test.js`.",
+    "deploy": "The retry loop is still running in the background. I'll wait for its result before finishing."
+  },
+  "deployment_manifest": {
+    "url": "",
+    "resources": [],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Wait for Railway to lift its platform-wide pause on new deploys and projects (see https://status.railway.com, 'Railway Recovery after October 21 Incident'), or contact Railway support if this account's deploys are paused. Then re-run the deployment: create project `adb-4j8af-dataviz` with service `adb-4j8af-dataviz-web`, upload this directory with `railway up`, and generate a *.up.railway.app domain.",
+        "why": "Every `projectCreate` call made with the provided RAILWAY_API_TOKEN failed with 'Deploys have been paused temporarily' (BAD_USER_INPUT) between 20:23 and about 20:50 UTC on 2026-10-26. No project, service or URL could be created, and an agent can't lift the pause.",
+        "blocking": true
+      }
+    ],
+    "notes": "Not deployed, so no public URL exists. Railway accepted the provided token for `projectCreate` mutations, but every call was rejected with 'Deploys have been paused temporarily', including about 25 minutes of retries. Railway's status page reports an ongoing recovery from an October 21 incident, with new signups paused and some features disabled. The token is a workspace/team token: `me`, `projects` and `railway whoami` return Not Authorized, so the CLI's login check fails and it can't be used directly. A deploy needs to: (1) create the project with the API using this token, (2) create a project token with `projectTokenCreate` and pass it to the CLI as RAILWAY_TOKEN, (3) run `railway up --ci --service adb-4j8af-dataviz-web`, then `railway domain`. One early retry hit the '1 project per 30 seconds' rate limit, but no call ever returned a project ID, so no resources should exist; this couldn't be confirmed because listing projects isn't authorized with this token. The app is deploy-ready: a zero-dependency Node.js server that Railpack detects from package.json, with railway.json setting the start command, a /healthz health check and a restart policy. The planned setup is one web service and no database, using about 30-50 MB of RAM, estimated at $0-5 a month within the plan's included usage."
+  },
+  "verification": {
+    "readiness": {
+      "ready": false
+    },
+    "checks": [],
+    "error": "no deployment URL found",
+    "duration_s": 0.0
+  },
+  "screenshots": [],
+  "resources": [],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [
+    "listing projects failed: Railway API error: Not Authorized"
+  ],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 0,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 12,
+    "lines": {
+      "HTML": 326,
+      "JavaScript": 195,
+      "JSON": 36,
+      "Markdown": 28,
+      "Shell": 13
+    },
+    "code_lines": 534,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

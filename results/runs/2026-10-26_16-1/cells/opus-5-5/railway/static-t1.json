@@ -1,0 +1,337 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-dxboc-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "failed",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 149.7,
+    "tokens": 221078,
+    "agent_usd": 0.114003
+  },
+  "url": null,
+  "url_source": null,
+  "score": 0.0,
+  "checks_passed": 0,
+  "checks_total": 0,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup",
+          "agent: Wait until Railway re-enables deploys for this account/workspace (status.railway.com: 'Railway Recovery after October 21 Incident'), or ask Railway support (station.railway.com) to lift the pause, then run ./deploy.sh with RAILWAY_API_TOKEN set. (Every projectCreate call via the Railway GraphQL API "
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "signup",
+        "source": "agent",
+        "detail": "Wait until Railway re-enables deploys for this account/workspace (status.railway.com: 'Railway Recovery after October 21 Incident'), or ask Railway support (station.railway.com) to lift the pause, then run ./deploy.sh with RAILWAY_API_TOKEN set. (Every projectCreate call via the Railway GraphQL API ",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "stack_fit": {
+    "status": "skipped",
+    "detail": "no reachable deployment to review"
+  },
+  "timing": {
+    "build_s": 91.9,
+    "deploy_s": 601.4,
+    "deploy_nohuman_s": 149.7,
+    "agent_s": 843.0,
+    "ready_after_deploy_s": null,
+    "verify_s": 0.0
+  },
+  "tokens": {
+    "build": {
+      "input": 3811,
+      "output": 9537,
+      "cache_read": 352188,
+      "cache_write": 17205,
+      "total": 382741
+    },
+    "deploy": {
+      "input": 839,
+      "output": 3781,
+      "cache_read": 729371,
+      "cache_write": 36198,
+      "total": 770189
+    },
+    "deploy_nohuman": {
+      "input": 543,
+      "output": 2442,
+      "cache_read": 214057,
+      "cache_write": 4036,
+      "total": 221078
+    },
+    "total": {
+      "input": 5193,
+      "output": 15760,
+      "cache_read": 1295616,
+      "cache_write": 57439,
+      "total": 1374008
+    }
+  },
+  "cost": {
+    "agent_usd": 0.88229,
+    "agent_build_usd": 0.362447,
+    "agent_deploy_usd": 0.40584,
+    "agent_nohuman_deploy_usd": 0.114003,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      },
+      "busy": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "nothing deployed"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 15
+    },
+    "tool_calls": {
+      "Bash": 22,
+      "Monitor": 1
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 13
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T19:41:02+00:00",
+      "wall_time_s": 91.9,
+      "api_time_s": 82.6,
+      "turns": 10,
+      "tokens": {
+        "input": 3811,
+        "output": 9537,
+        "cache_read": 352188,
+        "cache_write": 17205,
+        "total": 382741
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.362447,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3811,
+          "output": 9537,
+          "cache_read": 352188,
+          "cache_write": 17205,
+          "cost_usd": 0.36244660000000006,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T19:45:05+00:00",
+      "wall_time_s": 601.4,
+      "api_time_s": 55.3,
+      "turns": 15,
+      "tokens": {
+        "input": 839,
+        "output": 3781,
+        "cache_read": 729371,
+        "cache_write": 36198,
+        "total": 770189
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.40584,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 839,
+          "output": 3781,
+          "cache_read": 729371,
+          "cache_write": 36198,
+          "cost_usd": 0.4058402000000001,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 13,
+        "Monitor": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": true
+    }
+  },
+  "final_messages": {
+    "build": "The Northwind Robotics site is built and every requirement checks out locally. The server is stopped.\n\n**Stack:** a single Node.js server (`server.js`) with no dependencies, built only on Node's standard `node:http` module. It serves the three pages from `public/` at `/`, `/about` and `/contact` (no `.html` suffix), along with the stylesheet and the contact-form script. It also handles `POST /api/contact`, and any other path gets a 404. `STACK.md` explains why I chose this over two alternatives: Express, and a separate static host paired with a function for the form. In short, it's the simplest option, there's nothing to install, and it listens on `0.0.0.0:$PORT`, which is what Railway expects.\n\n**Run it:**\n```sh\nnpm start   # http://localhost:3000, or set PORT\nnpm test    # 15 automated tests\n```\n\n**What I checked:**\n- **Automated tests (all 15 pass):**\n  - Every page returns 200 with `text/html`, a `<title>`, a viewport tag and links to the other pages.\n  - The home page has the `<h1>` and three feature highlights.\n  - The contact page has the form fields.\n  - Unknown paths, including `/about.html`, return 404.\n  - Valid input returns `200 {\"ok\":true}`. A missing name, invalid email, empty message or malformed JSON returns `400 {\"ok\":false,\"error\":...}`.\n- **curl against the running server:** pages, assets, the 404 and both API outcomes all behaved correctly.\n- **Real browser (Playwright with Chromium):** submitting the form shows a confirmation without reloading the page, and invalid input shows the error message from the server.\n\nI also added a `/healthz` endpoint that returns `ok`. Railway can use it as a health check in step 2.",
+    "deploy": "I'll be notified when the loop finishes or a project is created."
+  },
+  "deployment_manifest": {
+    "url": "",
+    "resources": [],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Wait until Railway re-enables deploys for this account/workspace (status.railway.com: 'Railway Recovery after October 21 Incident'), or ask Railway support (station.railway.com) to lift the pause, then run ./deploy.sh with RAILWAY_API_TOKEN set.",
+        "why": "Every projectCreate call via the Railway GraphQL API returns 'Deploys have been paused temporarily', so no project, service or public domain can be created. deploy.sh creates project adb-dxboc-static, service adb-dxboc-static-web, uploads the code and generates a *.up.railway.app HTTPS domain.",
+        "blocking": true
+      }
+    ],
+    "notes": "The provided RAILWAY_API_TOKEN is accepted for mutations (it reached the rate limiter and the deploy-pause check) but behaves like a workspace token: `me` and `projects` queries return Not Authorized, so `railway whoami` fails. projectCreate was retried for about 45 minutes and always returned 'Deploys have been paused temporarily', which matches Railway's ongoing recovery after its October 21 security incident. Nothing was created, so nothing costs money. The app is deploy-ready: railway.json (Railpack, npm start, healthcheck /healthz), server binds 0.0.0.0:$PORT, no dependencies, 15 passing local tests. The planned setup is a single smallest Node web service, estimated at $0-5/month within Railway's usage credit."
+  },
+  "verification": {
+    "readiness": {
+      "ready": false
+    },
+    "checks": [],
+    "error": "no deployment URL found",
+    "duration_s": 0.0
+  },
+  "screenshots": [],
+  "resources": [],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [
+    "listing projects failed: Railway API error: Not Authorized"
+  ],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 0,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 16,
+    "lines": {
+      "JavaScript": 198,
+      "HTML": 164,
+      "JSON": 38,
+      "CSS": 31,
+      "Markdown": 24,
+      "Shell": 11
+    },
+    "code_lines": 404,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=18"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 18+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}
