@@ -427,6 +427,8 @@ def verify(cell: Cell, use_browser: bool = True) -> dict[str, Any]:
     report["started_at"] = started_at
     report["duration_s"] = round(time.monotonic() - started, 1)
     cell.write("verify.json", report)
+    for note in report.get("notes", []):
+        log(f"  NOTE {note}")
     for check in report["checks"]:
         mark = {"passed": "PASS", "failed": "FAIL", "skipped": "SKIP"}[check["status"]]
         log(f"  {mark} {check['id']}{': ' + check['detail'] if check['detail'] else ''}")

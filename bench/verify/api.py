@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import time
 
+import httpx
+
 from bench.verify.base import CheckFailed, Verifier, expect, expect_html, expect_json, expect_status, token
 
 # A fixed one-minute window can split a burst in two, so send more than twice the limit.
 RATE_LIMIT_BURST = 130
+# A full window, plus a margin: by then a limiter of 60 requests a minute has forgotten every earlier request.
+COOLDOWN_S = 62
 
 
 class ApiVerifier(Verifier):
@@ -46,6 +50,8 @@ class ApiVerifier(Verifier):
 
         with self.check("auth_invalid", "Requests with an unknown API key get 401"):
             expect_status(self.get("/v1/notes", headers=self._key("invalid-" + token())), 401, 403)
+
+        self._cool_down(key_a, key_b)
 
         with self.check("create", "POST /v1/notes creates a note"):
             first = self._create(key_a, {"title": "First " + tag, "content": "Hello", "tags": ["bench", tag]})
@@ -118,6 +124,21 @@ class ApiVerifier(Verifier):
     @staticmethod
     def _key(value: str) -> dict[str, str]:
         return {"X-API-Key": value}
+
+    def _cool_down(self, *keys: str) -> None:
+        """Waits out one rate-limit window when a key is throttled before the verifier has used it.
+
+        Agents check the limit through the public URL with these same keys, often seconds before
+        verification starts, so a key can arrive still throttled by the agent's own requests.
+        """
+        try:
+            throttled = sum(self.get("/v1/notes", headers=self._key(key)).status_code == 429 for key in keys)
+        except (CheckFailed, httpx.HTTPError):
+            return  # the checks that follow report it
+        if throttled:
+            self.notes.append(f"{throttled} of {len(keys)} API keys were rate-limited before the first check, "
+                              f"by requests made before verification; waited {COOLDOWN_S}s for the limit to reset")
+            time.sleep(COOLDOWN_S)
 
     def _create(self, key: str, body: dict) -> dict:
         response = self.post("/v1/notes", json=body, headers=self._key(key))

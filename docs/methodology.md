@@ -101,6 +101,12 @@ checked strictly where the spec names one, with close equivalents accepted (for 
 | [Dashboard](../apps/dataviz/TASK.md) | dashboard served; `/api/summary` totals, monthly and per-category revenue match values computed independently from the CSV for five filter combinations (including an empty result); a chart renders in the browser | at least two charts, filter controls |
 | [Realtime chat](../apps/realtime/TASK.md) | UI served; clients connect (WebSocket or SSE, as declared in `deployment.json`); a message reaches another client within 5 s; rooms stay isolated; five users posting at once all receive every message within 10 s; history endpoint includes recent messages | transport declared, sender echo, over-long messages rejected, UI loads without errors |
 
+The API verifier calls the app with the same keys the agent had, and agents often test the rate
+limit through the public URL seconds before verification starts. So before its first request with
+a key, it sends one request per key, and if either is already throttled it waits 62 seconds, a full
+window, before checking anything. The wait is logged and recorded under `notes` in the cell's
+`verify.json`.
+
 The verifiers are tested against reference implementations of all five apps, and against broken
 variants to prove each check catches what it should ([`tests/`](../tests)).
 
