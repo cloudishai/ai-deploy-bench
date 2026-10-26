@@ -98,6 +98,21 @@ def test_blocked_cells_fail_at_the_human_stage(make_cell):
     assert "**Blocked:**" in result.render_report(record, current)
 
 
+def test_a_cell_whose_credentials_were_rejected_is_a_harness_error(make_cell):
+    current = make_cell("railway", "static")
+    current.write("verify.json", {"url": None, "success": False, "readiness": {"ready": False}, "checks": []})
+    current.write("deployment.json", {"human_steps": [{"step": "Provide a valid Railway API token", "blocking": True}]})
+    rejected = "listing projects failed: Railway API error: Not Authorized"
+    current.write("inventory.json", {"cloud": {"resources": [], "errors": [rejected], "credentials_rejected": rejected}})
+    record = result.build(current)
+    assert (record["status"], record["failure_stage"]) == ("error", "harness")
+    assert [s["id"] for s in record["human"]["steps"]] == ["signup", "api_token"]  # prerequisites only
+    assert not record["human"]["blocked"]
+    record["code"] = {}
+    report = result.render_report(record, current)
+    assert "**Harness error:** Railway rejected the benchmark's own credentials" in report and "**Blocked:**" not in report
+
+
 def test_cloudish_agents_never_receive_a_key(monkeypatch):
     cfg = config.load()
     monkeypatch.setenv("CLOUDISH_API_KEY", "cld_a_key_someone_made_by_hand")

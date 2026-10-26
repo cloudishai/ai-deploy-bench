@@ -372,6 +372,9 @@ def inventory(cell: Cell) -> dict[str, Any]:
                                                          usages=cell.config.hosting_usage,
                                                          use=cell.config.app(cell.info["app"]).use))
     report = {role: merge_inventories(reports) for role, reports in found.items()}
+    if rejected := base.rejected_credentials(found["cloud"][0].get("errors") or []):
+        report["cloud"]["credentials_rejected"] = rejected
+        log(f"::warning::{cell.info['cloud']} rejected the benchmark's credentials: {rejected}")
     cell.write("inventory.json", report)
     cloud = report["cloud"]
     log(f"inventory: {len(cloud.get('resources', []))} resource(s), est. ${cloud.get('monthly_usd') or 0:.2f}/month"

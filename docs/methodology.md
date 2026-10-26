@@ -84,7 +84,10 @@ A cell is a **success** when its deployment answers on a public HTTPS URL and pa
 *required* check for its app. It is **partial** when it is reachable but at least one required
 check fails, and **failed** when there is no reachable deployment. The failure stage is recorded:
 `build`, `deploy`, or `human` when the agent couldn't finish without something only a person can
-do. Optional checks count toward the cell's **score**, which is checks passed
+do. A cell is an **error** at the stage `harness` when the benchmark itself failed it: the verifier
+crashed, or the cloud rejected the benchmark's own credentials (a revoked token, say) and the cell
+didn't succeed. The agent's blockers then describe the dead credentials, not the cloud, so they
+aren't counted as human steps. Optional checks count toward the cell's **score**, which is checks passed
 over checks run. Checks skipped because no browser was available don't count either way.
 
 Every app shares three required checks: the app answers with 2xx within `ready_timeout_minutes`

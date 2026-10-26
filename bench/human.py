@@ -112,14 +112,15 @@ def used(inventory: dict[str, Any], prerequisites: tuple[str, ...], when_paid: t
     return steps
 
 
-def assess(cell: "Cell", inventory: dict[str, Any], deployment: dict[str, Any], succeeded: bool) -> dict[str, Any]:
+def assess(cell: "Cell", inventory: dict[str, Any], deployment: dict[str, Any], succeeded: bool,
+           harness_failed: bool = False) -> dict[str, Any]:
     cfg = cell.config
     cloud = cfg.cloud(cell.info["cloud"])
     catalog = cfg.human_steps
     blockers = reported(deployment) + detected(cell)
     counted = [{"id": step, "source": "prerequisite", "detail": "account setup"} for step in cloud.prerequisites]
     counted += used(inventory, cloud.prerequisites, cloud.when_paid)
-    if not succeeded:
+    if not succeeded and not harness_failed:
         counted += [b for b in blockers if b["blocking"]]
     steps: dict[str, dict[str, Any]] = {}
     for step in counted:
@@ -132,6 +133,6 @@ def assess(cell: "Cell", inventory: dict[str, Any], deployment: dict[str, Any], 
         "count": len(steps),
         "minutes": sum(s["minutes"] for s in steps.values()),
         "blockers": blockers,
-        "blocked": not succeeded and any(b["blocking"] for b in blockers),
+        "blocked": not succeeded and not harness_failed and any(b["blocking"] for b in blockers),
         "succeeded": succeeded,
     }

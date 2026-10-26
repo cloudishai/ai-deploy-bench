@@ -78,6 +78,8 @@ def test_cell_pipeline_and_aggregation(fake_claude, tmp_path, monkeypatch):
     assert "[REDACTED]" in (cell_dir / "build" / "transcript.jsonl").read_text()
     assert (cell_dir / "source.tar.gz").exists()
     assert "Shell commands during deploy" in (cell_dir / "report.md").read_text()
+    assert "Deployed without credentials, but not working" in (cell_dir / "report.md").read_text()
+    assert "Needed a human" not in (cell_dir / "report.md").read_text()
     assert "## What was built" in (cell_dir / "report.md").read_text()
 
     readme = tmp_path / "README.md"
