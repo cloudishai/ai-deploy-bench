@@ -239,7 +239,7 @@ OPENAPI = {
 }
 
 
-def api_app(keys: list[str], bugs: frozenset = frozenset()) -> web.Application:
+def api_app(keys: list[str], bugs: frozenset = frozenset(), window_s: float = 60) -> web.Application:
     notes: list[dict] = []
     hits: dict[str, deque] = defaultdict(deque)
 
@@ -253,11 +253,11 @@ def api_app(keys: list[str], bugs: frozenset = frozenset()) -> web.Application:
         if "no_rate_limit" not in bugs:
             window = hits["*" if "global_rate_limit" in bugs else key]
             current = time.monotonic()
-            while window and current - window[0] > 60:
+            while window and current - window[0] > window_s:
                 window.popleft()
             if len(window) >= 60:
                 response = error(429, "rate limit exceeded")
-                response.headers["Retry-After"] = str(int(60 - (current - window[0])) + 1)
+                response.headers["Retry-After"] = str(int(window_s - (current - window[0])) + 1)
                 return response
             window.append(current)
         request[API_KEY] = key

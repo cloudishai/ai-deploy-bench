@@ -24,6 +24,8 @@ PROJECT_FIELDS = """
 # workspace, so each of the token's workspaces is listed as well.
 WORKSPACES_QUERY = "query { me { workspaces { id } projects {" + PROJECT_FIELDS + "} } }"
 WORKSPACE_PROJECTS_QUERY = "query($id: String!) { projects(workspaceId: $id) {" + PROJECT_FIELDS + "} }"
+# A workspace token can't read `me`; its own projects are its workspace's.
+TOKEN_PROJECTS_QUERY = "query { projects {" + PROJECT_FIELDS + "} }"
 PROJECT_DELETE = "mutation($id: String!) { projectDelete(id: $id) }"
 
 
@@ -53,7 +55,12 @@ class Railway(Cloud):
         return self.collect("projects", self._projects)
 
     def _projects(self) -> Iterable[Resource]:
-        me = self.gql(WORKSPACES_QUERY).get("me") or {}
+        try:
+            me = self.gql(WORKSPACES_QUERY).get("me") or {}
+        except RuntimeError as error:
+            if "Not Authorized" not in str(error):
+                raise
+            me = {"projects": self.gql(TOKEN_PROJECTS_QUERY).get("projects")}  # a workspace token
         projects = {p["id"]: p for p in nodes(me.get("projects"))}
         for workspace in me.get("workspaces") or []:
             data = self.gql(WORKSPACE_PROJECTS_QUERY, id=workspace["id"])

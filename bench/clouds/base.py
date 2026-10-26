@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime as dt
+import re
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Iterable, Mapping
@@ -194,6 +195,24 @@ def _safe(fn: Callable[[], dict[str, Any]], errors: list[str]) -> dict[str, Any]
     except Exception as error:
         errors.append(f"account lookup failed: {error}")
         return {}
+
+
+# How providers answer a listing made with a revoked, expired or under-scoped credential: REST APIs
+# with 401 or 403 (as `ApiError` words it), GraphQL APIs (Railway) with an error message.
+REJECTED = re.compile(r"-> HTTP 40[13]\b|\bnot authori[sz]ed\b|\bunauthori[sz]ed\b", re.IGNORECASE)
+
+
+def rejected_credentials(errors: Iterable[str]) -> str | None:
+    """The first error showing the provider refused the credentials outright, if any."""
+    return next((e for e in errors if REJECTED.search(e)), None)
+
+
+def check_credentials(cloud: Cloud) -> list[str]:
+    """Problems with a cloud's credentials, found with one read-only listing, before anything runs."""
+    if not cloud.configured():
+        return [f"{', '.join(cloud.credentials)} not set"]
+    cloud.list_resources()
+    return list(cloud.errors)
 
 
 def api_for(base_url: str, token: str, **headers: str) -> Api:

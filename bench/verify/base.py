@@ -141,6 +141,7 @@ class Verifier:
         self.browser_required = browser_required
         self.screenshots_dir = screenshots_dir
         self.screenshots: list[dict[str, Any]] = []
+        self.notes: list[str] = []  # what the verifier did beyond its checks, such as waiting out a rate limit
         self.deadline: float | None = None
         self.http = httpx.Client(
             base_url=self.base_url,
@@ -360,7 +361,7 @@ class Verifier:
             self.checks.append(Check("verifier_error", "Verifier crashed before finishing", True, "failed", describe(error)))
         performance = self.measure_latency() if readiness["ready"] else {"samples": 0}
         self.http.close()
-        return {**summarize(self.checks, readiness, performance), "screenshots": self.screenshots}
+        return {**summarize(self.checks, readiness, performance), "screenshots": self.screenshots, "notes": self.notes}
 
 
 def _bare_host(host: str | None) -> str:
