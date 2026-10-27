@@ -1,0 +1,721 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-8ivox-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 34.5,
+    "tokens": 250677,
+    "agent_usd": 0.142727
+  },
+  "url": "https://adb-8ivox-api-web-production.up.railway.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "resources: paid resources: adb-8ivox-api"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 60.7,
+      "tokens": 314036,
+      "cost_usd": 0.384277
+    },
+    "status": "completed",
+    "score": 80.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API keys were piped from BENCH_API_KEYS into a Railway variable without being printed. DATABASE_URL is a Railway reference variable, and the project token sits in a chmod-600 .env that .gitignore and .railwayignore exclude. The only gap: raw API keys are stored as plaintext in the owner_key column."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "The running code came from the agent's own directory through `railway up`, built by Railpack with 0 audit findings. But the runtime resolved to Node 20.20.2, which has been end-of-life since April 2026, because engines says only \">=20\". Dependencies use caret ranges, and the base and Postgres images are floating tags rather than digests."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 9,
+        "rationale": "This is a personal side project on Railway's usage-based plan (Hobby, probably). Railway's terms allow personal use and its services don't sleep. The exact account plan wasn't visible, so this is inferred."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "The app reaches Postgres over the private network and only the web service has a domain. The Railpack container runs as root by default. The official Postgres template usually adds a public TCP proxy, and the agent didn't check or remove it; this couldn't be verified without credentials."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "Plain HTTP gets a 301 to HTTPS, and the Let's Encrypt certificate is valid. The app sets no HSTS, X-Content-Type-Options, frame protection or CSP, and Railway's edge doesn't add them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes for .env, .git, package.json, source files, /admin and /debug all returned a JSON 404. Malformed JSON gets a generic 400 with no stack trace, and the only public routes are the ones the spec requires."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Queries are parameterized, input types are validated, notes are scoped to their owner (other keys get 404), docs HTML is escaped, and a per-key limit of 60 requests a minute returns Retry-After. The weak spots: requests with a missing or invalid key aren't rate limited, JSON bodies up to 1 MB are parsed before authentication, and title, content and tags have no length limits."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Production runs end-of-life Node.js 20",
+        "evidence": "process/deploy.md `railway up` output: 'mise \u2713 node@20.20.2'. app/package.json engines: \"node\": \">=20\". app/STACK.md says 'Node.js 22+'. Node 20 reached end-of-life on 2026-04-30.",
+        "recommendation": "Pin a supported LTS, e.g. \"engines\": {\"node\": \"22.x\"} or a .node-version file, and redeploy."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Build inputs not pinned by digest or exact version",
+        "evidence": "app/package.json uses \"express\": \"^5.3.0\" and \"pg\": \"^8.23.1\". The Railpack base image is platform-chosen, and the Postgres template uses ghcr.io/railwayapp-templates/postgres-ssl:18 (tag, not digest). A package-lock.json was generated during the build (process/build.md) but isn't in the reviewed app/ tree.",
+        "recommendation": "Commit package-lock.json so the build runs npm ci, and pin the Postgres image (and ideally the builder image) by digest."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres template may expose a public TCP proxy",
+        "evidence": "process/deploy.md: the DB was deployed from template 'postgres' via templateDeployV2 with an unmodified serializedConfig (truncated in the log), and no networking settings were checked afterward. The official template usually adds a public TCP proxy (DATABASE_PUBLIC_URL). The app only uses the private DATABASE_URL.",
+        "recommendation": "Remove the TCP proxy from adb-8ivox-api-db so Postgres is reachable only over Railway's private network."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "App container runs as root",
+        "evidence": "Railpack build with no user configuration (app/railway.json builder RAILPACK, no Dockerfile). Railpack images run as root by default.",
+        "recommendation": "Use a Dockerfile with a non-root USER (e.g. node), or configure the builder to run the process as an unprivileged user."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -sI https://adb-8ivox-api-web-production.up.railway.app/docs returns only content-type, etag, server and x-railway-* headers: no Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options or Content-Security-Policy.",
+        "recommendation": "Add helmet, or set these headers in a small Express middleware."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unauthenticated requests are not rate limited and bodies are parsed before auth",
+        "evidence": "app/src/app.js:47 runs express.json({limit:'1mb'}) globally before the /v1 auth middleware, and the rate limiter (app/src/app.js:62) only runs for valid keys. `curl -X POST /v1/notes -d '{bad'` with no key returned 400 'Malformed JSON body' instead of 401, so the body was parsed first.",
+        "recommendation": "Mount the JSON parser after authentication, add a coarse per-IP limit for 401s, and cap title, content and tag lengths."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "API keys stored in plaintext as note owner",
+        "evidence": "app/src/db.js: owner_key TEXT NOT NULL, filled with req.apiKey in app/src/app.js (INSERT ... owner_key). Anyone who can read the database learns the valid API keys.",
+        "recommendation": "Store a SHA-256 hash, or another stable identifier for each key, instead of the raw key."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Rate limit state is in memory",
+        "evidence": "app/src/rateLimit.js keeps a Map of timestamps per key. Counters reset on redeploy and wouldn't be shared across replicas (noted in process/deployment.json).",
+        "recommendation": "Fine for one replica. Move the counters to Postgres or Redis if the service is ever scaled out."
+      }
+    ],
+    "summary": "The Notes API is a small Express 5 + Postgres service on Railway, and it is soundly built: secrets go through Railway variables and reference variables and were never printed, queries are parameterized, notes are isolated per key, nothing extra is exposed, and HTTPS is enforced with a valid certificate. The main weaknesses are in the deployment: it runs on Node 20, which is end-of-life, with unpinned build inputs, a root container and a database template whose public TCP proxy was never checked. The app also sets no security headers and doesn't rate limit unauthenticated requests."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "Managed Postgres is a durable store that meets the persistence requirement, Express and pg cover the HTTP and data layers, and the hand-written OpenAPI document plus a self-contained /docs page meet the spec. The in-memory limiter is adequate for a single replica."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "There are two runtime dependencies and two services, with no extra frameworks, caches or queues. That is about as lean as a persistent, authenticated API can be."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "A long-running Node service built by Railpack, Railway's Postgres template with a volume, and reference variables over the private network are exactly what Railway does well. The build did depart from STACK.md, which said 'Node.js 22+', by landing on Node 20."
+      }
+    ],
+    "summary": "Node.js with Express 5 and Railway-managed Postgres is a simple, well-reasoned fit for a small persistent JSON API on Railway, and STACK.md justifies it clearly. The one departure is the unpinned Node version, which resolved to Node 20, now end-of-life."
+  },
+  "timing": {
+    "build_s": 130.5,
+    "deploy_s": 273.0,
+    "deploy_nohuman_s": 34.5,
+    "agent_s": 438.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 67.8
+  },
+  "tokens": {
+    "build": {
+      "input": 3692,
+      "output": 13848,
+      "cache_read": 368511,
+      "cache_write": 22356,
+      "total": 408407
+    },
+    "deploy": {
+      "input": 973,
+      "output": 8175,
+      "cache_read": 1044313,
+      "cache_write": 13882,
+      "total": 1067343
+    },
+    "deploy_nohuman": {
+      "input": 264,
+      "output": 3319,
+      "cache_read": 241704,
+      "cache_write": 5390,
+      "total": 250677
+    },
+    "total": {
+      "input": 4929,
+      "output": 25342,
+      "cache_read": 1654528,
+      "cache_write": 41628,
+      "total": 1726427
+    }
+  },
+  "cost": {
+    "agent_usd": 1.065602,
+    "agent_build_usd": 0.47721,
+    "agent_deploy_usd": 0.445665,
+    "agent_nohuman_deploy_usd": 0.142727,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 50.03,
+    "hosting_usage": {
+      "light": {
+        "usd": 10.58,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~10 h of activity, 0.04 GB egress at $0.05/GB"
+      },
+      "busy": {
+        "usd": 52.65,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~730 h of activity, 52.6 GB egress at $0.05/GB"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 5
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 18
+    },
+    "tool_calls": {
+      "Bash": 26
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 17
+    },
+    "tool_errors": 0,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:48:07+00:00",
+      "wall_time_s": 130.5,
+      "api_time_s": 111.9,
+      "turns": 10,
+      "tokens": {
+        "input": 3692,
+        "output": 13848,
+        "cache_read": 368511,
+        "cache_write": 22356,
+        "total": 408407
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.47721,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3692,
+          "output": 13848,
+          "cache_read": 368511,
+          "cache_write": 22356,
+          "cost_usd": 0.4772102,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T00:50:53+00:00",
+      "wall_time_s": 273.0,
+      "api_time_s": 88.8,
+      "turns": 18,
+      "tokens": {
+        "input": 973,
+        "output": 8175,
+        "cache_read": 1044313,
+        "cache_write": 13882,
+        "total": 1067343
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.445665,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 973,
+          "output": 8175,
+          "cache_read": 1044313,
+          "cache_write": 13882,
+          "cost_usd": 0.44566459999999997,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 17
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the Notes API and checked every requirement locally. The automated tests (4 of them) pass against a real Postgres, and I ran each requirement by hand with curl against the actual server. No servers are left running and I removed the local Postgres container.\n\n**Stack:** Node.js with Express 5, storing notes in PostgreSQL. On Railway that will be a managed Postgres service connected through `DATABASE_URL`. `STACK.md` compares this with FastAPI + Postgres and with SQLite on a Railway volume. I chose this one for its small dependency footprint and because managed Postgres is the most reliable way to keep data through restarts and redeploys.\n\n**What the curl checks covered:**\n- `/health`, `/openapi.json` and `/docs` all respond without a key.\n- A missing or unknown key gets `401`.\n- Create, list, get, update and delete all work, and the list comes back newest first.\n- The `tag` filter works.\n- Bad input gets `400`, including a missing or empty title, wrong types and malformed JSON.\n- Another key's notes return `404`.\n- A note was still there after restarting the server.\n- The 61st request in a minute gets `429` with `Retry-After`, and other keys are unaffected.\n\n**Behaviours you might not assume from the spec:**\n- **Rate limit memory:** the per-key counts are kept in memory. That's fine with one instance on Railway, but they reset when the app restarts and aren't shared if you run more than one instance.\n- **Optional `content`:** a note can be created with only a title; `content` then defaults to `\"\"`.\n- **Empty `PATCH`:** a `PATCH` with none of `title`, `content` or `tags` gets `400`.\n- **Table setup:** the server creates the table itself at startup and retries while the database comes up.\n\n**How to run it:**\n```sh\ndocker run -d --name notes-pg -e POSTGRES_PASSWORD=pg -p 5432:5432 postgres:16-alpine\nnpm install\nDATABASE_URL=postgres://postgres:pg@localhost:5432/postgres API_KEYS=key-one,key-two npm start   # port from PORT, default 3000\nDATABASE_URL=postgres://postgres:pg@localhost:5432/postgres npm test\n```\n\nFor step 2, Railway only needs `DATABASE_URL` pointed at its Postgres service and `API_KEYS` set; the start command is `npm start`. The code is in `src/` (`app.js` holds the routes), the tests are in `test/api.test.js`, and `README.md` repeats these run instructions.",
+    "deploy": "The Notes API is live at **https://adb-8ivox-api-web-production.up.railway.app**. I tested every requirement in `TASK.md` through that URL and all of them passed. No step needed a person, so `human_steps` is empty.\n\n**What's running in the Railway project `adb-8ivox-api`:**\n- **`adb-8ivox-api-web`:** the Node app, built from this directory and served over HTTPS on a Railway domain. `API_KEYS` is set to exactly the 2 keys in `BENCH_API_KEYS`.\n- **`adb-8ivox-api-db`:** Railway's standard Postgres, storing its data on the volume `adb-8ivox-api-db-volume`. The app reaches it over Railway's private network.\n- **`adb-8ivox-api-token`:** a project token I created and saved to `.env` (along with the project and environment IDs). That file isn't deployed and no secrets were printed.\n\nEstimated cost is about $5/month, which is usage-based and usually covered by the Hobby plan's included usage.\n\n**Checked through the public URL:**\n- `/health`, `/openapi.json` and `/docs` respond without a key.\n- A missing or unknown key gets `401`.\n- Creating, listing, filtering by tag, getting, updating and deleting notes all work.\n- An empty title gets `400`.\n- One key gets `404` for another key's notes.\n- The 61st request in a minute gets `429` with `Retry-After`, and the other key is unaffected.\n- A note I created was still there after a redeploy.\n\n**Things to know:**\n- **Rate limit memory:** the per-key counts are kept in memory, so keep the web service at one instance. The counts also reset whenever it redeploys.\n- **Limit used up in testing:** testing used the second benchmark key's full minute of requests, around 00:54 UTC. It reset a minute later.\n- **Extra database cleaned up:** the Railway CLI can't work with the workspace token, so I created everything through Railway's API and uploaded the code with the project token. An early CLI attempt reported an error but still created a stray `Postgres` service. I deleted it and its volume.\n- **`deploy.sh` removed:** I deleted the `deploy.sh` from the previous step, because it relied on that CLI path and no longer matched how the deploy works."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-8ivox-api-web-production.up.railway.app",
+    "resources": [
+      {
+        "type": "Railway project",
+        "name": "adb-8ivox-api",
+        "id": "c23bea46-108c-498e-bfeb-a8fc54d10d6b",
+        "plan": "workspace's existing plan (usage-based)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Node.js 20, Railpack build)",
+        "name": "adb-8ivox-api-web",
+        "id": "ff0ed537-c693-4955-b0b7-9b176e4894ae",
+        "plan": "usage-based, 1 replica, default resources",
+        "monthly_cost_usd": 2
+      },
+      {
+        "type": "PostgreSQL database (Railway Postgres template, postgres-ssl:18)",
+        "name": "adb-8ivox-api-db",
+        "id": "89793c57-3480-425a-b2a1-edae1fa89ff5",
+        "plan": "usage-based, 1 replica",
+        "monthly_cost_usd": 2
+      },
+      {
+        "type": "volume (Postgres data)",
+        "name": "adb-8ivox-api-db-volume",
+        "id": "bd58d7f5-7f90-420b-be62-ad7825975dc9",
+        "plan": "usage-based storage",
+        "monthly_cost_usd": 0.1
+      },
+      {
+        "type": "project API token (stored in .env as RAILWAY_TOKEN)",
+        "name": "adb-8ivox-api-token",
+        "id": "",
+        "plan": "n/a",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 5,
+    "human_steps": [],
+    "notes": "Usage cost for a small idle Node service + Postgres is roughly $3-5/month and is typically covered by the Hobby plan's included $5 usage. API_KEYS is set to exactly BENCH_API_KEYS (2 keys); DATABASE_URL references ${{adb-8ivox-api-db.DATABASE_URL}} over the private network. Verified via the public URL: /health, /openapi.json, /docs, 401 on missing/unknown key, create/list/tag filter/get/patch/delete, 400 validation, 404 cross-key isolation, 429 with Retry-After after 60 req/min per key (other key unaffected), and data persisting across a redeploy. Rate limiting is in-memory: keep the web service at 1 replica; counters reset on redeploy. During setup the CLI accidentally created an extra 'Postgres' service; it and its volume were deleted. The workspace token cannot be used by the Railway CLI (it needs a user token), so infrastructure was created via the GraphQL API and code uploaded with `railway up` using the project token."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 119
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 75,
+      "p90_ms": 84
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 179
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 66
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 73
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 68
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 67
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 66
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 151
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 145
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 140
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 72
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 296
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 138
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59197
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 4628
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      }
+    ],
+    "browser": true,
+    "duration_s": 67.8
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-8ivox-api-web-production.up.railway.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "c23bea46-108c-498e-bfeb-a8fc54d10d6b",
+      "name": "adb-8ivox-api",
+      "plan": "2 service(s) + 0.178 GB volume",
+      "url": null,
+      "monthly_usd": 50.03,
+      "pricing": "2 service(s) at the assumed 1 vCPU / 0.5 GB each, always on; usage is metered per second so a mostly idle service costs less than this list price",
+      "matched_by": "prefix",
+      "created_at": "2026-10-27T00:51:04.073Z",
+      "details": {
+        "services": [
+          {
+            "id": "89793c57-3480-425a-b2a1-edae1fa89ff5",
+            "name": "adb-8ivox-api-db"
+          },
+          {
+            "id": "ff0ed537-c693-4955-b0b7-9b176e4894ae",
+            "name": "adb-8ivox-api-web"
+          }
+        ],
+        "volume_gb": 0.178,
+        "vcpu": 2.0,
+        "memory_gb": 1.0
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 14,
+    "lines": {
+      "JavaScript": 443,
+      "JSON": 44,
+      "Markdown": 34
+    },
+    "code_lines": 443,
+    "dependencies": {
+      "npm": 2,
+      "python": 0
+    },
+    "frameworks": [
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Libraries": [
+      "node-postgres"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

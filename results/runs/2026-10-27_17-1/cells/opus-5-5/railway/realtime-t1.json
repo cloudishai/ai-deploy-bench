@@ -1,0 +1,662 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-caucg-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 46.1,
+    "tokens": 227366,
+    "agent_usd": 0.121978
+  },
+  "url": "https://adb-caucg-realtime-web-production.up.railway.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 13,
+  "checks_total": 13,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "resources: paid resources: adb-caucg-realtime"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 57.0,
+      "tokens": 359341,
+      "cost_usd": 0.32949
+    },
+    "status": "completed",
+    "score": 82.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "No secrets in source, logs or the uploaded build context: the token was only read from env, its length (not value) was echoed, the new project token was written to .env with umask 077, and .env is excluded by .gitignore and .railwayignore. The app needs no runtime secrets. One minor point: an extra long-lived project token was created and left unrevoked."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "The code was uploaded with `railway up` from the local working directory, not from a repo the owner controls, so there is no commit tied to the deployment. Dependencies are locked by package-lock.json, but the Railpack base image and Node version (engines \">=20\") float."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 8,
+        "rationale": "Personal club use fits Railway's usage-based plans, and a Railway service stays always-on by default. The account's plan couldn't be read (context.json account is empty), so a trial or free plan with credit limits can't be ruled out."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 8,
+        "rationale": "There is one public web service, no data store, and a deploy token scoped to the project and environment. The container uses Railpack's default runtime user (most likely root), with nothing done to drop privileges."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Let's Encrypt certificate, HTTP 301-redirects to HTTPS, and wss:// is used. Responses lack HSTS, CSP, X-Content-Type-Options and frame protection, all of which the app could have set."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Only the defined routes respond. Probes for .env, .git, package.json, server.js and railway.json returned a JSON 404, errors are generic with no stack traces, and /health returns only {\"ok\":true}."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Input validation is solid: room regex, length limits, a 16 KB body cap, a 64 KB WS maxPayload, and textContent rendering (no XSS). There is no rate limiting and no WebSocket Origin check, and the in-memory room map grows without bound, so anyone can flood the service with messages or rooms."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public message endpoints",
+        "evidence": "app/server.js:104-111 (POST /api/rooms/<room>/messages) and :159-169 (WS message handler) accept unlimited messages per client; no throttling anywhere in server.js",
+        "recommendation": "Add per-IP/per-connection token-bucket limits for POST and WebSocket messages and cap concurrent connections per IP."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Unbounded room creation in memory",
+        "evidence": "app/server.js:15-22 getRoom() adds any valid room name to the `rooms` Map, and it is never removed (only sockets/sse are deleted on close at :123, :171)",
+        "recommendation": "Evict empty rooms after inactivity or cap the total number of rooms and history bytes."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "WebSocket upgrade does not check Origin",
+        "evidence": "app/server.js:141-149 validates only path, room and user before handleUpgrade; any website can open a socket and post as any name",
+        "recommendation": "Reject upgrades whose Origin header isn't the app's own host."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers",
+        "evidence": "curl -D - https://adb-caucg-realtime-web-production.up.railway.app/?room=general -> 200 with only content-type, server, x-railway-* headers; no Strict-Transport-Security, Content-Security-Policy, X-Content-Type-Options or X-Frame-Options",
+        "recommendation": "Set HSTS, a restrictive CSP, X-Content-Type-Options: nosniff and frame-ancestors 'none' in sendJson and the HTML response."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed by CLI upload of local directory",
+        "evidence": "process/deploy.md: `env -u RAILWAY_API_TOKEN railway up --service adb-caucg-realtime-web --ci` uploads the working tree; the service is not linked to a source repository",
+        "recommendation": "Deploy from a Git repository the owner controls (Railway GitHub integration) so each deployment maps to a reviewed commit."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Unpinned runtime and base image",
+        "evidence": "app/package.json engines \"node\": \">=20\"; app/railway.json uses builder RAILPACK with no pinned Node version or image digest",
+        "recommendation": "Pin an exact Node major/minor (e.g. engines \"20.x\" or a .node-version file) or use a Dockerfile with a digest-pinned base image."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container likely runs as root",
+        "evidence": "app/railway.json relies on Railpack defaults; no Dockerfile or USER directive anywhere in app/",
+        "recommendation": "Use a Dockerfile with a non-root USER (e.g. node) for the runtime stage."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Extra project token created and left active",
+        "evidence": "process/deploy.md: projectTokenCreate mutation named adb-caucg-realtime-deploy, saved to .env (umask 077); process/deployment.json lists it as a resource",
+        "recommendation": "Revoke the token when it is no longer needed, or store it only in a CI secret store."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Account plan not verifiable",
+        "evidence": "process/context.json: \"account\": {}; process/deployment.json plan: \"Workspace's existing Railway plan (usage-based)\"",
+        "recommendation": "Confirm the workspace is on Hobby or above, not a trial whose credits expire, so the club chat stays up."
+      }
+    ],
+    "summary": "A small, carefully built Node/ws chat service on Railway. No secrets leaked, the attack surface is minimal, and it is served over HTTPS with a valid certificate and an HTTP-to-HTTPS redirect. The weaknesses are minor: deployment by CLI upload with a floating Node/Railpack base, a probably-root container, no security headers, and no rate limiting or WebSocket Origin check on the public endpoints."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 82.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 7,
+        "rationale": "ws on Node's http server suits the WebSocket/SSE fan-out well, and the frontend is plain HTML/JS. History is kept only in memory and is lost on every restart or redeploy, a weak fit for the 'recent history' requirement even though STACK.md records the trade-off deliberately."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "One process and one dependency (ws), with no frameworks or extra services. This is about as small as the requirements allow."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "A long-running single-replica container suits Railway, whose edge proxies WebSockets natively. The healthcheck, restart policy and pinned replica count are set in railway.json."
+      }
+    ],
+    "summary": "A minimal Node.js + ws server that serves the UI, REST, SSE and WebSocket from one always-on Railway service. It fits the realtime requirement and the platform well; the main gap is in-memory history that doesn't survive restarts, where a small Postgres or volume would have made history durable."
+  },
+  "timing": {
+    "build_s": 91.4,
+    "deploy_s": 134.4,
+    "deploy_nohuman_s": 46.1,
+    "agent_s": 271.9,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 13.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3630,
+      "output": 10367,
+      "cache_read": 309040,
+      "cache_write": 18291,
+      "total": 341328
+    },
+    "deploy": {
+      "input": 567,
+      "output": 4703,
+      "cache_read": 495164,
+      "cache_write": 7564,
+      "total": 507998
+    },
+    "deploy_nohuman": {
+      "input": 263,
+      "output": 2834,
+      "cache_read": 220229,
+      "cache_write": 4040,
+      "total": 227366
+    },
+    "total": {
+      "input": 4460,
+      "output": 17904,
+      "cache_read": 1024433,
+      "cache_write": 29895,
+      "total": 1076692
+    }
+  },
+  "cost": {
+    "agent_usd": 0.730282,
+    "agent_build_usd": 0.375123,
+    "agent_deploy_usd": 0.233181,
+    "agent_nohuman_deploy_usd": 0.121978,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 25.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 5.28,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~10 h of activity, 0.04 GB egress at $0.05/GB"
+      },
+      "busy": {
+        "usd": 27.63,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~730 h of activity, 52.6 GB egress at $0.05/GB"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 1
+  },
+  "activity": {
+    "turns": {
+      "build": 9,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 17
+    },
+    "shell_commands": {
+      "build": 8,
+      "deploy": 9
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T01:05:52+00:00",
+      "wall_time_s": 91.4,
+      "api_time_s": 87.6,
+      "turns": 9,
+      "tokens": {
+        "input": 3630,
+        "output": 10367,
+        "cache_read": 309040,
+        "cache_write": 18291,
+        "total": 341328
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.375123,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3630,
+          "output": 10367,
+          "cache_read": 309040,
+          "cache_write": 18291,
+          "cost_usd": 0.37512300000000004,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 8
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T01:08:10+00:00",
+      "wall_time_s": 134.4,
+      "api_time_s": 51.3,
+      "turns": 10,
+      "tokens": {
+        "input": 567,
+        "output": 4703,
+        "cache_read": 495164,
+        "cache_write": 7564,
+        "total": 507998
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.233181,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 567,
+          "output": 4703,
+          "cache_read": 495164,
+          "cache_write": 7564,
+          "cost_usd": 0.23318080000000024,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the chat app and it works locally: all 6 automated tests pass, and I checked each requirement by hand with curl and a WebSocket client. The server is stopped.\n\n**Stack** (reasoning in `STACK.md`): Node.js 20+ with the `ws` library on Node's built-in `http` server. One process serves the web page, the JSON API and the WebSocket on `$PORT`. I chose it over FastAPI with Postgres and Go with Redis because it is the simplest of the three. Railway detects the Node app automatically and supports `wss://` connections, so nothing extra is needed there.\n\n**Limitation:** message history (the last 50 per room) is kept in memory. It is lost whenever the app restarts or is redeployed, and the app must run as a single instance.\n\n**What's there:**\n- **`server.js`:**\n  - **WebSocket** on `/ws?room=&user=`: new connections get the room's history first. Messages go to everyone in the room, including the sender. The server also sends a list of who's online, and replies with an `error` message when text is invalid.\n  - **Server-Sent Events:** the event stream and its matching `POST` endpoint, which returns `201`.\n  - **`GET /api/rooms/<room>/messages`:** the room's latest 50 messages, oldest first.\n  - **Validation:** text must be 1 to 1000 characters, and invalid HTTP posts get `400`.\n  - **`/health`:** a simple health-check endpoint.\n- **`public/index.html`:** the page where you pick a name and a room (`/?room=general`) and chat live. It reconnects automatically if the connection drops.\n- **`test/server.test.js`:** covers live delivery, room isolation, the 50-message history limit, 5 users posting at once, the `400` responses, and the event stream.\n\n**To run it:**\n```\nnpm install\nnpm start      # http://localhost:3000/?room=general  (uses $PORT if set)\nnpm test\n```",
+    "deploy": "The chat app is live at **https://adb-caucg-realtime-web-production.up.railway.app**. Every requirement in `TASK.md` passed when I tested it through that URL.\n\n**What I created on Railway:**\n- **Project `adb-caucg-realtime`** with one web service, `adb-caucg-realtime-web`, running a single copy with no database. Railway assigned the HTTPS domain.\n- **Project token `adb-caucg-realtime-deploy`**, saved in `.env` as `RAILWAY_TOKEN`. I needed it because the token you provided only works for some actions: the Railway CLI rejected it as unauthorized. I used it to create the project and service through Railway's API directly. With the project token, the CLI could upload and build the code.\n\n**Results through the public URL:**\n- The web page loads.\n- **WebSocket:** at `wss://adb-caucg-realtime-web-production.up.railway.app/ws`, four users posting 20 messages at the same time all received all 20, within 41 ms.\n- **Room isolation:** a client in another room received nothing.\n- **Validation:** empty and 1001-character messages got an `error` reply over WebSocket and `400` over HTTP. A valid post returned `201`.\n- **History API:** returns at most 50 messages, oldest first.\n- **Server-Sent Events:** the event stream delivered a message posted over HTTP.\n\n**Cost:** estimated at about $0\u20131/month, since it's one small Node process with no database.\n\n**Limitation:** message history is kept in memory, so it's lost on every restart or redeploy, and the service has to stay at one copy.\n\n`deployment.json` is written with `realtime` set to the WebSocket URL above; `human_steps` is empty, since nothing needed a person."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-caucg-realtime-web-production.up.railway.app",
+    "resources": [
+      {
+        "type": "project",
+        "name": "adb-caucg-realtime",
+        "id": "a1b55086-0b51-4d4e-87bf-2ccd7de482bc",
+        "plan": "Workspace's existing Railway plan (usage-based)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Node.js, WebSocket + SSE)",
+        "name": "adb-caucg-realtime-web",
+        "id": "51d02a4e-9190-4206-8e89-63ff5e4b6260",
+        "plan": "Usage-based, 1 replica, no database",
+        "monthly_cost_usd": 1
+      },
+      {
+        "type": "project API token",
+        "name": "adb-caucg-realtime-deploy",
+        "id": null,
+        "plan": "n/a (stored in .env as RAILWAY_TOKEN)",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 1,
+    "realtime": {
+      "transport": "websocket",
+      "url": "wss://adb-caucg-realtime-web-production.up.railway.app/ws"
+    },
+    "human_steps": [],
+    "notes": "Deployed with `railway up` (Railpack build, config in railway.json, /health healthcheck) to environment 'production' (c0b06c3b-1736-4ec3-bbde-691d1c1f7a32); domain targets port 8080 (Railway-injected PORT). Verified via public URL: UI 200, WebSocket broadcast to 4 concurrent senders (20/20 messages each, <100 ms), room isolation, WS error replies for empty/1001-char text, history API (max 50, oldest first), POST 201/400, SSE stream. Limitations: history is in memory (last 50 per room) and resets on redeploy/restart; must stay at a single replica. Cost is a tiny idle Node process, roughly $0-1/month of usage, typically covered by plan credits. SSE is also available at /api/rooms/<room>/events."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 147
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 28,
+      "p90_ms": 121,
+      "delivery_latency_ms": 31
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 36
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 35
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 34
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over websocket",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1659
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 51
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1746
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 123
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2002
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 660
+      }
+    ],
+    "browser": true,
+    "duration_s": 13.5
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The room the verifier's clients chatted in, with its history",
+      "url": "https://adb-caucg-realtime-web-production.up.railway.app/?room=bench-ce5803f5",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "a1b55086-0b51-4d4e-87bf-2ccd7de482bc",
+      "name": "adb-caucg-realtime",
+      "plan": "1 service(s)",
+      "url": null,
+      "monthly_usd": 25.0,
+      "pricing": "1 service(s) at the assumed 1 vCPU / 0.5 GB each, always on; usage is metered per second so a mostly idle service costs less than this list price",
+      "matched_by": "prefix",
+      "created_at": "2026-10-27T01:08:24.359Z",
+      "details": {
+        "services": [
+          {
+            "id": "51d02a4e-9190-4206-8e89-63ff5e4b6260",
+            "name": "adb-caucg-realtime-web"
+          }
+        ],
+        "volume_gb": 0.0,
+        "vcpu": 1.0,
+        "memory_gb": 0.5
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 11,
+    "lines": {
+      "JavaScript": 269,
+      "HTML": 115,
+      "JSON": 44,
+      "Markdown": 28,
+      "Shell": 13
+    },
+    "code_lines": 397,
+    "dependencies": {
+      "npm": 1,
+      "python": 0
+    },
+    "frameworks": [
+      "ws"
+    ],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "ws"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Libraries": [
+      "ws"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

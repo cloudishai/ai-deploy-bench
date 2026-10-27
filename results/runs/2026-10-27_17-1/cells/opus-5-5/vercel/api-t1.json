@@ -1,0 +1,749 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-cy3y5-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 79.4,
+    "tokens": 395187,
+    "agent_usd": 0.249325
+  },
+  "url": "https://adb-cy3y5-api.vercel.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "accept_integration_terms",
+        "source": "agent",
+        "detail": "In a browser, accept the Neon Marketplace terms for team ai-deploy-bench at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli, then run scripts/deploy.sh (or `vercel integration add neon --name adb-cy3y5-api-db --plan free` followed by `vercel deploy --prod`). (Gives the",
+        "blocking": false
+      },
+      {
+        "id": "accept_integration_terms",
+        "source": "tool output",
+        "detail": "> Installing Neon by Neon under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Neon\\\" in your browser before this install can finis",
+        "blocking": true
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 79.7,
+      "tokens": 506683,
+      "cost_usd": 0.428241
+    },
+    "status": "completed",
+    "score": 79.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS was piped from the environment into a sensitive Vercel production env var without being echoed, the Vercel token was only ever expanded from $VERCEL_TOKEN, and .env/.env*.local (including the CLI-generated VERCEL_OIDC_TOKEN file) are excluded from the upload. The only nit is a throwaway local Postgres password committed in docker-compose.yml."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "Vercel builds the uploaded local sources with a package-lock.json present, so what runs matches the reviewed code, but deploys come from a CLI upload rather than a tracked repo, and the CLI is fetched unpinned as `npx -y vercel@latest` (also in scripts/deploy.sh), with caret dependency ranges."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "Hobby suits a personal side project, but the app's persistence depends on Vercel Runtime Cache, which Vercel offers as an evictable cache with no durability guarantee (and on Hobby it is shared with every project on the team), not as a database. That fails the task's 'survives restarts and redeploys' requirement as a platform guarantee."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 8,
+        "rationale": "Only one function and an implicit cache namespace exist, preview deployments are protected, and the production domain is public as the API needs. The dormant Postgres path turns off TLS certificate verification (rejectUnauthorized:false), and the cache namespace sits in team-shared storage."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 9,
+        "rationale": "HTTP redirects with 308 to HTTPS, and the certificate is valid with platform HSTS (max-age 63072000, preload). The app sets no X-Content-Type-Options, frame protection or CSP on its /docs HTML, though Hono's secureHeaders or vercel.json headers could have added them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Probes of /.env, /.git/config, /package.json, /src/app.ts and /.vercel/project.json all returned JSON 404s, errors are generic, and the only unauthenticated endpoints are the required /health, /openapi.json and /docs."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 6,
+        "rationale": "Input validation, auth and per-key ownership (404 for other keys) are correct, with no injection or XSS paths. But the active cache backend has a lost-update race on concurrent writes, the per-key rate limit lets extra requests through under bursts (72/80 in the agent's own test), each authenticated request triggers 32 cache reads, and title, content, tags and note counts are unbounded."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Notes stored in Vercel Runtime Cache instead of a durable database",
+        "evidence": "app/src/store.ts:178-179 `store()` falls back to cacheStore when DATABASE_URL is unset (it is unset in production); process/deployment.json notes: 'Runtime Cache is not a durable database: entries can be evicted under storage pressure (on Hobby the cache is shared by all projects on the team)'; ttl ONE_YEAR at store.ts:115",
+        "recommendation": "Finish the documented human step (accept Neon terms and install the integration) so DATABASE_URL is injected and the Postgres store is used, or use another real database; don't treat the cache as primary storage."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "app",
+        "title": "Lost updates on concurrent writes in the cache store",
+        "evidence": "app/src/store.ts:131-137 `mutate` does load, modify and save of the whole per-owner array under an in-process lock only; deployment.json: 'two concurrent writes for the same API key on different instances can lose one update'",
+        "recommendation": "Use a store with atomic writes or transactions (the existing Postgres path), or store one cache entry per note with an index that tolerates races."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "app",
+        "title": "Per-key rate limit is not enforced exactly under concurrency and amplifies backend reads",
+        "evidence": "app/src/store.ts:144-158 sharded counter reads 32 slots per request; process/deploy.md final burst test: '72 200 / 8 429' for 80 concurrent requests on one key",
+        "recommendation": "Use an atomic counter (Postgres INSERT ... ON CONFLICT, already in pgStore, or Redis INCR) so 60/min is strict and each request costs one round trip."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No size limits on note fields, tags or note count",
+        "evidence": "app/src/app.ts:39-62 `validate` checks only types and non-empty title; all of a key's notes are kept in one cache value (store.ts:113-116), so a large note or many notes could exceed cache item limits and make that key's notes fail",
+        "recommendation": "Cap title, content and tag lengths, cap the number of tags and notes per key, and limit request body size (e.g. Hono bodyLimit)."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Unpinned deploy tooling and CLI upload instead of a tracked source",
+        "evidence": "app/scripts/deploy.sh:10 `npx -y vercel@latest`; process/deploy.md: every deploy is `vercel deploy --prod --yes` from the local directory; package.json uses ^ ranges (a lockfile is uploaded)",
+        "recommendation": "Pin the Vercel CLI version and deploy from a Git repository connected to the project, so each production build maps to a commit."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "app",
+        "title": "Postgres TLS certificate verification disabled",
+        "evidence": "app/src/db.ts:36 `ssl: ... { rejectUnauthorized: false }` for any non-local DATABASE_URL",
+        "recommendation": "Keep certificate verification on (Neon presents publicly trusted certificates); use `ssl: true` or sslmode=verify-full."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers on /docs HTML and API responses",
+        "evidence": "curl -sI https://adb-cy3y5-api.vercel.app/docs returns only strict-transport-security from the platform; no X-Content-Type-Options, X-Frame-Options/frame-ancestors or Content-Security-Policy",
+        "recommendation": "Add Hono's secureHeaders middleware or a headers block in vercel.json."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "Hard-coded local development database password",
+        "evidence": "app/docker-compose.yml:5 `POSTGRES_PASSWORD: notes` (local-only container, excluded from the upload by .vercelignore)",
+        "recommendation": "Read it from an untracked .env file to set a good example; no production impact."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Raw API key would be stored as note owner in Postgres",
+        "evidence": "app/src/store.ts:63 inserts `owner` (the API key) unhashed, while the cache path hashes it (store.ts:113)",
+        "recommendation": "Store a SHA-256 of the key as owner in Postgres too, so a database leak doesn't expose usable keys."
+      }
+    ],
+    "summary": "The Notes API runs as a Hono function on Vercel Hobby, and secrets were handled cleanly: API_KEYS is a sensitive env var, nothing leaked into the uploaded files, and HTTPS, auth, validation and ownership checks all work with nothing extra exposed. The main weakness is storage: no Marketplace database could be installed, so production keeps notes in Vercel Runtime Cache, which can evict entries and has no atomic operations. That gives no durability guarantee, allows lost updates and lets the rate limit leak under bursts. Smaller issues are an unpinned `vercel@latest` CLI, CLI-upload deploys and missing app-level security headers."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 62.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 5,
+        "rationale": "Hono with TypeScript and a Postgres design with atomic rate-limit counters fits the API well, but what is live stores persistent notes in Runtime Cache, which isn't a durable database and can't count atomically."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 6,
+        "rationale": "The intended stack is lean (Hono, pg, hand-written OpenAPI), but the live store is a cache standing in for a database, kept as a second backend, and @vercel/blob is still an unused dependency."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "Zero-config Hono on Vercel Functions with Fluid compute and a Marketplace Postgres plan suits the platform. The Runtime Cache fallback uses a platform feature for a job it isn't built for."
+      }
+    ],
+    "summary": "STACK.md's choice of Hono on Vercel Functions with Neon Postgres is well reasoned and fits Vercel. The build departed from it in production by falling back to Runtime Cache because the Neon terms needed browser acceptance, so the live app doesn't meet the durable-storage requirement until the database is connected."
+  },
+  "timing": {
+    "build_s": 143.0,
+    "deploy_s": 1065.0,
+    "deploy_nohuman_s": 79.4,
+    "agent_s": 1287.4,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 130.4
+  },
+  "tokens": {
+    "build": {
+      "input": 3628,
+      "output": 14992,
+      "cache_read": 328635,
+      "cache_write": 22480,
+      "total": 369735
+    },
+    "deploy": {
+      "input": 25870,
+      "output": 39568,
+      "cache_read": 6488753,
+      "cache_write": 97823,
+      "total": 6652014
+    },
+    "deploy_nohuman": {
+      "input": 18759,
+      "output": 6485,
+      "cache_read": 358865,
+      "cache_write": 11078,
+      "total": 395187
+    },
+    "total": {
+      "input": 48257,
+      "output": 61045,
+      "cache_read": 7176253,
+      "cache_write": 131381,
+      "total": 7416936
+    }
+  },
+  "cost": {
+    "agent_usd": 3.327086,
+    "agent_build_usd": 0.492479,
+    "agent_deploy_usd": 2.585282,
+    "agent_nohuman_deploy_usd": 0.249325,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "within Hobby's included usage"
+      },
+      "busy": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "exceeds Hobby's limits (CDN requests, function invocations, active CPU), which pauses the project, so priced on Pro: $20 platform fee including $20 of usage credit, $5.75 of usage"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 60
+    },
+    "tool_calls": {
+      "Bash": 62,
+      "WebFetch": 5,
+      "WebSearch": 1
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 53
+    },
+    "tool_errors": 3,
+    "web_searches": 1,
+    "web_fetches": 5,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:25:19+00:00",
+      "wall_time_s": 143.0,
+      "api_time_s": 118.1,
+      "turns": 10,
+      "tokens": {
+        "input": 3628,
+        "output": 14992,
+        "cache_read": 328635,
+        "cache_write": 22480,
+        "total": 369735
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.492479,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3628,
+          "output": 14992,
+          "cache_read": 328635,
+          "cache_write": 22480,
+          "cost_usd": 0.492479,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T00:29:02+00:00",
+      "wall_time_s": 1065.0,
+      "api_time_s": 433.2,
+      "turns": 60,
+      "tokens": {
+        "input": 25870,
+        "output": 39568,
+        "cache_read": 6488753,
+        "cache_write": 97823,
+        "total": 6652014
+      },
+      "tokens_estimated": false,
+      "cost_usd": 2.585282,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3217,
+          "output": 38641,
+          "cache_read": 6488753,
+          "cache_write": 97823,
+          "cost_usd": 2.572553599999999,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 22653,
+          "output": 927,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0127288,
+          "web_searches": 1
+        }
+      },
+      "tool_calls": {
+        "Bash": 53,
+        "WebFetch": 5,
+        "WebSearch": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the Notes API, and every requirement in `TASK.md` passes locally, both in the automated tests and in manual curl checks against the running server. Nothing has been deployed yet.\n\n**Stack:** a single Hono app in TypeScript on Node, with Postgres as the database. `STACK.md` compares this with FastAPI plus Postgres and Redis, and with Next.js plus Redis. I picked Hono because Vercel runs it with no configuration, and one database can hold both the notes and the rate-limit counters. On Vercel the database would be Neon from the Marketplace; locally it's Postgres in Docker.\n\n- **Rate limiting:** each key gets 60 requests per calendar minute, counted in Postgres rather than in memory. That keeps the count correct across multiple serverless instances. Over the limit, the API returns 429 with a `Retry-After` header.\n- **Database setup:** the tables are created automatically on the first request, so there's no migration step.\n- **Docs:** I wrote the OpenAPI document by hand in `src/openapi.ts`. `/docs` is a static HTML page.\n- **Two choices the spec didn't settle:**\n  - `content` is required when creating a note, though it can be an empty string.\n  - A PATCH with none of `title`, `content` or `tags` returns 400.\n\n**What I checked:**\n- **Automated tests:** 7 tests (`npm test`) run against the real local Postgres. They cover:\n  - the public endpoints\n  - 401 for missing and unknown keys\n  - 400 validation\n  - creating, listing newest first and filtering by tag\n  - get, patch and delete\n  - 404 when another key tries to read or change a note\n  - the rate limit, and that it doesn't affect other keys\n- **Restart:** a note was still there after I restarted the server.\n- **Rate limit with curl:** 70 rapid requests hit 429 as soon as the 60-per-minute limit was reached, with `Retry-After: 33` and the error JSON. A second key still got 200 at the same time.\n\n**To run it:**\n```sh\nnpm install\ndocker compose up -d\nexport DATABASE_URL=postgres://notes:[REDACTED]@localhost:5432/notes API_KEYS=key-one,key-two\nnpm run dev      # http://localhost:3000\nnpm test\n```\n\nFor step 2: `src/index.ts` is the Vercel entry point. The deployment needs `API_KEYS` set and a Postgres database attached that provides `DATABASE_URL` or `POSTGRES_URL`.\n\nI've stopped the server and the Postgres container; the container's data volume is kept.",
+    "deploy": "The API is live at **https://adb-cy3y5-api.vercel.app** and every requirement in `TASK.md` passes there. The exception: notes aren't in a real database yet, because connecting one needs a person to accept terms in a browser.\n\n**What's deployed:** the Hono app as one Vercel project, `adb-cy3y5-api`, on the free Hobby plan, at $0 a month. `API_KEYS` is set from `BENCH_API_KEYS` as a sensitive production variable.\n\n**Tested through the public URL:**\n- `/health`, `/openapi.json` and `/docs` return 200.\n- A missing or unknown key gets 401.\n- Create, get, update and delete work; tag filtering and newest-first listing work.\n- Bad bodies get 400, and other keys get 404 on someone else's note.\n- After 60 requests a minute a key gets 429 with `Retry-After` and a JSON error, while the other key keeps getting 200.\n\n**What didn't work:**\n- **No Postgres.** Every Vercel Marketplace database (Neon, Supabase, Prisma Postgres, Upstash) refused to install until someone accepts its terms in a browser. That's the one entry in `human_steps`.\n- **No Vercel Blob either.** Creating a store was refused because this team had already used up its Hobby Blob allowance.\n- **Notes are in Vercel Runtime Cache instead.** It's a regional cache shared by all instances. A test note survived five production redeploys, but it isn't a durable database. Entries can be evicted when the cache fills up, and on Hobby that cache is shared with every other project on the team. Two simultaneous writes for the same key can also lose one update.\n- **The rate limit leaks under heavy bursts.** It's exact for one-at-a-time traffic and for 5 parallel requests. With 20 in parallel, 72 of 80 got through instead of 60, because the cache can't increment a counter atomically.\n- **Vercel's firewall rate limiting didn't help.** On Hobby it puts every API key in one shared bucket, so I removed it.\n\n**To fix both limitations:** someone opens https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli and accepts the terms, then runs `scripts/deploy.sh`. That installs the free Neon database, and the app switches to Postgres with no code change, which makes storage durable and the rate limit exact.\n\n`deployment.json`, `README.md` and `STACK.md` record these details, and `scripts/smoke.sh` re-runs the checks. No secrets were printed or written to committed or deployed files. `vercel link` created a short-lived OIDC token in `.env.local`, which is excluded from both git and uploads. The local Postgres container is stopped."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-cy3y5-api.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (Hono app as a Vercel Function, Node.js 24, Fluid compute, region iad1)",
+        "name": "adb-cy3y5-api",
+        "id": "prj_O474eacqKPTkYckg4skGKfKIyPbl",
+        "plan": "Hobby (free)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "Vercel Runtime Cache (notes and rate-limit counters, namespace adb-cy3y5-api; built into the project, no separate resource)",
+        "name": "adb-cy3y5-api",
+        "id": "",
+        "plan": "Hobby included usage",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "In a browser, accept the Neon Marketplace terms for team ai-deploy-bench at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli, then run scripts/deploy.sh (or `vercel integration add neon --name adb-cy3y5-api-db --plan free` followed by `vercel deploy --prod`).",
+        "why": "Gives the API a real Postgres database (Neon Free, $0) for notes and atomic rate-limit counters. The CLI refused to install Neon (and Supabase, Prisma Postgres, Upstash) with integration_terms_acceptance_required. Once DATABASE_URL is injected, the app switches to Postgres with no code change.",
+        "blocking": false
+      }
+    ],
+    "notes": "Live at https://adb-cy3y5-api.vercel.app and tested there: /health, /openapi.json and /docs return 200; missing or unknown key gives 401; notes CRUD works; tag filter and newest-first listing work; bad bodies give 400; other keys get 404; 60 req/min per key, then 429 with Retry-After and a JSON error, with other keys unaffected. API_KEYS is set from BENCH_API_KEYS as a sensitive production env var. STORAGE LIMITATION: because no Marketplace database could be installed without a person, and the team's Vercel Blob usage limit was already reached (store creation refused), notes are stored in Vercel Runtime Cache. A test note survived five production redeploys, but Runtime Cache is not a durable database: entries can be evicted under storage pressure (on Hobby the cache is shared by all projects on the team), and it has no transactions. Notes are set to expire after 1 year. Writes are serialized per key within an instance, but two concurrent writes for the same API key on different instances can lose one update. RATE LIMIT: exact for sequential traffic and 5-way concurrency (60 allowed, then 429). Under 20-way bursts spread across instances, a few extra requests get through (72 of 80 in testing), because the cache has no atomic increment. Vercel WAF rate limiting was tried and removed: on Hobby it buckets by IP/JA4 and ignores custom per-API-key keys. Both limitations go away once Neon is connected (see human_steps). Deployment Protection (Vercel Authentication) is on only for per-deployment preview URLs; the production domain is public."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 65
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 34,
+      "p90_ms": 39
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 27
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 31
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 32
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 25
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 45
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 51
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 344
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 96
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 60
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 125
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 50
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 53
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 185
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 98
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59601
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 3840
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 61
+      }
+    ],
+    "browser": true,
+    "duration_s": 130.4
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-cy3y5-api.vercel.app/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_O474eacqKPTkYckg4skGKfKIyPbl",
+      "name": "adb-cy3y5-api",
+      "plan": null,
+      "url": "https://adb-cy3y5-api.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1793060954961,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": "hono"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 17,
+    "lines": {
+      "TypeScript": 638,
+      "JSON": 73,
+      "Markdown": 47,
+      "Shell": 33,
+      "YAML": 11
+    },
+    "code_lines": 671,
+    "dependencies": {
+      "npm": 10,
+      "python": 0
+    },
+    "frameworks": [
+      "@vercel/blob",
+      "hono",
+      "pg"
+    ],
+    "deploy_config": [
+      "docker-compose.yml"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "@hono/node-server",
+        "@vercel/blob",
+        "@vercel/functions",
+        "hono",
+        "pg"
+      ],
+      "npm_dev": [
+        "@types/node",
+        "@types/pg",
+        "tsx",
+        "typescript",
+        "vitest"
+      ],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "scripts",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Hono"
+    ],
+    "Libraries": [
+      "Vercel Blob SDK",
+      "node-postgres",
+      "Vercel Functions helpers",
+      "@hono/node-server"
+    ],
+    "Dev tools": [
+      "tsx",
+      "TypeScript",
+      "Vitest"
+    ],
+    "Packaging": [
+      "Docker Compose"
+    ],
+    "Hosting": [
+      "Vercel project (hono)",
+      "Vercel Functions"
+    ]
+  }
+}

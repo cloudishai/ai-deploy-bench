@@ -14,25 +14,27 @@ generated from `results/` and redeployed after every run ([`website/`](website))
 ## Latest results
 
 <!-- results:start -->
-Latest full run: [2026-10-26 · #16](results/runs/2026-10-26_16-1/summary.md) · [Benchmark v3](CHANGES.md) · Claude Code 2.1.296 · Opus 5.5 · medium effort · HIPAA organization
+Latest full run: [2026-10-27 · #17](results/runs/2026-10-27_17-1/summary.md) · [Benchmark v3](CHANGES.md) · Claude Code 2.1.296 · Opus 5.5 · medium effort · HIPAA organization
+
+Reran clouds: cloudish, railway, vercel; the other cells are copied unchanged from [2026-10-26 · #16](results/runs/2026-10-26_16-1/summary.md).
 
 | Cloud | Success | Deploys without human | Human steps | Human time | Security & compliance | Stack fit | Checks passed | Avg build | Avg deploy | Tokens | Agent cost | Hosting, light use | Hosting, busy |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| [Cloudish](https://cloudish.ai) | 4/5 | 4/5 | 0 | 0 min | 81/100 | 91/100 | 99% | 2m 25s | 3m 37s | 7.05M | $4.72 | $0.55 | $39.20 |
+| [Cloudish](https://cloudish.ai) | 5/5 | 5/5 | 0 | 0 min | 81/100 | 91/100 | 100% | 2m 07s | 2m 43s | 6.49M | $4.55 | $0.55 | $39.20 |
 | [DigitalOcean](https://www.digitalocean.com) | 5/5 | 0/5 | 3 | 7 min | 84/100 | 85/100 | 100% | 2m 03s | 4m 30s | 5.64M | $4.52 | $39.00 | $39.00 |
-| [Railway](https://railway.com) | 0/5 | 0/5 | 3 | 7 min | — | — | 0% | 2m 13s | 4m 51s | 7.05M | $4.72 | $0.00 | $0.00 |
+| [Railway](https://railway.com) | 5/5 | 0/5 | 3 | 7 min | 79/100 | 88/100 | 100% | 1m 56s | 3m 40s | 7.71M | $4.65 | $36.99 | $188.19 |
 | [Render](https://render.com) | 5/5 | 0/5 | 2 | 5 min | 70/100 | 80/100 | 100% | 2m 03s | 3m 52s | 7.00M | $4.97 | $0.00 | $35.65 |
-| [Vercel](https://vercel.com) | 3/5 | 0/5 | 3 | 8 min | 77/100 | 78/100 | 76% | 2m 24s | 2m 21s | 14.06M | $8.27 | $60.00 | $100.00 |
+| [Vercel](https://vercel.com) | 3/5 | 0/5 | 3 | 8 min | 76/100 | 77/100 | 81% | 2m 15s | 4m 57s | 16.25M | $8.18 | $60.00 | $100.00 |
 
 | Cloud | Static site | CRUD app | API | Dashboard | Realtime chat |
 |---|---|---|---|---|---|
-| Cloudish | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/cloudish/static-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/cloudish/crud-t1.md) | [⚠️ 19/20](results/runs/2026-10-26_16-1/cells/opus-5-5/cloudish/api-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/cloudish/dataviz-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/cloudish/realtime-t1.md) |
-| DigitalOcean | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/digitalocean/static-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/digitalocean/crud-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/digitalocean/api-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/digitalocean/dataviz-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/digitalocean/realtime-t1.md) |
-| Railway | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/railway/static-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/railway/crud-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/railway/api-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/railway/dataviz-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/railway/realtime-t1.md) |
-| Render | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/render/static-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/render/crud-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/render/api-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/render/dataviz-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/render/realtime-t1.md) |
-| Vercel | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/vercel/static-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/vercel/crud-t1.md) | [🙋 needs a person](results/runs/2026-10-26_16-1/cells/opus-5-5/vercel/api-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/vercel/dataviz-t1.md) | [✅](results/runs/2026-10-26_16-1/cells/opus-5-5/vercel/realtime-t1.md) |
+| Cloudish | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/cloudish/static-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/cloudish/crud-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/cloudish/api-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/cloudish/dataviz-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/cloudish/realtime-t1.md) |
+| DigitalOcean | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/digitalocean/static-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/digitalocean/crud-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/digitalocean/api-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/digitalocean/dataviz-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/digitalocean/realtime-t1.md) |
+| Railway | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/railway/static-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/railway/crud-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/railway/api-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/railway/dataviz-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/railway/realtime-t1.md) |
+| Render | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/render/static-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/render/crud-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/render/api-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/render/dataviz-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/render/realtime-t1.md) |
+| Vercel | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/vercel/static-t1.md) | [🙋 needs a person](results/runs/2026-10-27_17-1/cells/opus-5-5/vercel/crud-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/vercel/api-t1.md) | [✅](results/runs/2026-10-27_17-1/cells/opus-5-5/vercel/dataviz-t1.md) | [🙋 needs a person](results/runs/2026-10-27_17-1/cells/opus-5-5/vercel/realtime-t1.md) |
 
-Success counts deployments that passed every required check. *Human steps* and *human time* are what a person had to do, or would have to do, for the agent to deploy all the apps: distinct steps and estimated minutes. *Security & compliance* is the average score of an independent review of each deployment's security and of whether its hosting plan fits the app's use, and *stack fit* the same review's rating of the stack the agent chose for each app, against the app's requirements. Times are averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting is a month's cost with *light use* (a few visits a week) and when *busy* (hit around the clock). [All 8 run(s)](results/README.md) · [Methodology](docs/methodology.md)
+Success counts deployments that passed every required check. *Human steps* and *human time* are what a person had to do, or would have to do, for the agent to deploy all the apps: distinct steps and estimated minutes. *Security & compliance* is the average score of an independent review of each deployment's security and of whether its hosting plan fits the app's use, and *stack fit* the same review's rating of the stack the agent chose for each app, against the app's requirements. Times are averages per app; tokens, agent cost and hosting are totals across the apps (averaged over trials). Hosting is a month's cost with *light use* (a few visits a week) and when *busy* (hit around the clock). [All 9 run(s)](results/README.md) · [Methodology](docs/methodology.md)
 <!-- results:end -->
 
 ## What it measures

@@ -1,0 +1,622 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Cloudish",
+    "model": "Opus 5.5",
+    "app": "Data / Visualization App"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "cloudish",
+  "model": "opus-5-5",
+  "app": "dataviz",
+  "trial": 1,
+  "prefix": "adb-a08uf-dataviz",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": true,
+  "no_human": {
+    "attempted": true,
+    "used": "no_credentials",
+    "url_answered": true,
+    "deploy_s": null,
+    "tokens": 0,
+    "agent_usd": null
+  },
+  "url": "https://adb-a08uf-dataviz-web.cloudish.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "required_failed": [],
+  "human": {
+    "steps": [],
+    "count": 0,
+    "minutes": 0,
+    "blockers": [
+      {
+        "id": "add_credits",
+        "source": "agent",
+        "detail": "Open a claim link (mint one with GET https://cloudish.ai/api/v1/credits/claim using the key in .env), sign in to Cloudish and add credits to the 'adb-a08uf-dataviz' key. (The free grant is 0.1 credits, about 9 hours of awake time on the shared size. Once it runs out, the app returns 402/503. Adding ",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 57.4,
+      "tokens": 362370,
+      "cost_usd": 0.32923
+    },
+    "status": "completed",
+    "score": 84.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The only credential, the Cloudish API key, was written straight to a chmod-600 .env, never echoed, and kept out of the build context by both the tar excludes and .dockerignore. The app itself needs no secrets."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 8,
+        "rationale": "The image was built on the server from the agent's own Dockerfile and a local source tarball, and the running container uses that build (builds/206:033e728b3c1d). There are no third-party dependencies, but the base image is the floating tag node:24-alpine with no digest pin."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "This is a commercial app running on a 0.1-credit free grant that covers only about 9 awake hours, after which it returns 402/503. The agent marked topping up as non-blocking. I don't know of any Cloudish term that forbids commercial use on prepaid credits, and sleeping when idle is fine for a dashboard, but the hosting will not keep the app up as funded."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "The container runs as the non-root node user, on the smallest shared size, with no volume, no data store and no extra services. Public 'open' access is needed for the dashboard, though it does publish the company's order-level sales data to anyone."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a managed certificate, HTTP returns a 308 redirect to HTTPS, and the platform sends HSTS. The app sets no X-Content-Type-Options, frame protection or CSP, though it easily could."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "The server answers only on an explicit route allowlist. Requests for .env, .git, source files, the CSV, path traversal and admin paths all return a JSON 404, and nothing leaks stack traces or debug information."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 9,
+        "rationale": "The app is read-only. Filters are compared by exact match, date formats are checked, limit and offset are clamped, other methods get a 405, and the client escapes data before inserting it as HTML. Two minor gaps: impossible dates such as 2025-02-30 are accepted, and there is no rate limiting, though each request is cheap."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial app funded only by a free grant that runs out in about 9 hours",
+        "evidence": "process/deployment.json: plan 'free grant (0.1 credits)', human_steps says 'about 9 hours of awake time ... Once it runs out, the app returns 402/503', marked \"blocking\": false; process/context.json use=commercial, balance_usd 0.099605",
+        "recommendation": "Treat adding credits (or a funded billing setup) as a blocking step before handing over a business app, and consider wakeEveryMinutes or alwaysOn if the app must stay responsive."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image not pinned to a digest",
+        "evidence": "app/Dockerfile:1 `FROM node:24-alpine`",
+        "recommendation": "Pin the base image by digest (node:24-alpine@sha256:...) and update it on purpose."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing security headers (nosniff, frame protection, CSP)",
+        "evidence": "curl -D - https://adb-a08uf-dataviz-web.cloudish.app/ returns only content-type, cache-control and strict-transport-security (HSTS added by the platform); app/server.js:93 sets only Content-Type and Cache-Control",
+        "recommendation": "Have send() add X-Content-Type-Options: nosniff, X-Frame-Options: DENY (or frame-ancestors 'none') and a restrictive Content-Security-Policy."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Company order-level sales data is publicly readable",
+        "evidence": "process/resources.json access 'open'; GET /api/orders?limit=1 returns full order rows without authentication",
+        "recommendation": "If the data is not meant to be public, put the app behind Cloudish's sign-in (OIDC) or restrict project access."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Impossible calendar dates accepted as filters",
+        "evidence": "GET /api/summary?start=2025-02-30 -> 200 with filtered results; app/server.js:44 relies on regex + lenient Date.parse",
+        "recommendation": "Round-trip the parsed date (new Date(v).toISOString().slice(0,10) === v) and reject mismatches with 400."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public API",
+        "evidence": "app/server.js:102-127 has no throttling; each request is an in-memory scan of 2,400 rows",
+        "recommendation": "Acceptable at this scale; add light per-IP throttling if the API is ever expensive or metered."
+      }
+    ],
+    "summary": "This zero-dependency Node.js dashboard is cleanly built and deployed on Cloudish. The API key never left a chmod-600 .env, the container runs as a non-root user, the server answers only on an explicit route allowlist, and the app is served only over HTTPS with HSTS. The main weakness is hosting: this commercial app runs on a 0.1-credit free grant that lasts about 9 awake hours, and the agent marked topping up as non-blocking. Smaller issues are an unpinned base image and missing app-level security headers."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 93.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "Holding a read-only 2,400-row CSV in memory with a small Node HTTP server and hand-drawn SVG charts covers every requirement. Summing in integer cents keeps revenue totals exact."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 10,
+        "rationale": "There is one file with no dependencies, no database and no front-end framework, which is as small as the requirements allow without faking anything."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "A single small stateless container that sleeps after 15 idle minutes matches Cloudish's container model and billing well. The only cost is a 2\u20133 s wake-up on the first request after sleeping."
+      }
+    ],
+    "summary": "Node.js 24 with only built-in modules, data held in memory and vanilla JS/SVG is a minimal, well-reasoned stack for a read-only dashboard, and the build followed STACK.md exactly. It suits Cloudish's sleep-when-idle containers."
+  },
+  "timing": {
+    "build_s": 119.8,
+    "deploy_s": 101.2,
+    "deploy_nohuman_s": null,
+    "agent_s": 221.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 5.5
+  },
+  "tokens": {
+    "build": {
+      "input": 3794,
+      "output": 13807,
+      "cache_read": 450987,
+      "cache_write": 29162,
+      "total": 497750
+    },
+    "deploy": {
+      "input": 10372,
+      "output": 7569,
+      "cache_read": 854108,
+      "cache_write": 22466,
+      "total": 894515
+    },
+    "deploy_nohuman": {},
+    "total": {
+      "input": 14166,
+      "output": 21376,
+      "cache_read": 1305095,
+      "cache_write": 51628,
+      "total": 1392265
+    }
+  },
+  "cost": {
+    "agent_usd": 0.913042,
+    "agent_build_usd": 0.527323,
+    "agent_deploy_usd": 0.385719,
+    "agent_nohuman_deploy_usd": null,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 7.84,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.11,
+        "incomplete": false,
+        "basis": "containers awake 10 h at their size's hourly rate; no bandwidth charges"
+      },
+      "busy": {
+        "usd": 7.84,
+        "incomplete": false,
+        "basis": "containers awake 730 h at their size's hourly rate; no bandwidth charges"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0.33
+  },
+  "activity": {
+    "turns": {
+      "build": 13,
+      "deploy": 13
+    },
+    "tool_calls": {
+      "Bash": 19,
+      "Read": 2,
+      "Skill": 1,
+      "WebFetch": 1
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 10
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:45:15+00:00",
+      "wall_time_s": 119.8,
+      "api_time_s": 114.9,
+      "turns": 13,
+      "tokens": {
+        "input": 3794,
+        "output": 13807,
+        "cache_read": 450987,
+        "cache_write": 29162,
+        "total": 497750
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.527323,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3794,
+          "output": 13807,
+          "cache_read": 450987,
+          "cache_write": 29162,
+          "cost_usd": 0.5273234,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9,
+        "Skill": 1,
+        "Read": 1
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T00:47:15+00:00",
+      "wall_time_s": 101.2,
+      "api_time_s": 69.6,
+      "turns": 13,
+      "tokens": {
+        "input": 10372,
+        "output": 7569,
+        "cache_read": 854108,
+        "cache_write": 22466,
+        "total": 894515
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.385719,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 718,
+          "output": 4869,
+          "cache_read": 854108,
+          "cache_write": 22466,
+          "cost_usd": 0.38340360000000007,
+          "web_searches": 0
+        },
+        "claude-haiku-5-5": {
+          "input": 9654,
+          "output": 2700,
+          "cache_read": 0,
+          "cache_write": 0,
+          "cost_usd": 0.0023154,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "WebFetch": 1,
+        "Bash": 10,
+        "Read": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "I've built the sales dashboard and tested it locally. All 6 automated tests pass, and the API figures match an independent Python calculation over the CSV. The server is now stopped, and nothing was deployed.\n\n**Stack:** Node.js 24 using only the built-in `http` module, so there's nothing to install. The CSV is loaded into memory at startup and revenue is summed in whole cents to avoid rounding errors. The page is a single HTML file with plain JavaScript and SVG charts, so it doesn't load anything from a CDN. I also compared Python with SQLite, and static hosting plus a serverless function. I chose Node because it gives `/api/summary` a real server while staying one small, stateless process with no database, which is the simplest thing to deploy to Cloudish. The comparison is in `STACK.md`.\n\n**What it does:**\n- **`GET /`:** filters for region, category and a from/to date, three KPI tiles (revenue, orders, units), a monthly revenue bar chart and a revenue-by-category bar chart with hover tooltips, and a table of matching orders, 50 per page and newest first. Changing a filter updates everything without reloading the page, and the filters are saved in the URL. I took a headless-browser screenshot to check the layout.\n- **`GET /api/summary`:** returns exactly the format in the task. Filters combine with AND, date limits are inclusive, months are in ascending order, categories are sorted by revenue (highest first), and no matches gives zeros and empty arrays.\n- **Extra endpoints I added:**\n  - `/api/orders` feeds the table (`limit` and `offset`).\n  - `/api/options` lists the filter values.\n  - `/healthz` is a health check.\n- **One addition to the spec:** a malformed `start` or `end` date returns a `400` error rather than being ignored.\n\n**To run it:**\n```\nnode server.js     # or: npm start \u2014 uses the PORT variable, default 3000\nnpm test           # runs the tests\n```\nThen open http://localhost:3000/. I also added a `Dockerfile` (`node:24-alpine`) for the deploy step; I haven't built that image yet.",
+    "deploy": "The dashboard is live at **https://adb-a08uf-dataviz-web.cloudish.app**, and everything in `TASK.md` works through that public URL.\n\n**What I checked on the live site:**\n- **Dashboard:** a headless-browser screenshot with the Software category and an April\u2013September date range showed the filters, KPI tiles, both charts and the paginated orders table all updating correctly.\n- **`/api/summary`:**\n  - With no filters it covers all 2,400 rows ($1,839,455.69).\n  - With region, category and dates combined, the totals match an independent Python calculation (9 orders, $12,712.26).\n  - When nothing matches it returns zeros and empty arrays.\n  - A malformed date returns `400`.\n\n**What I set up:**\n- **API key `adb-a08uf-dataviz`:** created through Cloudish's no-signup API. The key is saved in `.env`, which is left out of the upload to Cloudish.\n- **Container app `adb-a08uf-dataviz-web`:** Cloudish built it from the `Dockerfile` on their servers. It runs on the cheapest size (`shared`) with Cloudish's HTTPS certificate on the `*.cloudish.app` domain.\n\n**Cost:** the app sleeps after 15 minutes without requests and is only charged while awake, at about $0.011 an hour. That's roughly $0.33 a month at about an hour of use a day; keeping it on all the time would be $7.84 a month. The first request after it has been asleep takes about 2\u20133 seconds.\n\n**Limitation:** the account only has Cloudish's free 0.1 credits, which covers about 9 hours of awake time. After that the site stops responding until someone adds credits. I listed that in `human_steps` in `deployment.json` as non-blocking: a person opens a claim link, signs in to Cloudish and adds credits. A fresh link comes from `GET https://cloudish.ai/api/v1/credits/claim` with the key in `.env`, and each link expires after 30 minutes."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-a08uf-dataviz-web.cloudish.app",
+    "resources": [
+      {
+        "type": "API key / account (prepaid credits)",
+        "name": "adb-a08uf-dataviz",
+        "id": "192",
+        "plan": "free grant (0.1 credits)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "container web service (built from Dockerfile, scale-to-zero after 15 min idle)",
+        "name": "adb-a08uf-dataviz-web",
+        "id": "project 206 / docker app 612",
+        "plan": "shared (0.1 CPU / 0.2 GB reserved, burst to 1 CPU / 1 GB), $0.0107/h while awake",
+        "monthly_cost_usd": 0.33
+      },
+      {
+        "type": "container image (Cloudish registry)",
+        "name": "builds/206:033e728b3c1d",
+        "id": "build 593",
+        "plan": "included",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0.33,
+    "human_steps": [
+      {
+        "step": "Open a claim link (mint one with GET https://cloudish.ai/api/v1/credits/claim using the key in .env), sign in to Cloudish and add credits to the 'adb-a08uf-dataviz' key.",
+        "why": "The free grant is 0.1 credits, about 9 hours of awake time on the shared size. Once it runs out, the app returns 402/503. Adding credits keeps it online long-term.",
+        "blocking": false
+      }
+    ],
+    "notes": "Node.js 24 zero-dependency server (in-memory CSV), deployed via a server-side Docker build on Cloudish with a managed TLS certificate on *.cloudish.app. The app sleeps after 15 idle minutes and is billed only while awake. The first request after sleeping takes about 2-3 s while it wakes. The cost estimate assumes about 1 h/day awake; always-on would be $7.84/month on shared. Verified through the public URL: GET / renders the dashboard with working filters, KPIs, charts and a paginated table; /api/summary returns the correct totals unfiltered, with combined region+category+date filters (matches an independent Python computation) and with zeros/empty arrays when nothing matches. Extra endpoints: /api/orders, /api/options, /healthz. Malformed start/end dates return 400. The API key is stored in .env, which is excluded from the build context."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.3,
+      "attempts": 1,
+      "first_response_ms": 341
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 93,
+      "p90_ms": 118
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 89
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "dashboard",
+        "description": "GET / serves the dashboard as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "summary_all",
+        "description": "GET /api/summary (no filters) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 76
+      },
+      {
+        "id": "summary_region",
+        "description": "GET /api/summary (region=West) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "summary_category",
+        "description": "GET /api/summary (category=Electronics) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 111
+      },
+      {
+        "id": "summary_combined",
+        "description": "GET /api/summary (region=East, category=Furniture, start=2025-03-01, end=2025-06-30) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 85
+      },
+      {
+        "id": "summary_empty",
+        "description": "GET /api/summary (region=Atlantis) matches the dataset",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 87
+      },
+      {
+        "id": "browser_chart",
+        "description": "The dashboard renders a chart (SVG or canvas) in a browser",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1027
+      },
+      {
+        "id": "browser_two_charts",
+        "description": "The dashboard shows at least two charts",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 995
+      },
+      {
+        "id": "browser_filters",
+        "description": "The dashboard has filter controls",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1070
+      }
+    ],
+    "browser": true,
+    "duration_s": 5.5
+  },
+  "screenshots": [
+    {
+      "name": "dashboard",
+      "caption": "The dashboard",
+      "url": "https://adb-a08uf-dataviz-web.cloudish.app/",
+      "file": "dataviz-t1/dashboard.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "adb-a08uf-dataviz/adb-a08uf-dataviz-web",
+      "name": "adb-a08uf-dataviz-web",
+      "plan": "shared",
+      "url": "https://adb-a08uf-dataviz-web.cloudish.app/",
+      "monthly_usd": 7.84,
+      "pricing": "0.1 CPU / 0.2 GB x 1 replica(s) running 730 h/month (live GET /api/v1/pricing); billed per second and scales to zero when idle, so idle apps cost less",
+      "matched_by": "prefix",
+      "created_at": "2026-10-27T00:47:47.478Z",
+      "details": {
+        "cpuCores": 0.1,
+        "memoryGb": 0.2,
+        "replicas": 1,
+        "status": "running",
+        "volume_enabled": false,
+        "access": "open",
+        "hourly_usd": 0.010733472
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "balance_usd": 0.099605
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 10,
+    "lines": {
+      "HTML": 231,
+      "JavaScript": 176,
+      "Markdown": 38,
+      "JSON": 25,
+      "Docker": 9
+    },
+    "code_lines": 416,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "Dockerfile",
+      ".dockerignore"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [
+      "node:24-alpine"
+    ],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "data",
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Docker (node:24-alpine)"
+    ],
+    "Hosting": [
+      "Cloudish container (shared)"
+    ]
+  }
+}

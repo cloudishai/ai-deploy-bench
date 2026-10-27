@@ -1,0 +1,748 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Railway",
+    "model": "Opus 5.5",
+    "app": "Database-Backed CRUD App"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "railway",
+  "model": "opus-5-5",
+  "app": "crud",
+  "trial": 1,
+  "prefix": "adb-yauc8-crud",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 75.5,
+    "tokens": 405347,
+    "agent_usd": 0.190363
+  },
+  "url": "https://adb-yauc8-crud-web-production.up.railway.app",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 19,
+  "checks_total": 19,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "payment_method",
+        "description": "Add a payment method to the account",
+        "minutes": 2,
+        "evidence": [
+          "resources: paid resources: adb-yauc8-crud"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 7,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 76.3,
+      "tokens": 436966,
+      "cost_usd": 0.462659
+    },
+    "status": "completed",
+    "score": 76.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "No credentials appear in source, logs or deployed files. DATABASE_URL is injected through a Railway service-variable reference, and the project token was written to a umask-077 .env that .railwayignore excludes. The only gap: a long-lived project deploy token was left active and stored on disk."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "Production runs the reviewed code, uploaded with `railway up` from the agent's workspace and built by Railpack with a lockfile (npm ci). The Node version is only constrained to `>=20` and resolved to Node 20.20.2, which is past end-of-life. Base and template images use tags, not digests, and there is no git-backed source of record."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 7,
+        "rationale": "A usage-based Railway workspace runs always-on services that don't sleep, which suits the app. context.json doesn't name the plan, though, and Railway steers commercial and team workloads toward Pro rather than Hobby, so I couldn't confirm the plan fits commercial use."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 6,
+        "rationale": "The app reaches Postgres over private networking. However, the official Postgres template usually adds a public TCP proxy, which the agent never checked or removed. The app also connects as the database superuser, and the Railpack container runs as root by default."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS has a valid Let's Encrypt certificate, and HTTP gets a 301 redirect to HTTPS. There is no HSTS, CSP, X-Content-Type-Options or frame protection, and the app could easily have set them."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Only public/ is served statically. Probes for .env, .git, package.json, server.js and path traversal all returned 404, errors return generic JSON without stack traces, and /healthz returns only {ok:true}."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 7,
+        "rationale": "Queries are parameterized, passwords are hashed with bcrypt (cost 10), ownership is enforced in every todo query, input types are validated, and the UI renders with textContent. There is no rate limiting on login or signup, sessions never expire, and titles have no length limit."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres template likely exposes a public TCP proxy",
+        "evidence": "process/deploy.md: templateDeployV2 deployed the unmodified 'postgres' template serializedConfig (only the name was changed via jq). Railway's Postgres template normally includes a tcpProxies entry for 5432 and a DATABASE_PUBLIC_URL, and the agent never inspected or removed it. The app only needs private networking (DATABASE_URL=${{adb-yauc8-crud-db.DATABASE_URL}}).",
+        "recommendation": "Delete the database service's TCP proxy and public networking so Postgres is reachable only over the private network."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "App uses the database superuser",
+        "evidence": "The web service's DATABASE_URL references the template's POSTGRES_USER (superuser) credentials. server.js:14 connects with them and runs DDL at startup (server.js:184).",
+        "recommendation": "Create a dedicated role limited to the app's tables and run migrations separately."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "railway.json uses builder RAILPACK with no Dockerfile or USER directive. Railpack images run as root by default.",
+        "recommendation": "Use a Dockerfile with a non-root USER (for example node), or configure the builder to drop privileges."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Runtime unpinned and end-of-life",
+        "evidence": "package.json engines: \"node\": \">=20\". The deploy log shows `mise node@20.20.2`. Node 20 reached end-of-life in April 2026, and the review date is 2026-10-27.",
+        "recommendation": "Pin a supported LTS (for example \"node\": \"22.x\" or 24.x) and pin builder and base images by digest."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Deployed from a local directory upload, not a controlled repo",
+        "evidence": "process/deploy.md: `railway up --service adb-yauc8-crud-web --ci` uploads the working directory. deploy.sh doesn't reproduce the deployment the agent actually ran, as its own comment admits.",
+        "recommendation": "Deploy from a git repository the owner controls, with a reproducible deploy script or IaC."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Security headers missing",
+        "evidence": "`curl -sI https://adb-yauc8-crud-web-production.up.railway.app/` returns no strict-transport-security, content-security-policy, x-content-type-options or x-frame-options headers.",
+        "recommendation": "Add helmet (or set these headers manually) in server.js."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on authentication endpoints",
+        "evidence": "server.js:78-108 has no throttling. Six wrong-password logins in a row from my probe all returned 401 without slowing down. Each attempt also runs a bcrypt hash or compare, so the endpoints are exposed to CPU exhaustion.",
+        "recommendation": "Add per-IP and per-account rate limiting (for example express-rate-limit) on /api/auth/*."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Sessions never expire; token kept in localStorage",
+        "evidence": "server.js:23-27: the sessions table has no expiry check, and auth() (server.js:54-62) accepts any stored token forever. public/index.html:45,56 stores the bearer token in localStorage.",
+        "recommendation": "Add a session TTL and prune expired sessions. Consider HttpOnly SameSite cookies for the web UI."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "No title length limit",
+        "evidence": "server.js:129-133 accepts any non-empty title up to the 100kb JSON body limit.",
+        "recommendation": "Cap title length (for example 500 characters) and return 400 when it's exceeded."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Long-lived project deploy token left active",
+        "evidence": "process/deploy.md: projectTokenCreate 'adb-yauc8-crud-deploy' was saved to .env (umask 077, excluded by .railwayignore) and never revoked.",
+        "recommendation": "Revoke the project token after deploying, or keep it in a secrets manager or CI secret store."
+      },
+      {
+        "severity": "info",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Plan not verified for commercial use; config-as-code deprecation",
+        "evidence": "process/context.json has use=commercial and an empty account object. deployment.json says 'existing workspace plan (unchanged)'. The deploy log warns that railway.json stops working on 2026-12-01.",
+        "recommendation": "Confirm the workspace is on a plan suitable for business use (Pro). Migrate railway.json to the supported config before 2026-12-01."
+      }
+    ],
+    "summary": "The Express/PostgreSQL todo app on Railway is solidly built: no secrets leaked, queries are parameterized, passwords use bcrypt, ownership is enforced, HTTPS redirects work and nothing beyond the app is exposed. The weaknesses are deployment hardening: the Postgres template's likely public TCP proxy was left in place, the app connects as the database superuser, the container runs as root, Node 20 is end-of-life and unpinned, and the code went up as a local upload. The app also lacks security headers, auth rate limiting and session expiry."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 90.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "Managed PostgreSQL on a persistent volume is a durable store for users and todos, bcryptjs meets the slow-hash requirement, and Express with pg serves the JSON API and static UI well. Node 20 being end-of-life is the only blemish."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "One small server file, three dependencies, a vanilla-JS page and one database: about as minimal as the requirements allow, with no needless services or build step."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 9,
+        "rationale": "This is the standard Railway pattern: a Railpack-built Node service plus the official Postgres template, wired by a service-variable reference over private networking, with a health check. STACK.md's reasoning matches the build (Express 4 was corrected to 5)."
+      }
+    ],
+    "summary": "Node.js/Express 5 with Railway-managed PostgreSQL is a simple, well-reasoned fit for a multi-user CRUD app and plays to Railway's strengths. Its main departure from best practice is running on an end-of-life Node version."
+  },
+  "timing": {
+    "build_s": 142.5,
+    "deploy_s": 327.1,
+    "deploy_nohuman_s": 75.5,
+    "agent_s": 545.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 64.8
+  },
+  "tokens": {
+    "build": {
+      "input": 3896,
+      "output": 12964,
+      "cache_read": 534269,
+      "cache_write": 21428,
+      "total": 572557
+    },
+    "deploy": {
+      "input": 973,
+      "output": 9615,
+      "cache_read": 1090269,
+      "cache_write": 15283,
+      "total": 1116140
+    },
+    "deploy_nohuman": {
+      "input": 456,
+      "output": 3356,
+      "cache_read": 392970,
+      "cache_write": 8565,
+      "total": 405347
+    },
+    "total": {
+      "input": 5325,
+      "output": 25935,
+      "cache_read": 2017508,
+      "cache_write": 45276,
+      "total": 2094044
+    }
+  },
+  "cost": {
+    "agent_usd": 1.169882,
+    "agent_build_usd": 0.488858,
+    "agent_deploy_usd": 0.490661,
+    "agent_nohuman_deploy_usd": 0.190363,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 50.02,
+    "hosting_usage": {
+      "light": {
+        "usd": 10.57,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~10 h of activity, 0.04 GB egress at $0.05/GB"
+      },
+      "busy": {
+        "usd": 52.65,
+        "incomplete": false,
+        "basis": "memory billed all month, CPU for ~730 h of activity, 52.6 GB egress at $0.05/GB"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 4
+  },
+  "activity": {
+    "turns": {
+      "build": 14,
+      "deploy": 18
+    },
+    "tool_calls": {
+      "Bash": 30
+    },
+    "shell_commands": {
+      "build": 13,
+      "deploy": 17
+    },
+    "tool_errors": 3,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:26:20+00:00",
+      "wall_time_s": 142.5,
+      "api_time_s": 108.8,
+      "turns": 14,
+      "tokens": {
+        "input": 3896,
+        "output": 12964,
+        "cache_read": 534269,
+        "cache_write": 21428,
+        "total": 572557
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.488858,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3896,
+          "output": 12964,
+          "cache_read": 534269,
+          "cache_write": 21428,
+          "cost_usd": 0.48885779999999995,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 13
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T00:29:58+00:00",
+      "wall_time_s": 327.1,
+      "api_time_s": 104.1,
+      "turns": 18,
+      "tokens": {
+        "input": 973,
+        "output": 9615,
+        "cache_read": 1090269,
+        "cache_write": 15283,
+        "total": 1116140
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.490661,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 973,
+          "output": 9615,
+          "cache_read": 1090269,
+          "cache_write": 15283,
+          "cost_usd": 0.4906607999999997,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 17
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The multi-user todo app is built and works locally. The automated API tests pass, a browser test of the web UI passed, and a todo was still there after restarting the server. I've stopped all servers and removed the local Postgres container.\n\n**Stack** (the reasoning is in `STACK.md`): Node.js with Express 5, backed by PostgreSQL, which Railway can run as a managed database.\n- **Passwords:** hashed with bcrypt and never returned.\n- **Login tokens:** random tokens, stored in the database as SHA-256 hashes. They keep working after restarts, and logging out cancels them.\n- **Web UI:** a single page in `public/index.html`, served at `GET /`. It covers sign up, log in, log out, add, list, rename, complete/uncomplete and delete.\n- **Access control:** every todo query is filtered by the logged-in user, so another user's todo gives `404`.\n- **Database setup:** tables are created automatically when the server starts.\n\n**What I checked:**\n- **Automated tests** (`test/api.test.js`, run against a real Postgres): signup/login validation, `409` for a duplicate email, `401` for wrong credentials or no token, todo create/list/update/delete, oldest-first order, cross-user `404`s, logout revoking the token, and that stored passwords are bcrypt hashes.\n- **Manual curl checks:** the home page returns HTML, bad JSON returns `400`, and a todo survived a server restart.\n- **Browser test:** headless Chrome went through the whole UI flow, from signup to logout.\n\nBeyond the spec, I added `POST /api/auth/logout`, `GET /api/me` (the UI uses it to show your email) and a health check at `GET /healthz`. Emails are treated as case-insensitive.\n\n**To run it:**\n```sh\ndocker run -d --name todo-pg -e POSTGRES_PASSWORD=pg -p 5432:5432 postgres:16-alpine\nnpm install\nDATABASE_URL=postgres://postgres:pg@localhost:5432/postgres npm start   # http://localhost:3000\nDATABASE_URL=postgres://postgres:pg@localhost:5432/postgres npm test\n```\nSettings are `DATABASE_URL` (required), `PORT` (default 3000) and an optional `PGSSL=true` to force an encrypted database connection. For Railway in step 2, add a Postgres service and pass its `DATABASE_URL` to the app; the start command is `npm start`.",
+    "deploy": "The app is live at **https://adb-yauc8-crud-web-production.up.railway.app**, and every requirement in `TASK.md` passed when I tested it through that URL. No human steps were needed.\n\n**What's deployed** (all in the Railway project `adb-yauc8-crud`):\n- **`adb-yauc8-crud-web`:** the Node.js app, one instance, with a health check at `/healthz`.\n- **`adb-yauc8-crud-db`:** Postgres from Railway's official template, stored on the persistent volume `adb-yauc8-crud-db-volume`. The web service connects to it over Railway's private network.\n- **Cost:** about $4 a month in usage, probably covered by the plan's included usage. I didn't change the plan.\n\n**What I tested through the public URL:**\n- **Web UI:** a headless-Chrome run of the full flow passed: sign up, add, complete, rename, delete, log out.\n- **Signup and login:** `201`, `400` for a bad email or short password, `409` for a duplicate, `200` and `401` on login.\n- **Todos:** create, list oldest first, rename, complete, uncomplete and delete all work. Requests with no token or a bad token get `401`, an empty title gets `400`, and another user's todo gets `404`.\n- **Persistence:** a todo was still there after a full redeploy of the web service.\n- **HTTPS:** plain HTTP redirects to HTTPS.\n\n**What didn't go to plan:**\n- **CLI and workspace tokens:** the provided `RAILWAY_API_TOKEN` is a workspace token, which the CLI rejects when creating projects or databases. I created the project, database and web service through Railway's API instead. Then I uploaded the code with a project token named `adb-yauc8-crud-deploy`, saved in `.env`, which is never committed or deployed.\n- **Stray database:** an early CLI attempt reported failure but still created a misnamed `Postgres` service and volume. I deleted both, so nothing is left over.\n- **`deploy.sh` doesn't match what I did:** it only works with a personal account token, and I added a comment saying so.\n- **Config file deadline:** Railway warns that `railway.json` is deprecated and keeps working until 2026-12-01. The running deployment is unaffected, but deploys after that date may ignore the start command and health check settings unless it's migrated with `railway config migrate`.\n\nDetails and resource IDs are in `deployment.json`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-yauc8-crud-web-production.up.railway.app",
+    "resources": [
+      {
+        "type": "Railway project",
+        "name": "adb-yauc8-crud",
+        "id": "b6ab6a9b-f819-491c-bb05-40dc46c205e3",
+        "plan": "existing workspace plan (unchanged), usage-based",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "web service (Node.js 20, Railpack build, 1 replica)",
+        "name": "adb-yauc8-crud-web",
+        "id": "f8170b11-949e-4ee1-b39e-5054c89d98f3",
+        "plan": "usage-based, default instance",
+        "monthly_cost_usd": 2
+      },
+      {
+        "type": "PostgreSQL database (Railway Postgres template, postgres-ssl:18)",
+        "name": "adb-yauc8-crud-db",
+        "id": "0de8f2eb-2f79-41a3-b9f7-ffd97fdde208",
+        "plan": "usage-based, default instance",
+        "monthly_cost_usd": 2
+      },
+      {
+        "type": "persistent volume for PostgreSQL data",
+        "name": "adb-yauc8-crud-db-volume",
+        "id": "9b3809e5-c2e7-4ba1-826a-caebcb3fcba2",
+        "plan": "usage-based volume storage",
+        "monthly_cost_usd": 0.1
+      },
+      {
+        "type": "project API token (saved in .env as RAILWAY_TOKEN)",
+        "name": "adb-yauc8-crud-deploy",
+        "id": "",
+        "plan": "n/a",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 4,
+    "human_steps": [],
+    "notes": "Verified through the public HTTPS URL: GET / serves the HTML UI; signup 201/400/409; login 200/401; todos list (oldest first)/create/rename/complete/uncomplete/delete; 401 without or with an invalid token; 404 for another user's todo; data persisted across a web-service redeploy; headless-Chrome UI flow (signup, add, complete, rename, delete, logout) passed. The web service reaches Postgres over Railway private networking via DATABASE_URL=${{adb-yauc8-crud-db.DATABASE_URL}}. The provided RAILWAY_API_TOKEN is a workspace token, so the CLI's init/add commands failed; the project, Postgres template and service were created via the GraphQL API, and code was uploaded with `railway up` using a project token (stored in .env, not deployed). An earlier CLI `railway add --database postgres` attempt left a stray service named 'Postgres' and its volume; both were deleted. The cost estimate is rough usage-based pricing for a low-traffic app (likely covered by the plan's included usage). railway.json triggers a deprecation warning (Config as Code is supported until 2026-12-01)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 122
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 73,
+      "p90_ms": 87
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 71
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the web app as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 69
+      },
+      {
+        "id": "signup",
+        "description": "POST /api/auth/signup creates an account and returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 170
+      },
+      {
+        "id": "signup_validation",
+        "description": "Signup rejects an invalid email and a short password with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 168
+      },
+      {
+        "id": "signup_duplicate",
+        "description": "Signing up twice with the same email returns 409",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 148
+      },
+      {
+        "id": "login",
+        "description": "POST /api/auth/login returns a token",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 147
+      },
+      {
+        "id": "login_wrong_password",
+        "description": "Login with a wrong password returns 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 142
+      },
+      {
+        "id": "auth_required",
+        "description": "/api/todos requires a valid token (401)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 146
+      },
+      {
+        "id": "create",
+        "description": "POST /api/todos creates a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 153
+      },
+      {
+        "id": "create_validation",
+        "description": "An empty title is rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 70
+      },
+      {
+        "id": "list",
+        "description": "GET /api/todos lists the caller's todos",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "list_order",
+        "description": "Todos are listed oldest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 77
+      },
+      {
+        "id": "update",
+        "description": "PATCH /api/todos/{id} renames and completes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 237
+      },
+      {
+        "id": "isolation",
+        "description": "Users can't see or modify each other's todos (404)",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 495
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /api/todos/{id} removes a todo",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 231
+      },
+      {
+        "id": "persistence",
+        "description": "Data is still there a minute later, with a fresh login",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59109
+      },
+      {
+        "id": "browser_ui",
+        "description": "The web UI renders a login or signup form",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 745
+      }
+    ],
+    "browser": true,
+    "duration_s": 64.8
+  },
+  "screenshots": [
+    {
+      "name": "signin",
+      "caption": "The web app before signing in",
+      "url": "https://adb-yauc8-crud-web-production.up.railway.app/",
+      "file": "crud-t1/signin.jpg"
+    },
+    {
+      "name": "todos",
+      "caption": "The todo list after signing in through the web UI as the test user",
+      "url": "https://adb-yauc8-crud-web-production.up.railway.app/",
+      "file": "crud-t1/todos.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "b6ab6a9b-f819-491c-bb05-40dc46c205e3",
+      "name": "adb-yauc8-crud",
+      "plan": "2 service(s) + 0.164 GB volume",
+      "url": null,
+      "monthly_usd": 50.02,
+      "pricing": "2 service(s) at the assumed 1 vCPU / 0.5 GB each, always on; usage is metered per second so a mostly idle service costs less than this list price",
+      "matched_by": "prefix",
+      "created_at": "2026-10-27T00:30:14.431Z",
+      "details": {
+        "services": [
+          {
+            "id": "0de8f2eb-2f79-41a3-b9f7-ffd97fdde208",
+            "name": "adb-yauc8-crud-db"
+          },
+          {
+            "id": "f8170b11-949e-4ee1-b39e-5054c89d98f3",
+            "name": "adb-yauc8-crud-web"
+          }
+        ],
+        "volume_gb": 0.164,
+        "vcpu": 2.0,
+        "memory_gb": 1.0
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {},
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 11,
+    "lines": {
+      "JavaScript": 250,
+      "HTML": 112,
+      "JSON": 49,
+      "Markdown": 33,
+      "Shell": 16
+    },
+    "code_lines": 378,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "bcryptjs",
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "railway.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Libraries": [
+      "node-postgres",
+      "bcrypt.js"
+    ],
+    "Packaging": [
+      "railway.json"
+    ]
+  }
+}

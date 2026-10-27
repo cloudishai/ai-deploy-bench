@@ -6,6 +6,7 @@ Only full runs (every cloud, app and model) update the summary in the repository
 
 | Run | Scope | Models | Success | Checks passed | Agent cost |
 |---|---|---|---|---|---|
+| [2026-10-27 · #17](runs/2026-10-27_17-1/summary.md) | full (clouds: cloudish, railway, vercel rerun on 2026-10-26 · #16) | opus-5-5 | 23/25 | 96% | $26.88 |
 | [2026-10-26 · #16](runs/2026-10-26_16-1/summary.md) | full | opus-5-5 | 17/25 | 75% | $27.20 |
 | [2026-10-15 · #15](runs/2026-10-15_15-1/summary.md) | full (clouds: railway rerun on 2026-10-14 · #13) | opus-5-5 | 24/25 | 97% | $29.38 |
 | [2026-10-14 · #13](runs/2026-10-14_13-1/summary.md) | full | opus-5-5 | 20/25 | 81% | $29.09 |

@@ -1,0 +1,737 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "API / Backend Service"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "api",
+  "trial": 1,
+  "prefix": "adb-zpbtt-api",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 71.0,
+    "tokens": 312770,
+    "agent_usd": 0.244938
+  },
+  "url": "https://adb-zpbtt-api-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 20,
+  "checks_total": 20,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 61.5,
+      "tokens": 405834,
+      "cost_usd": 0.388594
+    },
+    "status": "completed",
+    "score": 68.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "API_KEYS and DATABASE_URL are set as Render service env vars through the API. The scripts read the bench keys and the Render token from the environment and never print them, and no secret appears in source, transcripts or the shipped tarball. A minor gap: the deploy script pulls the DB connection string itself and sends it as a plain env var, when render.yaml's fromDatabase wiring would have avoided handling it."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "No image or build artifact was produced. The app code travels as a base64 tarball in an env var and is unpacked onto the mutable tag python:3.12-slim at every boot. pip then installs from PyPI on each start, with top-level versions pinned but transitive dependencies unpinned and no hashes, so what runs can change with any restart or wake from sleep."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 6,
+        "rationale": "Render's free plan allows a personal side project. However, the free Postgres expires on 2026-11-25, 30 days after creation, which breaks the requirement that notes persist. The free web service also sleeps, so friends' scripts face 30-60 s cold starts that are made worse by the pip install on every boot. The agent disclosed both limits."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 5,
+        "rationale": "The app connects over the database's internal URL. But the database was created through the API without an ipAllowList, so Render's default of allowing external connections from any IP with the password probably applies (render.yaml's ipAllowList: [] was never used). The container also runs as root in the stock python image, because the start command never drops privileges."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS works with a valid Google Trust Services certificate, and HTTP gets a 301 redirect to HTTPS. Responses carry no HSTS, X-Content-Type-Options, frame-protection or CSP headers, and the app could have added them in its middleware."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Probes for /.env, /.git/config, source files, /srv and /admin all return a JSON 404, and errors leak no stack traces. Only the documented /docs, /openapi.json and /health are public, plus FastAPI's default /redoc, which is harmless."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 8,
+        "rationale": "Pydantic strict types with length caps, parameterised SQLAlchemy queries, every query scoped to the owner (404 for other keys) and a per-key sliding-window limiter returning 429 with Retry-After are all solid. Requests with no key or a bad key are never rate-limited, and the limiter's counts live in memory, so they reset whenever the instance restarts or sleeps."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Code shipped in an env var and dependencies installed at runtime on a mutable base image",
+        "evidence": "app/scripts/render_image_deploy.py:10-14 (BOOT: echo \"$APP_TGZ_B64\" | base64 -d | tar xz && pip install ... -r requirements.txt) and :54 imagePath docker.io/library/python:3.12-slim; process/resources.json source docker.io/library/python:3.12-slim",
+        "recommendation": "Build an immutable image (or a Render native build from a repo the owner controls) with the base image pinned by digest and a fully locked requirements file installed with --require-hashes at build time, not at boot."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Free Render Postgres expires after 30 days",
+        "evidence": "process/resources.json: postgres expires_at 2026-11-25T20:10:24Z; TASK.md requires a database that survives restarts and redeploys",
+        "recommendation": "Upgrade the database to a paid instance type such as basic-256mb before it expires, or move to a store that does not expire."
+      },
+      {
+        "severity": "medium",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Postgres probably reachable from the internet",
+        "evidence": "process/deploy.md: POST /v1/postgres with no ipAllowList field; render.yaml:27 ipAllowList: [] was never applied",
+        "recommendation": "Set the database's ipAllowList to empty (internal connections only) through the API or dashboard."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "render_image_deploy.py:10-14 runs mkdir /srv, pip install and uvicorn directly in the stock python:3.12-slim image, which defaults to root",
+        "recommendation": "Use a Dockerfile-built image with a non-root USER."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "platform",
+        "title": "Free web service sleeps and cold starts slowly",
+        "evidence": "process/deployment.json notes: sleeps after 15 min idle, first request takes ~30-60 s because pip install runs on every boot",
+        "recommendation": "Use a paid instance if callers need low latency. Installing dependencies at build time would at least shorten cold starts."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "curl -D - https://adb-zpbtt-api-web.onrender.com/docs: no strict-transport-security, x-content-type-options, x-frame-options or content-security-policy",
+        "recommendation": "Add HSTS, nosniff, frame-ancestors/X-Frame-Options and a CSP in the existing HTTP middleware."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No throttling of requests with a missing or invalid key; limiter state is per-process",
+        "evidence": "app/app/main.py:115-120 returns 401 before limiter.hit; app/app/ratelimit.py keeps hits in memory",
+        "recommendation": "Add per-IP throttling for failed authentication, and if the service ever scales out, keep the counts in a shared store such as Render Key Value."
+      },
+      {
+        "severity": "info",
+        "criterion": "provenance",
+        "source": "app",
+        "title": "Docs page loads an unpinned Swagger UI from a CDN",
+        "evidence": "GET /docs references https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js with no SRI",
+        "recommendation": "Pin an exact swagger-ui version with SRI, or serve the assets locally."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "app",
+        "title": "API keys stored only as hashes",
+        "evidence": "app/app/main.py:64-66 owner_id stores sha256(key) in the database",
+        "recommendation": "None; good practice."
+      }
+    ],
+    "summary": "The FastAPI Notes API on Render is functionally solid. It handles secrets well, scopes every query to the owner, validates input strictly and exposes nothing beyond the documented endpoints over valid HTTPS. Its main weaknesses come from the deployment: code ships in an env var and pip installs at every boot onto an unpinned python:3.12-slim image, the container runs as root, and the free Postgres was probably left open to external connections and expires on 2026-11-25, which undermines the persistence requirement."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 81.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "FastAPI covers the required validation, the OpenAPI document and the HTML docs out of the box, and managed Postgres through SQLAlchemy Core is a durable store. An in-process limiter suits the single instance."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "Four pinned dependencies, one web service and one database is minimal. The only extra is the SQLite fallback, kept for local development."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 6,
+        "rationale": "STACK.md and render.yaml plan the idiomatic native Python runtime with a Blueprint-wired DATABASE_URL. Without git access, the build instead ran a stock image that unpacks an env var tarball and runs pip at each boot, which fights Render's build and deploy model and lengthens free-tier cold starts."
+      }
+    ],
+    "summary": "Python 3.12 + FastAPI + SQLAlchemy + Render Postgres is a well-reasoned, proportionate fit for a small authenticated JSON API, and STACK.md justifies it soundly. The deployment departed from the planned native-runtime Blueprint for a runtime-install workaround on a stock image, which weakens its fit with the platform."
+  },
+  "timing": {
+    "build_s": 150.2,
+    "deploy_s": 357.4,
+    "deploy_nohuman_s": 71.0,
+    "agent_s": 578.6,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 71.9
+  },
+  "tokens": {
+    "build": {
+      "input": 3817,
+      "output": 12575,
+      "cache_read": 446626,
+      "cache_write": 21386,
+      "total": 484404
+    },
+    "deploy": {
+      "input": 745,
+      "output": 9786,
+      "cache_read": 791071,
+      "cache_write": 13142,
+      "total": 814744
+    },
+    "deploy_nohuman": {
+      "input": 318,
+      "output": 6968,
+      "cache_read": 296482,
+      "cache_write": 9002,
+      "total": 312770
+    },
+    "total": {
+      "input": 4880,
+      "output": 29329,
+      "cache_read": 1534179,
+      "cache_write": 43530,
+      "total": 1611918
+    }
+  },
+  "cost": {
+    "agent_usd": 1.130585,
+    "agent_build_usd": 0.463023,
+    "agent_deploy_usd": 0.422624,
+    "agent_nohuman_deploy_usd": 0.244938,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 12,
+      "deploy": 13
+    },
+    "tool_calls": {
+      "Bash": 23
+    },
+    "shell_commands": {
+      "build": 11,
+      "deploy": 12
+    },
+    "tool_errors": 3,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T20:06:19+00:00",
+      "wall_time_s": 150.2,
+      "api_time_s": 115.8,
+      "turns": 12,
+      "tokens": {
+        "input": 3817,
+        "output": 12575,
+        "cache_read": 446626,
+        "cache_write": 21386,
+        "total": 484404
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.463023,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3817,
+          "output": 12575,
+          "cache_read": 446626,
+          "cache_write": 21386,
+          "cost_usd": 0.46302319999999997,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 11
+      },
+      "tool_errors": 2,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T20:10:01+00:00",
+      "wall_time_s": 357.4,
+      "api_time_s": 103.8,
+      "turns": 13,
+      "tokens": {
+        "input": 745,
+        "output": 9786,
+        "cache_read": 791071,
+        "cache_write": 13142,
+        "total": 814744
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.422624,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 745,
+          "output": 9786,
+          "cache_read": 791071,
+          "cache_write": 13142,
+          "cost_usd": 0.4226242,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The Notes API is built and every requirement in `TASK.md` works locally. The 19 automated tests pass, and I also ran it by hand with curl against a real Postgres 16 container. All servers and containers are stopped now.\n\n**Stack:** Python 3.12, FastAPI and SQLAlchemy, with a Render Postgres database planned for step 2. `STACK.md` compares this with Node/Express + Postgres and with a server using SQLite on a Render persistent disk. I chose FastAPI because it generates the OpenAPI document and the `/docs` page itself and handles input validation, and managed Postgres keeps notes through restarts and redeploys. If `DATABASE_URL` isn't set, the app uses a local SQLite file, so you can run it and its tests without installing a database.\n\n**Checked against Postgres:**\n- The public endpoints `/health`, `/openapi.json` and `/docs` answer without a key.\n- Requests without a key or with an unknown key get `401`.\n- All five note endpoints work, including the tag filter and newest-first ordering.\n- Bad input (missing, empty or wrong-type fields, broken JSON) gets `400` with `{\"error\": ...}`.\n- Another key's notes return `404`.\n- Notes were still there after restarting the server.\n- The 61st request in a minute gets `429` with a `Retry-After` header, while a second key is unaffected.\n\n**Things to know:**\n- **Rate limits:** they are counted in the server process's memory, so the app should run as one instance with one worker. Running several instances would need a shared store such as Render Key Value.\n- **Stored keys:** the database keeps a hash of each API key rather than the key itself.\n- **Size limits:** I added caps of my own: titles up to 500 characters, content up to 100,000, and up to 50 tags of up to 100 characters each.\n\n**Run it:**\n```bash\npython3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt\nAPI_KEYS=key-one,key-two .venv/bin/uvicorn app.main:app --port 8000   # optional: DATABASE_URL=postgres://...\ncurl -H 'X-API-Key: key-one' localhost:8000/v1/notes\n.venv/bin/pytest -q\n```\n\nOn Render the start command will be `uvicorn app.main:app --host 0.0.0.0 --port $PORT`, with `API_KEYS` and `DATABASE_URL` set as environment variables.",
+    "deploy": "The Notes API is live at **https://adb-zpbtt-api-web.onrender.com**, and everything in `TASK.md` passed when I tested it through that URL. No human steps were needed.\n\n**What's deployed (both free plan, $0 a month):**\n- `adb-zpbtt-api-db`: a Render Postgres 16 database (`dpg-dbfr7c2jnfac738k2it0-a`).\n- `adb-zpbtt-api-web`: the web service (`srv-dbfr7qd9fdbs739sgang`). It connects to the database over Render's internal network, and its `API_KEYS` is set to exactly the keys in `BENCH_API_KEYS`.\n\n**Workaround:** there was no GitHub access, so Render couldn't build from a repo. The service instead runs the official public `python:3.12-slim` image, and the app code rides along in an environment variable. At startup it unpacks the code, installs the pinned dependencies and starts the server. `scripts/render_image_deploy.py` creates or updates the service this way. It's an unusual setup but it works.\n\n**Tested through the public URL:**\n- `/health`, `/openapi.json` and `/docs` respond without a key.\n- A missing or wrong key gets `401`.\n- Create, read, list, update and delete all work, including bad input (`400`), unknown notes (`404`) and the tag filter.\n- One key can't see or change another key's notes (`404`).\n- After 60 requests in a minute a key gets `429` with a `Retry-After` header, and the other key is unaffected.\n- A note was still there after I restarted the service. I deleted my test notes afterwards.\n\n**Free-tier limits:**\n- **Sleep:** the service goes to sleep after 15 minutes without traffic, and the next request takes about 30\u201360 seconds. That's slower than a normal Render build would be, because dependencies are reinstalled on every start.\n- **Database expiry:** the free database expires 30 days after creation. Upgrading it to basic-256mb (about $6 a month) keeps the data.\n- **Rate-limit resets:** rate-limit counts are kept in memory, so they reset whenever the service restarts or sleeps.\n\nThe deploy script is committed. `deployment.json` isn't. I didn't create any new credentials, so there's no `.env`."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-zpbtt-api-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (image runtime)",
+        "name": "adb-zpbtt-api-web",
+        "id": "srv-dbfr7qd9fdbs739sgang",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database",
+        "name": "adb-zpbtt-api-db",
+        "id": "dpg-dbfr7c2jnfac738k2it0-a",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [],
+    "notes": "There was no GitHub or Git-host access, so Render couldn't build from a repo. Instead, the web service runs the official public python:3.12-slim image. At startup it unpacks the app code from the APP_TGZ_B64 env var, pip-installs the pinned requirements and runs uvicorn (scripts/render_image_deploy.py creates or updates the service this way). The database is Render Postgres, connected over its internal URL. API_KEYS is set exactly to BENCH_API_KEYS. Tested through the public HTTPS URL: health, openapi.json and docs; 401 for a missing or bad key; full CRUD with 400 and 404 errors; tag filter; per-key isolation; 429 with Retry-After after 60 requests per minute while the other key was unaffected; data persisting across a service restart. Free-tier limits: the service sleeps after 15 minutes idle and its first request then takes roughly 30-60 seconds, more than a repo build would need because pip install runs on every boot. Free Postgres expires 30 days after creation (upgrade to basic-256mb, about $6/month, to keep data). The rate limiter is kept in memory, so its counts reset when the instance restarts or sleeps. render.yaml is an alternative, repo-based Blueprint, usable if the code is pushed to a Git host later."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.2,
+      "attempts": 1,
+      "first_response_ms": 153
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 116,
+      "p90_ms": 131
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET /health answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 109
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 116
+      },
+      {
+        "id": "health",
+        "description": "GET /health returns {status: ok}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 97
+      },
+      {
+        "id": "openapi",
+        "description": "GET /openapi.json is an OpenAPI 3 document covering /v1/notes",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 111
+      },
+      {
+        "id": "docs",
+        "description": "GET /docs serves human-readable documentation",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 102
+      },
+      {
+        "id": "auth_missing",
+        "description": "Requests without an API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 104
+      },
+      {
+        "id": "auth_invalid",
+        "description": "Requests with an unknown API key get 401",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 102
+      },
+      {
+        "id": "create",
+        "description": "POST /v1/notes creates a note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 229
+      },
+      {
+        "id": "create_validation",
+        "description": "Invalid notes are rejected with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 204
+      },
+      {
+        "id": "get",
+        "description": "GET /v1/notes/{id} returns the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 110
+      },
+      {
+        "id": "list",
+        "description": "GET /v1/notes lists notes and filters by tag",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 218
+      },
+      {
+        "id": "list_order",
+        "description": "Notes are listed newest first",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 103
+      },
+      {
+        "id": "update",
+        "description": "PATCH /v1/notes/{id} updates only the given fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 114
+      },
+      {
+        "id": "isolation",
+        "description": "Notes are private to the API key that created them",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 686
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /v1/notes/{id} removes the note",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 246
+      },
+      {
+        "id": "persistence",
+        "description": "Notes are still there a minute later",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 58478
+      },
+      {
+        "id": "rate_limit",
+        "description": "Exceeding 60 requests/minute returns 429",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 7486
+      },
+      {
+        "id": "rate_limit_retry_after",
+        "description": "429 responses include a Retry-After header",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "rate_limit_per_key",
+        "description": "One key hitting its limit doesn't throttle other keys",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 101
+      }
+    ],
+    "browser": true,
+    "duration_s": 71.9
+  },
+  "screenshots": [
+    {
+      "name": "docs",
+      "caption": "The API documentation at /docs",
+      "url": "https://adb-zpbtt-api-web.onrender.com/docs",
+      "file": "api-t1/docs.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-dbfr7qd9fdbs739sgang",
+      "name": "adb-zpbtt-api-web",
+      "plan": "free",
+      "url": "https://adb-zpbtt-api-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-26T20:11:21.665548Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/python:3.12-slim"
+      }
+    },
+    {
+      "kind": "postgres",
+      "id": "dpg-dbfr7c2jnfac738k2it0-a",
+      "name": "adb-zpbtt-api-db",
+      "plan": "free",
+      "url": null,
+      "monthly_usd": 0.0,
+      "pricing": "Postgres free",
+      "matched_by": "prefix",
+      "created_at": "2026-10-26T20:10:24.928246Z",
+      "details": {
+        "disk_gb": null,
+        "status": "available",
+        "expires_at": "2026-11-25T20:10:24.928246Z"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 2,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 17,
+    "lines": {
+      "Python": 395,
+      "Shell": 71,
+      "Markdown": 41,
+      "YAML": 26,
+      "JSON": 10
+    },
+    "code_lines": 466,
+    "dependencies": {
+      "npm": 0,
+      "python": 6
+    },
+    "frameworks": [
+      "fastapi",
+      "psycopg",
+      "sqlalchemy",
+      "uvicorn"
+    ],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": true,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [
+        "fastapi",
+        "psycopg",
+        "sqlalchemy",
+        "uvicorn"
+      ],
+      "python_dev": [
+        "httpx",
+        "pytest"
+      ]
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "python": "3.12"
+    },
+    "builtins": [],
+    "manifests": [
+      "requirements-dev.txt",
+      "requirements.txt"
+    ],
+    "dirs": [
+      "app",
+      "scripts",
+      "tests"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Python 3.12"
+    ],
+    "Frameworks": [
+      "FastAPI"
+    ],
+    "Data": [
+      "PostgreSQL (Render Postgres, free)"
+    ],
+    "Libraries": [
+      "Uvicorn",
+      "psycopg",
+      "SQLAlchemy"
+    ],
+    "Dev tools": [
+      "HTTPX",
+      "pytest"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image python:3.12-slim)"
+    ]
+  }
+}
