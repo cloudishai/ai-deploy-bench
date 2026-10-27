@@ -1,0 +1,757 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "Database-Backed CRUD App"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "crud",
+  "trial": 1,
+  "prefix": "adb-72l2v-crud",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "partial",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 83.2,
+    "tokens": 577440,
+    "agent_usd": 0.276833
+  },
+  "url": "https://adb-72l2v-crud-web.vercel.app",
+  "url_source": "deployment.json",
+  "score": 0.2632,
+  "checks_passed": 5,
+  "checks_total": 19,
+  "required_failed": [
+    "signup",
+    "signup_validation",
+    "signup_duplicate",
+    "login",
+    "login_wrong_password",
+    "auth_required",
+    "create",
+    "create_validation",
+    "list",
+    "update",
+    "isolation",
+    "delete",
+    "persistence"
+  ],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup",
+          "agent: Then run ./scripts/deploy.sh (with VERCEL_TOKEN and VERCEL_TEAM_ID set). It creates the free Neon database adb-72l2v-crud-db, connects it to adb-72l2v-crud-web (sets DATABASE_URL), redeploys to production and smoke-tests sign-up. (Completes the deployment; tables are created automatically on the fir"
+        ]
+      },
+      {
+        "id": "accept_integration_terms",
+        "description": "Install a Marketplace integration and accept its terms in a browser",
+        "minutes": 3,
+        "evidence": [
+          "agent: Accept the Neon Marketplace terms for team ai-deploy-bench in a browser: https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli (`vercel integration add neon` returns integration_terms_acceptance_required; every Marketplace Postgres (Neon, Prisma Postgres, Supabase, Aurora DS",
+          "tool output: > Installing Neon by Neon under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Neon\\\" in your browser before this install can finis"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 8,
+    "blockers": [
+      {
+        "id": "accept_integration_terms",
+        "source": "agent",
+        "detail": "Accept the Neon Marketplace terms for team ai-deploy-bench in a browser: https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli (`vercel integration add neon` returns integration_terms_acceptance_required; every Marketplace Postgres (Neon, Prisma Postgres, Supabase, Aurora DS",
+        "blocking": true
+      },
+      {
+        "id": "api_token",
+        "source": "agent",
+        "detail": "Then run ./scripts/deploy.sh (with VERCEL_TOKEN and VERCEL_TEAM_ID set). It creates the free Neon database adb-72l2v-crud-db, connects it to adb-72l2v-crud-web (sets DATABASE_URL), redeploys to production and smoke-tests sign-up. (Completes the deployment; tables are created automatically on the fir",
+        "blocking": true
+      },
+      {
+        "id": "accept_integration_terms",
+        "source": "tool output",
+        "detail": "> Installing Neon by Neon under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Neon\\\" in your browser before this install can finis",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 65.8,
+      "tokens": 378143,
+      "cost_usd": 0.422718
+    },
+    "status": "completed",
+    "score": 66.0,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 8,
+        "rationale": "No credentials appear in the source, the transcripts or the deployed files. .env and .env.local, which holds the CLI's OIDC token, are excluded by both .gitignore and .vercelignore, and the app reads DATABASE_URL from the environment. One minor issue: the Vercel token is passed as a command-line argument (--token $VERCEL_TOKEN), which exposes it in process listings."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 6,
+        "rationale": "Production was deployed straight from the agent's local working directory with `vercel deploy --prod`. Source files were patched in place just before each deploy, and there is no git or CI provenance. The deploy script runs an unpinned `npx -y vercel@latest`, dependencies use caret ranges, and the Node engine is the open-ended `>=20`."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 2,
+        "rationale": "This is a business's app (use=commercial), but it is hosted on a Vercel team on the Hobby plan. Vercel's terms limit Hobby to personal, non-commercial use. On top of that, the database was never provisioned, so the live app cannot do anything it is meant to: every /api endpoint returns 503."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 8,
+        "rationale": "There is only one serverless function and no data store yet. Vercel Deployment Protection keeps the per-deployment URL behind authentication: it returned 302. Only the production alias is public. A planned Neon database would rely on a password over a public endpoint, but it does not exist yet."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid certificate. Plain HTTP gets a 308 redirect to HTTPS, and the platform sends HSTS with preload. The agent never set CSP, X-Content-Type-Options or frame-protection headers, though it could have in vercel.json or Express. The planned Postgres connection disables certificate verification (rejectUnauthorized: false)."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Probes for /.env, /.env.local, /.git/config, /package.json, the source files, /vercel.json and /.vercel/project.json all returned the app's generic 404. /_src redirects to authentication, and errors return no stack traces. The only extras are Express's default 'Cannot GET' pages and an /api/me endpoint the UI needs."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 6,
+        "rationale": "The code is solid: SQL queries are parameterized, bcrypt uses cost 10, tokens are random and only their hashes are stored, ownership is checked in every query, the UI renders with textContent, the cookie is HttpOnly with SameSite=Lax, and input is type-checked. However, nothing protects login or signup against brute force or abuse, sessions never expire on the server, and titles have no length limit."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "high",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial app hosted on Vercel Hobby (non-commercial) plan",
+        "evidence": "process/context.json: use=commercial, team_plans.team_U2tHOV4fpUx18nl9EpcRQ4hO=hobby; deployment.json lists the plan as \"Vercel team's current plan (Hobby-level usage)\" at $0/month",
+        "recommendation": "Deploy the business's app on a Vercel Pro (or Enterprise) team. Vercel's terms restrict Hobby to personal, non-commercial use."
+      },
+      {
+        "severity": "high",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "No database provisioned; the live app's API is non-functional",
+        "evidence": "POST https://adb-72l2v-crud-web.vercel.app/api/auth/login -> 503 {\"error\":\"Database not configured\"}; deploy.md: `vercel integration add neon` returned integration_terms_acceptance_required; deployment.json lists the database as \"NOT YET CREATED\"",
+        "recommendation": "Accept the Marketplace terms, provision Postgres (Neon on a paid or commercial-appropriate plan), connect DATABASE_URL, redeploy and smoke-test the API before reporting the deployment as complete."
+      },
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Production deployed from an unversioned local directory with an unpinned CLI",
+        "evidence": "deploy.md: `$VC deploy --prod --yes` run right after in-place edits (python3 rewriting src/app.js; `echo -e \"\\nexport default app;\" >> src/app.js`); app/scripts/deploy.sh:6 `V=\"npx -y vercel@latest --token $VERCEL_TOKEN\"`",
+        "recommendation": "Deploy from a git repository the owner controls, through Vercel's Git integration or CI. Pin the Vercel CLI version and commit package-lock.json."
+      },
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on login or signup",
+        "evidence": "app/src/app.js:44-66: the signup and login handlers have no throttling or lockout, and each request runs a bcrypt hash or compare",
+        "recommendation": "Rate-limit the auth endpoints by IP and by account, for example with Vercel Firewall rate-limit rules or a store-backed limiter."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "app",
+        "title": "Loose dependency and runtime ranges",
+        "evidence": "app/package.json: \"bcryptjs\": \"^3.0.3\", \"express\": \"^5.3.0\", \"pg\": \"^8.23.1\", \"engines\": {\"node\": \">=20\"}",
+        "recommendation": "Commit the lockfile, deploy with `npm ci`, and pin the Node major version (for example \"22.x\")."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "Sessions never expire server-side; titles have no length limit",
+        "evidence": "app/src/app.js:78-80 looks up `sessions` by token_hash with no created_at check (the cookie maxAge is 30 days, but bearer tokens live forever); app/src/app.js:94-97 accepts a title of any length up to the 100kb body limit",
+        "recommendation": "Enforce a session TTL in the auth query and purge old rows. Cap the title length, for example at 500 characters."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Postgres TLS certificate verification disabled",
+        "evidence": "app/src/db.js:7 `ssl: ... { rejectUnauthorized: false }`",
+        "recommendation": "Use `ssl: true`, or sslmode=verify-full, so the managed Postgres certificate is validated."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing CSP, X-Content-Type-Options and frame-protection headers",
+        "evidence": "curl -I https://adb-72l2v-crud-web.vercel.app/ returns only strict-transport-security among security headers; there is no content-security-policy, x-content-type-options or x-frame-options",
+        "recommendation": "Add the headers in vercel.json `headers` or with helmet in Express."
+      },
+      {
+        "severity": "low",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Vercel token passed on the command line",
+        "evidence": "app/scripts/deploy.sh:6 `npx -y vercel@latest --token $VERCEL_TOKEN`; deploy.md: `vercel --token $VERCEL_TOKEN --scope $VERCEL_TEAM_ID`",
+        "recommendation": "Let the CLI read VERCEL_TOKEN from the environment instead of passing it as an argument, which is visible in process listings."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "platform",
+        "title": "No sensitive files exposed; preview URL protected",
+        "evidence": "GET /.env, /.env.local, /.git/config, /package.json, /src/app.js, /vercel.json, /.vercel/project.json -> 404; /_src -> 307 to auth; https://adb-72l2v-crud-338a1v8mz-ai-deploy-bench.vercel.app/ -> 302 (Deployment Protection); http:// -> 308 to https",
+        "recommendation": "None needed."
+      }
+    ],
+    "summary": "The Express/Postgres code is reasonably secure: queries are parameterized, passwords use bcrypt, only hashes of the opaque tokens are stored, ownership is checked, and no secrets leaked or are exposed. However, the business's app is on a Vercel Hobby plan, whose terms forbid commercial use. The database was never provisioned, so every API endpoint returns 503. Production was deployed from an unversioned local directory with unpinned tooling, and the auth endpoints have no rate limiting."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 79.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 7,
+        "rationale": "Express with pg and managed Neon Postgres suits a multi-user CRUD app, and bcryptjs with opaque session tokens fits the auth requirements. However, the durable store was never provisioned, so the live stack currently has no data layer."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "Three small dependencies, one function and a single inline HTML page are about as lean as the requirements allow. STACK.md rightly rejected Next.js as unnecessary."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 8,
+        "rationale": "Running an exported Express app as a single Vercel Function with a Marketplace Postgres fits Vercel's model. A small pg Pool (max 5) is acceptable with Neon's pooled endpoint, though a serverless driver or Fluid compute would be a better match."
+      }
+    ],
+    "summary": "Node/Express as one Vercel Function backed by Neon Postgres is a proportionate, platform-appropriate stack, and STACK.md documents the choice well. The build followed that plan, but the database step was never completed."
+  },
+  "timing": {
+    "build_s": 119.9,
+    "deploy_s": 89.0,
+    "deploy_nohuman_s": 83.2,
+    "agent_s": 292.1,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 3.1
+  },
+  "tokens": {
+    "build": {
+      "input": 3750,
+      "output": 12431,
+      "cache_read": 405934,
+      "cache_write": 20872,
+      "total": 442987
+    },
+    "deploy": {
+      "input": 849,
+      "output": 5248,
+      "cache_read": 881159,
+      "cache_write": 10400,
+      "total": 897656
+    },
+    "deploy_nohuman": {
+      "input": 18494,
+      "output": 6430,
+      "cache_read": 543719,
+      "cache_write": 8797,
+      "total": 577440
+    },
+    "total": {
+      "input": 23093,
+      "output": 24109,
+      "cache_read": 1830812,
+      "cache_write": 40069,
+      "total": 1918083
+    }
+  },
+  "cost": {
+    "agent_usd": 1.062588,
+    "agent_build_usd": 0.449167,
+    "agent_deploy_usd": 0.336588,
+    "agent_nohuman_deploy_usd": 0.276833,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "Hobby is for non-commercial use only, so priced on Pro: $20 platform fee including $20 of usage credit, $0.00 of usage"
+      },
+      "busy": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "Hobby is for non-commercial use only, so priced on Pro: $20 platform fee including $20 of usage credit, $5.75 of usage"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 11,
+      "deploy": 15
+    },
+    "tool_calls": {
+      "Bash": 24
+    },
+    "shell_commands": {
+      "build": 10,
+      "deploy": 14
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:18:18+00:00",
+      "wall_time_s": 119.9,
+      "api_time_s": 101.7,
+      "turns": 11,
+      "tokens": {
+        "input": 3750,
+        "output": 12431,
+        "cache_read": 405934,
+        "cache_write": 20872,
+        "total": 442987
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.449167,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3750,
+          "output": 12431,
+          "cache_read": 405934,
+          "cache_write": 20872,
+          "cost_usd": 0.44916679999999987,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T00:21:42+00:00",
+      "wall_time_s": 89.0,
+      "api_time_s": 58.2,
+      "turns": 15,
+      "tokens": {
+        "input": 849,
+        "output": 5248,
+        "cache_read": 881159,
+        "cache_write": 10400,
+        "total": 897656
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.336588,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 849,
+          "output": 5248,
+          "cache_read": 881159,
+          "cache_write": 10400,
+          "cost_usd": 0.3365878000000002,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 14
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The todo app is built and works locally against PostgreSQL in Docker. All 3 automated tests pass, and I checked the API by hand with curl.\n\n**Stack** (the options I compared and why I chose this one are in `STACK.md`)\n- Node.js with Express. The same app runs as a local server (`server.js`) and as a Vercel Function (`api/index.js`). `vercel.json` sends every path to that function.\n- PostgreSQL through the `pg` driver, configured by `DATABASE_URL` (`POSTGRES_URL` also works). For Vercel I plan to use managed Neon Postgres. The tables are created automatically on the first request.\n- Passwords are hashed with bcrypt, and hashes are never returned. Login tokens are random strings, and the database stores only a SHA-256 hash of each one. That means there is no signing secret to configure for deployment. Endpoints accept either `Authorization: Bearer <token>` or an HttpOnly cookie, which the web page uses.\n- The web page at `GET /` is plain HTML and JavaScript. It covers sign up, log in, log out, and add, list, rename, complete or uncomplete, and delete. I checked its script for syntax errors but did not click through it in a real browser.\n\n**What I checked**\n- **Tests:** they cover every endpoint, including each listed error code, one user being unable to see or change another user's todos, oldest-first ordering, and that password hashes never appear in responses.\n- **By hand:** with curl I checked the cookie login, that badly formed JSON gets a `400`, and that data is still there after restarting the server.\n\nI added two endpoints the spec doesn't list: `POST /api/auth/logout` and `GET /api/me`, which the web page uses.\n\n**How to run it**\n```sh\ndocker run -d --name todo-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine\nnpm install\nexport DATABASE_URL=postgres://postgres:[REDACTED]@localhost:5432/postgres\nnpm start      # http://localhost:3000\nnpm test\n```\n\nFor step 2, the Vercel project only needs a Postgres database (for example Neon from the Vercel Marketplace) with its connection string set as `DATABASE_URL`. I've stopped the server and removed the Postgres container.",
+    "deploy": "The app is live at **https://adb-72l2v-crud-web.vercel.app**, but it has no database yet, so sign-up, login and the todo API don't work through the public URL. The page itself loads (`GET /` returns 200 with HTML). Every `/api/*` request returns `503 {\"error\":\"Database not configured\"}`.\n\n**Why there's no database:** creating Neon Postgres from the Vercel Marketplace was refused until someone accepts Neon's terms in a browser. I tried the other Marketplace Postgres options (Prisma Postgres, Supabase, AWS Aurora DSQL) and each needs the same browser step. That's in `human_steps` in `deployment.json`.\n\n**What I created:** the Vercel project `adb-72l2v-crud-web` (`prj_PlqiGzfYM1cnpXbzDuWWdsEcXuBl`), at an estimated $0/month. The planned free Neon database `adb-72l2v-crud-db` doesn't exist yet.\n\n**Fixed during deploy:** the first deploy returned 500 on `/` because Vercel treated `src/app.js` as the app's entry file and it had no default export. I added `export default app` and redeployed.\n\n**To finish:**\n1. Accept the Neon terms: https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli\n2. Run `./scripts/deploy.sh` with `VERCEL_TOKEN` and `VERCEL_TEAM_ID` set. The script hasn't been run end-to-end yet. It should create the database, connect it to the project (setting `DATABASE_URL`), redeploy and check that sign-up works. The app creates its tables on the first API request.\n\nAfter that, the API still needs testing through the public URL. Every requirement has so far only passed locally against PostgreSQL 16.\n\nNo secrets were printed or committed. The Vercel CLI created `.env.local` with a short-lived token, and it's excluded from both git and the deploy."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-72l2v-crud-web.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (Node.js Function serving Express API + HTML UI)",
+        "name": "adb-72l2v-crud-web",
+        "id": "prj_PlqiGzfYM1cnpXbzDuWWdsEcXuBl",
+        "plan": "Vercel team's current plan (Hobby-level usage)",
+        "monthly_cost_usd": 0
+      },
+      {
+        "type": "PostgreSQL database (Neon via Vercel Marketplace) - NOT YET CREATED",
+        "name": "adb-72l2v-crud-db",
+        "id": "",
+        "plan": "Neon Free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Accept the Neon Marketplace terms for team ai-deploy-bench in a browser: https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/neon?source=cli",
+        "why": "`vercel integration add neon` returns integration_terms_acceptance_required; every Marketplace Postgres (Neon, Prisma Postgres, Supabase, Aurora DSQL) returned the same, so no database can be provisioned and the /api/* endpoints return 503 'Database not configured'.",
+        "blocking": true
+      },
+      {
+        "step": "Then run ./scripts/deploy.sh (with VERCEL_TOKEN and VERCEL_TEAM_ID set). It creates the free Neon database adb-72l2v-crud-db, connects it to adb-72l2v-crud-web (sets DATABASE_URL), redeploys to production and smoke-tests sign-up.",
+        "why": "Completes the deployment; tables are created automatically on the first API request.",
+        "blocking": true
+      }
+    ],
+    "notes": "Deployed and publicly reachable over HTTPS: GET / returns the web UI (200, text/html). All /api/* endpoints currently return 503 {\"error\":\"Database not configured\"} because the database couldn't be provisioned without a person accepting the Marketplace terms. So none of the account or todo requirements could be tested through the public URL yet. They were all verified locally against PostgreSQL 16 (signup/login, all error codes, ownership isolation, bcrypt hashing, persistence across restarts). No secrets are committed or deployed (.env and .env.local are in .gitignore and .vercelignore)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 118
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 91,
+      "p90_ms": 100
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 105
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 82
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the web app as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 84
+      },
+      {
+        "id": "signup",
+        "description": "POST /api/auth/signup creates an account and returns a token",
+        "required": true,
+        "status": "failed",
+        "detail": "POST /api/auth/signup returned 503, expected 201 or 200: {\"error\":\"Database not configured\"}",
+        "duration_ms": 139
+      },
+      {
+        "id": "signup_validation",
+        "description": "Signup rejects an invalid email and a short password with 400",
+        "required": true,
+        "status": "failed",
+        "detail": "invalid email: expected 400, got 503",
+        "duration_ms": 89
+      },
+      {
+        "id": "signup_duplicate",
+        "description": "Signing up twice with the same email returns 409",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on signup",
+        "duration_ms": 0
+      },
+      {
+        "id": "login",
+        "description": "POST /api/auth/login returns a token",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on signup",
+        "duration_ms": 0
+      },
+      {
+        "id": "login_wrong_password",
+        "description": "Login with a wrong password returns 401",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on signup",
+        "duration_ms": 0
+      },
+      {
+        "id": "auth_required",
+        "description": "/api/todos requires a valid token (401)",
+        "required": true,
+        "status": "failed",
+        "detail": "GET /api/todos returned 503, expected 401 or 403: {\"error\":\"Database not configured\"}",
+        "duration_ms": 90
+      },
+      {
+        "id": "create",
+        "description": "POST /api/todos creates a todo",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on login",
+        "duration_ms": 0
+      },
+      {
+        "id": "create_validation",
+        "description": "An empty title is rejected with 400",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on login",
+        "duration_ms": 0
+      },
+      {
+        "id": "list",
+        "description": "GET /api/todos lists the caller's todos",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "list_order",
+        "description": "Todos are listed oldest first",
+        "required": false,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "update",
+        "description": "PATCH /api/todos/{id} renames and completes a todo",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "isolation",
+        "description": "Users can't see or modify each other's todos (404)",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "delete",
+        "description": "DELETE /api/todos/{id} removes a todo",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "persistence",
+        "description": "Data is still there a minute later, with a fresh login",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on create",
+        "duration_ms": 0
+      },
+      {
+        "id": "browser_ui",
+        "description": "The web UI renders a login or signup form",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 828
+      }
+    ],
+    "browser": true,
+    "duration_s": 3.1
+  },
+  "screenshots": [
+    {
+      "name": "signin",
+      "caption": "The web app before signing in",
+      "url": "https://adb-72l2v-crud-web.vercel.app/",
+      "file": "crud-t1/signin.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_PlqiGzfYM1cnpXbzDuWWdsEcXuBl",
+      "name": "adb-72l2v-crud-web",
+      "plan": null,
+      "url": "https://adb-72l2v-crud-web.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1793060507086,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": "express"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 14,
+    "lines": {
+      "JavaScript": 348,
+      "Markdown": 42,
+      "JSON": 38,
+      "Shell": 21
+    },
+    "code_lines": 369,
+    "dependencies": {
+      "npm": 3,
+      "python": 0
+    },
+    "frameworks": [
+      "bcryptjs",
+      "express",
+      "pg"
+    ],
+    "deploy_config": [
+      "vercel.json"
+    ],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "bcryptjs",
+        "express",
+        "pg"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "api",
+      "scripts",
+      "src",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 20+"
+    ],
+    "Frameworks": [
+      "Express"
+    ],
+    "Libraries": [
+      "node-postgres",
+      "bcrypt.js"
+    ],
+    "Packaging": [
+      "vercel.json"
+    ],
+    "Hosting": [
+      "Vercel project (express)",
+      "Vercel Functions"
+    ]
+  }
+}

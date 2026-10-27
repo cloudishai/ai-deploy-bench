@@ -1,0 +1,663 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Render",
+    "model": "Opus 5.5",
+    "app": "Static Content Site"
+  },
+  "run_id": "40387893074-1",
+  "cloud": "render",
+  "model": "opus-5-5",
+  "app": "static",
+  "trial": 1,
+  "prefix": "adb-hpd89-static",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "success",
+  "failure_stage": null,
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": false,
+    "deploy_s": 42.5,
+    "tokens": 179254,
+    "agent_usd": 0.138596
+  },
+  "url": "https://adb-hpd89-static-web.onrender.com",
+  "url_source": "deployment.json",
+  "score": 1.0,
+  "checks_passed": 16,
+  "checks_total": 16,
+  "required_failed": [],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      }
+    ],
+    "count": 2,
+    "minutes": 5,
+    "blockers": [
+      {
+        "id": "git_hosting",
+        "source": "agent",
+        "detail": "Optional: connect a GitHub/GitLab account to the Render workspace (dashboard) and push this repo there as adb-hpd89-static, then switch the service to the Node runtime with render.yaml (Would enable standard Git-based builds and auto-deploy on push; no Git provider credentials were available, so the",
+        "blocking": false
+      }
+    ],
+    "blocked": false,
+    "succeeded": true
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 58.3,
+      "tokens": 359472,
+      "cost_usd": 0.323184
+    },
+    "status": "completed",
+    "score": 72.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 10,
+        "rationale": "The app needs no secrets. The Render API key was only ever referenced as $RENDER_API_KEY, `env | grep` output was masked, .env is gitignored, and no credential appears in the source, the transcripts or the deployed bundle."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 4,
+        "rationale": "Production code doesn't come from a repository the owner controls. It is gzip+base64 in an APP_B64 env var and runs via `node -e eval(process.env.BOOT_JS)` on an unpinned `node:24-alpine` tag. Both commits stayed local, and render.yaml describes a different, unused deploy, so nothing traceable records what runs."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 5,
+        "rationale": "A commercial business's marketing site runs on Render's free web-service instance. Render positions that tier for hobby and testing use, and it spins down after about 15 minutes idle, which gives visitors 30-60s cold starts. I'm not certain the terms forbid commercial use, but the tier doesn't fit a business site that has to stay responsive."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 7,
+        "rationale": "There is a single public web service, which is all the app needs, and no data stores. The container runs as root (the node:24-alpine default, with no USER set), and the start command evals code taken from an env var."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 7,
+        "rationale": "HTTPS works with a valid certificate, and HTTP returns a 301 redirect to HTTPS. The app sets none of HSTS, X-Content-Type-Options, frame protection or CSP, although server.js controls every response header and could have."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 10,
+        "rationale": "Only the defined routes respond. /.env, /.git/config, /server.js, /package.json, /render.yaml and a traversal attempt all return the generic 404 page, there are no directory listings or stack traces, and /healthz returns only {\"ok\":true}."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 9,
+        "rationale": "Input validation is strict (type checks, an email regex, rejection of non-object JSON), the body is capped at 64KB with a 413, other methods get a 405, and the client renders messages with textContent. The only gap is that the public POST endpoint has no rate limiting, which matters little because nothing is stored or sent."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "App code shipped in env vars and eval'd at startup, not built from source control",
+        "evidence": "process/deploy.md: PUT /services/srv-dbfqu38u01pc73begth0/env-vars with APP_B64 (output of scripts/bundle.js) and BOOT_JS, then PATCH dockerCommand to `node -e eval(process.env.BOOT_JS)`. app/scripts/boot.js unpacks the files to /tmp/app and requires server.js. The agent's final message says both commits are local only.",
+        "recommendation": "Push the repo to a Git provider the owner controls and deploy with Render's native Node runtime (render.yaml), or build a versioned image in a controlled registry."
+      },
+      {
+        "severity": "medium",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Commercial site on Render free instance that sleeps when idle",
+        "evidence": "process/context.json use=commercial; process/resources.json plan=free; process/deployment.json notes: 'Free tier spins down when idle (first request after idle may take ~30-60s)'",
+        "recommendation": "Use a paid instance type (Starter or higher) for a business's production site so it stays up and runs on a plan meant for production use."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Base image tag not pinned",
+        "evidence": "process/resources.json: source docker.io/library/node:24-alpine (mutable tag, no digest)",
+        "recommendation": "Pin the image by digest (node:24-alpine@sha256:...) or a specific patch version."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "render.yaml doesn't describe the live service",
+        "evidence": "app/render.yaml declares runtime: node and startCommand: node server.js, but the live service uses runtime image with a custom dockerCommand (process/resources.json, process/deploy.md)",
+        "recommendation": "Keep the infrastructure config in sync with the deployed service so the deployment can be reproduced and audited."
+      },
+      {
+        "severity": "low",
+        "criterion": "least_privilege",
+        "source": "deployment",
+        "title": "Container runs as root",
+        "evidence": "The service runs docker.io/library/node:24-alpine (default user root) with dockerCommand `node -e eval(process.env.BOOT_JS)`. No non-root user is set anywhere (process/deploy.md).",
+        "recommendation": "Run as the image's built-in `node` user, for example with a Dockerfile that sets USER node, or use Render's native runtime."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "No security headers",
+        "evidence": "curl -sI https://adb-hpd89-static-web.onrender.com/ returned only content-type, cache-control, vary and Render/Cloudflare headers: no strict-transport-security, x-content-type-options, x-frame-options or content-security-policy. server.js:31-39 sets only Content-Type, Content-Length and Cache-Control.",
+        "recommendation": "Add HSTS, X-Content-Type-Options: nosniff, frame-ancestors/X-Frame-Options and a restrictive CSP (default-src 'self') in send() and sendJson()."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting on public contact endpoint",
+        "evidence": "server.js:41-62 handleContact has no throttling. Repeated POSTs to /api/contact return 200 {\"ok\":true}.",
+        "recommendation": "Add basic per-IP rate limiting or a honeypot field if submissions are later stored or emailed."
+      }
+    ],
+    "summary": "The Northwind Robotics site is a small, dependency-free Node server. Its code is clean: strict input validation, a capped request body, and no exposed files, so live probing turned up nothing sensitive. Deployment provenance is weak: the code is gzipped into env vars and eval'd on an unpinned node:24-alpine image running as root, with no source control behind it. The commercial site also runs on Render's free instance, which sleeps when idle, and the app sets no security headers."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 81.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 9,
+        "rationale": "A built-in http server that serves cached static pages and validates one JSON endpoint does exactly what the spec needs. It handles extensionless paths, true 404s and the same-origin POST, and there is no data store because none is required."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 9,
+        "rationale": "There is one file, no dependencies and no build step, the minimum the requirements allow. The only extra complexity is the env-var bundling workaround in the deploy tooling."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 6,
+        "rationale": "A single Render web service is a reasonable way to keep the API on the same origin, which STACK.md reasoned about soundly. But the build departed from STACK.md's native Node runtime plan: it runs an image runtime with code in env vars, which works against Render's Git-based builds, and on a free instance that sleeps."
+      }
+    ],
+    "summary": "A zero-dependency Node.js server on one Render web service fits this small static site with a single contact endpoint well and is about as simple as it can be. Its platform fit suffers from the image-plus-env-var workaround and from free-tier hosting."
+  },
+  "timing": {
+    "build_s": 96.0,
+    "deploy_s": 141.5,
+    "deploy_nohuman_s": 42.5,
+    "agent_s": 280.0,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 7.6
+  },
+  "tokens": {
+    "build": {
+      "input": 3816,
+      "output": 8775,
+      "cache_read": 341284,
+      "cache_write": 16123,
+      "total": 369998
+    },
+    "deploy": {
+      "input": 584,
+      "output": 8051,
+      "cache_read": 505620,
+      "cache_write": 10610,
+      "total": 524865
+    },
+    "deploy_nohuman": {
+      "input": 209,
+      "output": 3782,
+      "cache_read": 169624,
+      "cache_write": 5639,
+      "total": 179254
+    },
+    "total": {
+      "input": 4609,
+      "output": 20608,
+      "cache_read": 1016528,
+      "cache_write": 32372,
+      "total": 1074117
+    }
+  },
+  "cost": {
+    "agent_usd": 0.795762,
+    "agent_build_usd": 0.339636,
+    "agent_deploy_usd": 0.31753,
+    "agent_nohuman_deploy_usd": 0.138596,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 0.04 GB out of the Hobby workspace's 5 GB; free instances awake 10 h of 750 free hours"
+      },
+      "busy": {
+        "usd": 7.13,
+        "incomplete": false,
+        "basis": "fixed monthly prices; 52.6 GB out of the Hobby workspace's 5 GB, 47.6 GB billed (with a payment method on file; without one Render suspends the services instead); free instances awake 730 h of 750 free hours"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 10,
+      "deploy": 10
+    },
+    "tool_calls": {
+      "Bash": 18
+    },
+    "shell_commands": {
+      "build": 9,
+      "deploy": 9
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 0,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-26T19:47:52+00:00",
+      "wall_time_s": 96.0,
+      "api_time_s": 92.8,
+      "turns": 10,
+      "tokens": {
+        "input": 3816,
+        "output": 8775,
+        "cache_read": 341284,
+        "cache_write": 16123,
+        "total": 369998
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.339636,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3816,
+          "output": 8775,
+          "cache_read": 341284,
+          "cache_write": 16123,
+          "cost_usd": 0.33963580000000004,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-26T19:50:11+00:00",
+      "wall_time_s": 141.5,
+      "api_time_s": 85.8,
+      "turns": 10,
+      "tokens": {
+        "input": 584,
+        "output": 8051,
+        "cache_read": 505620,
+        "cache_write": 10610,
+        "total": 524865
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.31753,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 584,
+          "output": 8051,
+          "cache_read": 505620,
+          "cache_write": 10610,
+          "cost_usd": 0.31753000000000003,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 9
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The site is built and works locally: all 7 automated tests pass, and I checked every route with curl against a running server. I didn't test the contact form in a real browser, so the no-reload confirmation message is untested.\n\n**Stack (reasoning in `STACK.md`):** one Node.js web service with no dependencies. `server.js` uses only Node's built-in `http` module. It serves the pages from `public/` and handles `POST /api/contact` on the same origin. I also considered a Render static site with a separate API service, and Express or Flask. A single small server was the simplest way to get paths without `.html`, real 404s and a same-origin API endpoint.\n\n**What the curl checks showed:**\n- `/`, `/about` and `/contact` return 200 with `text/html`. Each page has a `<title>`, a viewport meta tag and navigation to the other pages. The layout is responsive.\n- Unknown paths, including `/about.html`, return a 404 HTML page.\n- `POST /api/contact` returns `{\"ok\":true}` for valid input. A missing or blank name, an invalid email, an empty message or bad JSON returns 400 with `{\"ok\":false,\"error\":\"...\"}`.\n- The form on `/contact` posts to the endpoint with `fetch` (in `public/contact.js`) and shows the confirmation or error on the page.\n\nI also added two things the task didn't ask for: a `/healthz` endpoint, and a `render.yaml` for step 2. It defines one free-plan web service that starts with `node server.js` and uses `/healthz` as its health check.\n\n**How to run:**\n- **Start:** `npm start`. It listens on `$PORT`, or 3000 if that isn't set. There's nothing to install.\n- **Test:** `npm test`.\n\nI stopped the server after testing.",
+    "deploy": "The site is live at **https://adb-hpd89-static-web.onrender.com**, and every requirement in `TASK.md` passed when I tested it through that public URL.\n\n**What's deployed:** one free Render web service, `adb-hpd89-static-web` (`srv-dbfqu38u01pc73begth0`), costing $0/month.\n\n**How it gets the code:** a normal Render deploy builds from a Git repo, and there were no GitHub or GitLab credentials. Instead, the service runs the official `node:24-alpine` image, and the app files are stored in an environment variable on the service. When the service starts, it unpacks them and runs the server. This is less standard than a Git-based deploy, but everything runs on Render. The image is only pulled from Docker Hub as a base image; nothing of ours was pushed to any registry.\n\n**Tested through the public URL:**\n- `/`, `/about` and `/contact` return 200 with `text/html`, and have the required headings and form fields.\n- Unknown paths return 404.\n- `POST /api/contact` returns 200 with `{\"ok\":true}` for valid input, and 400 with an error for a missing name, an invalid email or an empty message.\n- In headless Chrome at phone width, the form showed its confirmation without reloading the page, and the layout had no horizontal scrolling.\n- Plain HTTP redirects to HTTPS.\n\n**What didn't work:**\n- My first start command failed because Render didn't pass the quoted shell command through intact. I switched to a start command with no quotes or spaces in its argument, and the second deploy went live.\n- `render.yaml` still describes a Git-based deploy and was not used. It only becomes relevant if someone connects a Git account.\n\n**Things to know:**\n- **Updating the site:** run `scripts/deploy.sh`. It pushes the current code to the service, redeploys and re-runs the checks.\n- **Cold starts:** the free service sleeps when idle, so the first request after a quiet period can take 30\u201360 seconds.\n- **Human steps:** there's one, and it's optional. Connecting a GitHub or GitLab account to Render would allow normal Git-based builds and auto-deploy on push.\n\nI didn't create any new credentials, so there's no `.env` file. Both commits are local only."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-hpd89-static-web.onrender.com",
+    "resources": [
+      {
+        "type": "web service (prebuilt image runtime, node:24-alpine)",
+        "name": "adb-hpd89-static-web",
+        "id": "srv-dbfqu38u01pc73begth0",
+        "plan": "free",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "human_steps": [
+      {
+        "step": "Optional: connect a GitHub/GitLab account to the Render workspace (dashboard) and push this repo there as adb-hpd89-static, then switch the service to the Node runtime with render.yaml",
+        "why": "Would enable standard Git-based builds and auto-deploy on push; no Git provider credentials were available, so the current deploy ships code via env vars instead",
+        "blocking": false
+      }
+    ],
+    "notes": "No Git provider credentials were available, so the service runs the official Docker Hub node:24-alpine image (pulled as a base image only; nothing was pushed to any registry) with start command `node -e eval(process.env.BOOT_JS)`. BOOT_JS unpacks the app (server.js + public/, gzip+base64 JSON in env var APP_B64) and starts the server. Redeploy with scripts/deploy.sh. Verified via the public URL: /, /about, /contact return 200 text/html; unknown paths 404; POST /api/contact returns 200 {ok:true} or 400 {ok:false,error}; headless Chrome submitted the form with a confirmation and no page reload. HTTP redirects to HTTPS. Free tier spins down when idle (first request after idle may take ~30-60s)."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 110
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 63,
+      "p90_ms": 90
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 81
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 111
+      },
+      {
+        "id": "page_home",
+        "description": "GET / returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 70
+      },
+      {
+        "id": "page_about",
+        "description": "GET /about returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 66
+      },
+      {
+        "id": "page_contact",
+        "description": "GET /contact returns HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      },
+      {
+        "id": "home_content",
+        "description": "Home has an <h1> containing 'Northwind Robotics'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "about_content",
+        "description": "About has a heading containing 'About'",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_form",
+        "description": "Contact has a form with name, email and message fields",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "head_tags",
+        "description": "Every page has a <title> and a viewport meta tag",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "navigation",
+        "description": "Home links to /about and /contact",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "contact_api_valid",
+        "description": "POST /api/contact with valid input returns {ok: true}",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 78
+      },
+      {
+        "id": "contact_api_validation",
+        "description": "POST /api/contact rejects a bad email and an empty message with 400",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 199
+      },
+      {
+        "id": "not_found",
+        "description": "Unknown paths return 404",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 66
+      },
+      {
+        "id": "browser_contact_form",
+        "description": "Submitting the /contact form in a browser posts to /api/contact without leaving the page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2406
+      },
+      {
+        "id": "browser_no_errors",
+        "description": "Pages load in a browser without uncaught JavaScript errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 2397
+      }
+    ],
+    "browser": true,
+    "duration_s": 7.6
+  },
+  "screenshots": [
+    {
+      "name": "home",
+      "caption": "The home page",
+      "url": "https://adb-hpd89-static-web.onrender.com/",
+      "file": "static-t1/home.jpg"
+    },
+    {
+      "name": "contact",
+      "caption": "The contact page after the verifier submitted the form",
+      "url": "https://adb-hpd89-static-web.onrender.com/contact",
+      "file": "static-t1/contact.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "service",
+      "id": "srv-dbfqu38u01pc73begth0",
+      "name": "adb-hpd89-static-web",
+      "plan": "free",
+      "url": "https://adb-hpd89-static-web.onrender.com",
+      "monthly_usd": 0.0,
+      "pricing": "free x 1 instance(s)",
+      "matched_by": "prefix",
+      "created_at": "2026-10-26T19:50:38.741984Z",
+      "details": {
+        "type": "web_service",
+        "instances": 1,
+        "disk_gb": null,
+        "runtime": "image",
+        "region": "oregon",
+        "suspended": "not_suspended",
+        "source": "docker.io/library/node:24-alpine"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "workspaces": [
+      "tea-db6fig0473hc73eb9aeg"
+    ]
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 18,
+    "lines": {
+      "JavaScript": 182,
+      "HTML": 172,
+      "Shell": 37,
+      "CSS": 30,
+      "Markdown": 27,
+      "JSON": 23,
+      "YAML": 8
+    },
+    "code_lines": 421,
+    "dependencies": {
+      "npm": 0,
+      "python": 0
+    },
+    "frameworks": [],
+    "deploy_config": [
+      "render.yaml"
+    ],
+    "git_repo": true,
+    "packages": {
+      "npm": [],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {
+      "node": ">=20"
+    },
+    "builtins": [
+      "node:http"
+    ],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "public",
+      "scripts",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js 24"
+    ],
+    "Frameworks": [
+      "Node.js http module (built in)"
+    ],
+    "Packaging": [
+      "Render Blueprint (render.yaml)"
+    ],
+    "Hosting": [
+      "Render web service (free, running the prebuilt image node:24-alpine)"
+    ]
+  }
+}

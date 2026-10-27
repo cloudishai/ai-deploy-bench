@@ -2,6 +2,35 @@
   "schema": 9,
   "runs": [
     {
+      "name": "2026-10-27_17-1",
+      "date": "2026-10-27",
+      "number": 17,
+      "attempt": 1,
+      "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/40424719327",
+      "scope": "full",
+      "models": [
+        "opus-5-5"
+      ],
+      "trials": 1,
+      "benchmark_version": 3,
+      "agent_versions": [
+        "2.1.296"
+      ],
+      "base_run": {
+        "name": "2026-10-26_16-1",
+        "date": "2026-10-26",
+        "number": 16,
+        "attempt": 1,
+        "url": "https://github.com/cloudishai/ai-deploy-bench/actions/runs/40387893074"
+      },
+      "rerun": "clouds: cloudish, railway, vercel",
+      "schema": 9,
+      "cells": 25,
+      "success": 23,
+      "summary": "runs/2026-10-27_17-1/summary.json",
+      "report": "runs/2026-10-27_17-1/summary.md"
+    },
+    {
       "name": "2026-10-26_16-1",
       "date": "2026-10-26",
       "number": 16,

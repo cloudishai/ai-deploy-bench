@@ -1,0 +1,664 @@
+{
+  "schema": 9,
+  "benchmark_version": 3,
+  "names": {
+    "cloud": "Vercel",
+    "model": "Opus 5.5",
+    "app": "Real-Time Collaborative App"
+  },
+  "run_id": "40424719327-1",
+  "cloud": "vercel",
+  "model": "opus-5-5",
+  "app": "realtime",
+  "trial": 1,
+  "prefix": "adb-94zby-realtime",
+  "agent": {
+    "name": "Claude Code",
+    "version": "2.1.296",
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "hipaa": true
+  },
+  "status": "partial",
+  "failure_stage": "human",
+  "deploys_without_human": false,
+  "no_human": {
+    "attempted": true,
+    "used": "credentials",
+    "url_answered": true,
+    "deploy_s": 485.9,
+    "tokens": 1746091,
+    "agent_usd": 0.707379
+  },
+  "url": "https://adb-94zby-realtime-web.vercel.app",
+  "url_source": "deployment.json",
+  "score": 0.7692,
+  "checks_passed": 10,
+  "checks_total": 13,
+  "required_failed": [
+    "delivery",
+    "room_isolation",
+    "fanout"
+  ],
+  "human": {
+    "steps": [
+      {
+        "id": "signup",
+        "description": "Sign up for an account and verify the email address",
+        "minutes": 3,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "api_token",
+        "description": "Create an API token and hand it to the agent",
+        "minutes": 2,
+        "evidence": [
+          "prerequisite: account setup"
+        ]
+      },
+      {
+        "id": "accept_integration_terms",
+        "description": "Install a Marketplace integration and accept its terms in a browser",
+        "minutes": 3,
+        "evidence": [
+          "agent: In a browser signed in to the Vercel team, open https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/upstash?source=cli and accept the Upstash for Redis Marketplace terms. Then run scripts/deploy.sh (uses VERCEL_TOKEN/VERCEL_TEAM_ID): it installs Upstash Redis 'adb-94zby-realtime-redis' (f",
+          "tool output: ng Upstash for Redis by Upstash under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Upstash\\\" in your browser before this install can fi"
+        ]
+      }
+    ],
+    "count": 3,
+    "minutes": 8,
+    "blockers": [
+      {
+        "id": "accept_integration_terms",
+        "source": "agent",
+        "detail": "In a browser signed in to the Vercel team, open https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/upstash?source=cli and accept the Upstash for Redis Marketplace terms. Then run scripts/deploy.sh (uses VERCEL_TOKEN/VERCEL_TEAM_ID): it installs Upstash Redis 'adb-94zby-realtime-redis' (f",
+        "blocking": true
+      },
+      {
+        "id": "accept_integration_terms",
+        "source": "tool output",
+        "detail": "ng Upstash for Redis by Upstash under ai-deploy-bench { \"status\": \"action_required\", \"reason\": \"integration_terms_acceptance_required\", \"message\": \"Accept marketplace terms for \\\"Upstash\\\" in your browser before this install can fi",
+        "blocking": true
+      }
+    ],
+    "blocked": true,
+    "succeeded": false
+  },
+  "security": {
+    "reviewer": {
+      "model": "claude-opus-5-5",
+      "effort": "high",
+      "hipaa": true,
+      "status": "completed",
+      "wall_time_s": 89.9,
+      "tokens": 533155,
+      "cost_usd": 0.475014
+    },
+    "status": "completed",
+    "score": 80.5,
+    "criteria": [
+      {
+        "id": "secrets",
+        "name": "Secrets handling",
+        "weight": 25,
+        "score": 9,
+        "rationale": "The source has no credentials. The Redis URL and token are read from integration-injected env vars (lib/store.js:6-7), the Vercel token came from $VERCEL_TOKEN and is redacted in the transcripts, and .vercelignore keeps .env and .env.local (with the CLI's VERCEL_OIDC_TOKEN) out of the upload. One minor point: the token is passed as a --token argument, which other processes on the machine can see."
+      },
+      {
+        "id": "provenance",
+        "name": "Deployment provenance",
+        "weight": 20,
+        "score": 7,
+        "rationale": "A pinned Vercel CLI (npx vercel@65.3.1) uploaded the agent's own local tree, and Vercel built it from source, so production matches the reviewed code. Dependencies use caret ranges (next ^16.4.3, @upstash/redis ^1.40.0), no lockfile is among the delivered sources, and the deploy isn't tied to any commit."
+      },
+      {
+        "id": "compliance",
+        "name": "Terms compliance",
+        "weight": 15,
+        "score": 7,
+        "rationale": "A Hobby plan suits this personal hobby-club app. But every open browser tab holds a streaming function that polls in a loop, so the Hobby usage caps (paused when exceeded) are a real risk. The planned Upstash free tier would also be used up quickly by 500 ms polling. I'm not certain of the exact current quota numbers."
+      },
+      {
+        "id": "least_privilege",
+        "name": "Least privilege",
+        "weight": 15,
+        "score": 9,
+        "rationale": "Only one Vercel project with serverless functions was created: no public data stores, containers or extra credentials. The public endpoints are exactly the ones the spec requires."
+      },
+      {
+        "id": "transport",
+        "name": "Transport security",
+        "weight": 10,
+        "score": 8,
+        "rationale": "HTTPS only, with a valid certificate, HTTP\u2192HTTPS 308 and HSTS (preload). The agent could have set CSP, X-Content-Type-Options and frame-protection headers in next.config but didn't."
+      },
+      {
+        "id": "exposure",
+        "name": "Attack surface",
+        "weight": 10,
+        "score": 9,
+        "rationale": "Probes for .env, .env.local, .git/config, package.json, .vercel/project.json, source files and deployment.json all return 404, and errors return short JSON with no stack traces. Only the X-Powered-By: Next.js banner is extra."
+      },
+      {
+        "id": "application",
+        "name": "Application security",
+        "weight": 5,
+        "score": 6,
+        "rationale": "Input validation is solid (room regex, 1-50 char user, 1-1000 char text, 400 on bad or null JSON), and React escapes message text, so stored HTML doesn't execute. There is no rate limiting or cap on rooms or SSE connections. In the deployed in-memory mode, messages are lost across instances and history is lost on cold starts."
+      }
+    ],
+    "findings": [
+      {
+        "severity": "medium",
+        "criterion": "application",
+        "source": "deployment",
+        "title": "Production runs on per-instance in-memory store: messages lost between instances, history not durable",
+        "evidence": "lib/store.js:112 falls back to MemoryStore when KV_REST_API_URL/TOKEN are absent. deploy.md: Marketplace installs returned integration_terms_acceptance_required, and the public-URL SSE test failed with 'AssertionError: got 8' / 'got 5' of 20 messages. deployment.json marks the Redis step as blocking.",
+        "recommendation": "Accept the Upstash terms and run scripts/deploy.sh to attach Redis, or use a store that needs no Marketplace terms, before treating the app as production-ready."
+      },
+      {
+        "severity": "low",
+        "criterion": "application",
+        "source": "app",
+        "title": "No rate limiting or resource caps on public endpoints",
+        "evidence": "app/api/rooms/[room]/[action]/route.js:21-34 accepts unlimited POSTs, and any room name creates a new in-memory list of up to 500 messages (lib/store.js:90-96). Each SSE connection polls every 150 ms for 55 s (route.js:62-78). POST /api/rooms/rvw-probe-7q/messages returned 201 with no throttle headers.",
+        "recommendation": "Add per-IP rate limits (e.g. Vercel Firewall rate-limit rules or an Upstash ratelimit), cap the number of rooms and connections, and keep idle polling cheap."
+      },
+      {
+        "severity": "low",
+        "criterion": "compliance",
+        "source": "deployment",
+        "title": "Always-on streaming and polling may exceed Hobby and Upstash free-tier quotas",
+        "evidence": "route.js:5,8: maxDuration 60, and streams reconnect every 55 s indefinitely while a tab is open. RedisStore pollMs 500 (lib/store.js:49) means about 2 Redis commands per second per connection. The human step uses Upstash's 'free plan'. context.json: team plan hobby.",
+        "recommendation": "Use a push-based fan-out (e.g. Redis pub/sub or a managed realtime service), or poll less often and back off when idle, so usage stays within Hobby and free-tier limits."
+      },
+      {
+        "severity": "low",
+        "criterion": "provenance",
+        "source": "deployment",
+        "title": "Dependencies unpinned and no lockfile in the delivered sources",
+        "evidence": "app/package.json: \"next\": \"^16.4.3\", \"@upstash/redis\": \"^1.40.0\", \"react\": \"^19.2.0\". app/ has no package-lock.json, so Vercel resolves versions at build time.",
+        "recommendation": "Commit package-lock.json (so Vercel runs npm ci) and pin exact versions. Deploy from a git repository so each deployment maps to a commit."
+      },
+      {
+        "severity": "low",
+        "criterion": "transport",
+        "source": "app",
+        "title": "Missing CSP, X-Content-Type-Options and frame-protection headers",
+        "evidence": "curl -sI https://adb-94zby-realtime-web.vercel.app/ shows strict-transport-security but no content-security-policy, x-content-type-options or x-frame-options. No next.config sets headers().",
+        "recommendation": "Add these headers through next.config.js headers() or vercel.json."
+      },
+      {
+        "severity": "info",
+        "criterion": "exposure",
+        "source": "app",
+        "title": "X-Powered-By framework banner",
+        "evidence": "Response header 'x-powered-by: Next.js' on GET /",
+        "recommendation": "Set poweredByHeader: false in next.config.js."
+      },
+      {
+        "severity": "info",
+        "criterion": "secrets",
+        "source": "deployment",
+        "title": "Vercel token passed on the command line",
+        "evidence": "deploy.md and scripts/deploy.sh:8 run 'npx -y vercel@65.3.1 --token \"$VERCEL_TOKEN\"'. The value is redacted in the logs but appears in the process argument list.",
+        "recommendation": "Rely on the VERCEL_TOKEN environment variable, which the CLI reads, instead of --token."
+      },
+      {
+        "severity": "info",
+        "criterion": "application",
+        "source": "app",
+        "title": "Display names are unauthenticated (by design)",
+        "evidence": "POST body {\"user\":\"reviewer\",...} is accepted as-is (route.js:29-33). Anyone can post under any name, which the spec allows.",
+        "recommendation": "Acceptable for a hobby club. Add lightweight sign-in if impersonation becomes a problem."
+      }
+    ],
+    "summary": "The deployment is clean on secrets, exposure and transport: no credentials in source or upload, only the app's routes reachable, and HTTPS with HSTS. Inputs are validated and output is escaped. The main weaknesses are that production runs on a per-instance in-memory store, because the Redis integration was blocked on terms acceptance (live fan-out drops messages and history isn't durable), and that endpoints have no rate limiting. Smaller issues: unpinned dependencies without a lockfile, and some missing security headers."
+  },
+  "stack_fit": {
+    "status": "completed",
+    "score": 59.0,
+    "criteria": [
+      {
+        "id": "fit",
+        "name": "Fit for the job",
+        "weight": 40,
+        "score": 5,
+        "rationale": "Next.js with SSE and Redis Streams is a well-reasoned design for Vercel, and the Redis path was verified locally. But what is live uses an in-memory store that loses messages across instances and resets history, so the deployed stack doesn't yet meet the delivery or persistence requirements."
+      },
+      {
+        "id": "proportion",
+        "name": "Proportion",
+        "weight": 30,
+        "score": 7,
+        "rationale": "A single Next.js app plus one Redis client is about as lean as the requirements allow. The in-memory fallback is reasonable for local development, but in production it is a stand-in that only appears to work."
+      },
+      {
+        "id": "platform",
+        "name": "Platform fit",
+        "weight": 30,
+        "score": 6,
+        "rationale": "SSE is the right choice given that Vercel can't host WebSocket servers, and bounded 55 s streams with Last-Event-ID resume suit function time limits. But keeping functions alive to poll storage every 150-500 ms works against per-use function and Redis billing."
+      }
+    ],
+    "summary": "STACK.md reasons soundly: Next.js route handlers with SSE and Upstash Redis Streams fits Vercel and the spec. But the build shipped without the shared store, and its poll-in-a-loop streaming is costly on Hobby and free-tier quotas, so the deployed stack only partly fits."
+  },
+  "timing": {
+    "build_s": 159.0,
+    "deploy_s": 236.9,
+    "deploy_nohuman_s": 485.9,
+    "agent_s": 881.8,
+    "ready_after_deploy_s": 0.0,
+    "verify_s": 31.1
+  },
+  "tokens": {
+    "build": {
+      "input": 3871,
+      "output": 13370,
+      "cache_read": 503423,
+      "cache_write": 24391,
+      "total": 545055
+    },
+    "deploy": {
+      "input": 596,
+      "output": 7269,
+      "cache_read": 926813,
+      "cache_write": 21183,
+      "total": 955861
+    },
+    "deploy_nohuman": {
+      "input": 19472,
+      "output": 11930,
+      "cache_read": 1688708,
+      "cache_write": 25981,
+      "total": 1746091
+    },
+    "total": {
+      "input": 23939,
+      "output": 32569,
+      "cache_read": 3118944,
+      "cache_write": 71555,
+      "total": 3247007
+    }
+  },
+  "cost": {
+    "agent_usd": 1.651945,
+    "agent_build_usd": 0.505524,
+    "agent_deploy_usd": 0.439042,
+    "agent_nohuman_deploy_usd": 0.707379,
+    "agent_cost_estimated": false,
+    "hosting_monthly_usd": 0.0,
+    "hosting_usage": {
+      "light": {
+        "usd": 0.0,
+        "incomplete": false,
+        "basis": "within Hobby's included usage"
+      },
+      "busy": {
+        "usd": 20.0,
+        "incomplete": false,
+        "basis": "exceeds Hobby's limits (CDN requests, function invocations, active CPU), which pauses the project, so priced on Pro: $20 platform fee including $20 of usage credit, $5.75 of usage"
+      }
+    },
+    "hosting_unpriced": [],
+    "hosting_agent_estimate_usd": 0
+  },
+  "activity": {
+    "turns": {
+      "build": 13,
+      "deploy": 12
+    },
+    "tool_calls": {
+      "Bash": 22,
+      "WebFetch": 1
+    },
+    "shell_commands": {
+      "build": 12,
+      "deploy": 10
+    },
+    "tool_errors": 1,
+    "web_searches": 0,
+    "web_fetches": 1,
+    "subagents": 0
+  },
+  "phases": {
+    "build": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": false,
+      "started_at": "2026-10-27T00:59:16+00:00",
+      "wall_time_s": 159.0,
+      "api_time_s": 118.1,
+      "turns": 13,
+      "tokens": {
+        "input": 3871,
+        "output": 13370,
+        "cache_read": 503423,
+        "cache_write": 24391,
+        "total": 545055
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.505524,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 3871,
+          "output": 13370,
+          "cache_read": 503423,
+          "cache_write": 24391,
+          "cost_usd": 0.5055236,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 12
+      },
+      "tool_errors": 1,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    },
+    "deploy": {
+      "status": "completed",
+      "detail": "success",
+      "started": true,
+      "resumed": true,
+      "started_at": "2026-10-27T01:10:01+00:00",
+      "wall_time_s": 236.9,
+      "api_time_s": 81.8,
+      "turns": 12,
+      "tokens": {
+        "input": 596,
+        "output": 7269,
+        "cache_read": 926813,
+        "cache_write": 21183,
+        "total": 955861
+      },
+      "tokens_estimated": false,
+      "cost_usd": 0.439042,
+      "cost_source": "claude-code",
+      "model_usage": {
+        "claude-opus-5-5": {
+          "input": 596,
+          "output": 7269,
+          "cache_read": 926813,
+          "cache_write": 21183,
+          "cost_usd": 0.43904160000000014,
+          "web_searches": 0
+        }
+      },
+      "tool_calls": {
+        "Bash": 10,
+        "WebFetch": 1
+      },
+      "tool_errors": 0,
+      "compactions": 0,
+      "api_retries": 0,
+      "result_subtype": "success",
+      "terminal_reason": "completed",
+      "permission_denials": 0,
+      "model": "claude-opus-5-5",
+      "claude_code_version": "2.1.296",
+      "lingered": false
+    }
+  },
+  "final_messages": {
+    "build": "The chat app is built and works locally. All three automated tests pass with the in-memory store and with real Redis. Nothing is deployed and no servers or containers are still running.\n\n**Stack** (the options I weighed are in `STACK.md`): Next.js 16 with **Server-Sent Events**, and messages stored in **Redis Streams** through `@upstash/redis`.\n- **Why SSE instead of WebSockets:** Vercel Functions can't host a WebSocket server, but they can stream responses, so this uses the SSE option from the spec.\n- **Why Redis:** each live connection checks Redis for new messages about every 500 ms. That keeps delivery working when Vercel runs the app on several separate instances.\n- **Without Redis settings:** the app falls back to an in-memory store, which is only suitable for local use.\n\n**Endpoints**\n- `GET /?room=general` is the web page. You pick a display name and a room, see the recent history, and messages appear live.\n- `GET /api/rooms/<room>/events` is the live stream. A dropped connection reconnects and picks up where it left off; the app also closes and reopens it itself before Vercel's 300-second function limit.\n- `POST /api/rooms/<room>/messages` takes `{\"user\",\"text\"}` and returns `201` with the message. It returns `400` for empty or over-1000-character text, a missing name, a bad room name or invalid JSON.\n- `GET /api/rooms/<room>/messages` returns the latest 50 messages, oldest first.\n\n**What the tests check:** the page loads, invalid messages are rejected, and history holds only the latest 50 in the right order. They also run 3 listeners while 20 messages are sent at once: all of them get every message within 2 seconds, and a listener in another room gets none.\n\nBeyond the tests, I ran the app against Redis 7 behind a local Docker proxy that behaves like Upstash. I also checked with curl that a message posted to one server instance reached a listener connected to a second one.\n\n**To run it**\n```bash\nnpm install\nnpm run build && npm start        # http://localhost:3000/?room=general\nnpm test                          # needs a build first; starts its own server\n```\n\n**For step 2:** the deployment needs a Redis database attached, for example Upstash from the Vercel Marketplace. That sets `KV_REST_API_URL` and `KV_REST_API_TOKEN` (the `UPSTASH_REDIS_REST_*` names work too). Without them, separate instances won't see each other's messages.",
+    "deploy": "The app is live at **https://adb-94zby-realtime-web.vercel.app**, but live delivery doesn't fully work yet. When several messages are posted at once, each listener misses many of them. Fixing that needs one browser step from a person.\n\n**What's deployed:** the Vercel project `adb-94zby-realtime-web` (`prj_lTKGhVzPEk9AAiLeCdvuEFWPgAVW`) in production, at $0/month. It uses Server-Sent Events, set as `\"realtime\": {\"transport\": \"sse\"}` in `deployment.json`. Each live stream closes after about 55 seconds because functions are capped at 60. Browsers reconnect automatically and resume where they left off.\n\n**Tested through the public URL:**\n- **Working:** the page at `/?room=\u2026`, the `400` rejections for invalid messages, `201` on posting, and history returning the latest 50 messages, oldest first.\n- **Not working:** with 3 listeners and 20 messages posted at once, each listener got only 5 to 8 of them. Vercel spreads the load over several copies of the function, and without Redis each copy keeps its own messages in memory. For the same reason, history can differ between copies and is lost when a copy restarts.\n\n**Why Redis isn't attached:** adding Upstash Redis, Redis or Neon from the Vercel Marketplace all stopped with \"integration terms acceptance required\". Only a person can accept those terms in a browser. I also looked at Vercel's Runtime Cache as a store that needs no terms, but rejected it: it can drop entries at any time and has no safe way to handle simultaneous writes.\n\n**The one human step (blocking, also in `deployment.json`):**\n1. Accept the Upstash terms at https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/upstash?source=cli.\n2. Run `scripts/deploy.sh`. It installs the free Upstash Redis `adb-94zby-realtime-redis`, connects it to the project and redeploys production.\n\nThe app switches to Redis automatically once it's connected, with no code changes. The same tests passed locally against Redis, including delivery between two separate server instances.\n\n**Housekeeping:**\n- I created no credentials.\n- I deleted the old `.env`, since its claim link from the previous anonymous deployment is now obsolete.\n- A new `.vercelignore` keeps the env files and tests out of the upload."
+  },
+  "deployment_manifest": {
+    "url": "https://adb-94zby-realtime-web.vercel.app",
+    "resources": [
+      {
+        "type": "Vercel project (Next.js 16 app; UI + Node.js serverless functions, Fluid compute)",
+        "name": "adb-94zby-realtime-web",
+        "id": "prj_lTKGhVzPEk9AAiLeCdvuEFWPgAVW",
+        "plan": "team's existing Vercel plan (no changes); function maxDuration 60s",
+        "monthly_cost_usd": 0
+      }
+    ],
+    "estimated_monthly_cost_usd": 0,
+    "realtime": {
+      "transport": "sse"
+    },
+    "human_steps": [
+      {
+        "step": "In a browser signed in to the Vercel team, open https://vercel.com/ai-deploy-bench/~/integrations/accept-terms/upstash?source=cli and accept the Upstash for Redis Marketplace terms. Then run scripts/deploy.sh (uses VERCEL_TOKEN/VERCEL_TEAM_ID): it installs Upstash Redis 'adb-94zby-realtime-redis' (free plan, iad1), connects it to adb-94zby-realtime-web (injecting KV_REST_API_URL/KV_REST_API_TOKEN) and redeploys production. Equivalent CLI: vercel --scope <team> integration add upstash/upstash-kv --name adb-94zby-realtime-redis --metadata primaryRegion=iad1, then vercel deploy --prod.",
+        "why": "Live fan-out across Vercel function instances needs a shared store. Every Marketplace database (Upstash, Redis, Neon, ...) returned integration_terms_acceptance_required, which only a person can complete in the browser. Until then the app uses its per-instance in-memory fallback: under concurrent load SSE clients on the public URL received only 5-8 of 20 messages, and history may differ between instances / reset on cold starts.",
+        "blocking": true
+      }
+    ],
+    "notes": "Transport is Server-Sent Events (Vercel Functions cannot host WebSocket servers): GET /api/rooms/<room>/events streams `data: <message JSON>` events; POST /api/rooms/<room>/messages {user,text} -> 201/400; GET /api/rooms/<room>/messages -> latest 50 oldest first; UI at /?room=<room>. SSE streams close after ~55s (maxDuration 60) and EventSource reconnects resuming from Last-Event-ID, so no messages are lost across reconnects. Verified through the public URL: UI 200, validation 400s, 201 + history (50, oldest first) pass; the concurrent multi-client SSE fan-out test fails (partial delivery) until Redis is attached. The Redis code path (Redis Streams via @upstash/redis) was verified locally against Redis 7, including cross-instance delivery, and is activated automatically by the env vars the Upstash integration injects. Vercel Runtime Cache was considered as a terms-free shared store but rejected: it is ephemeral/LRU-evicted with no atomic operations. No credentials were created."
+  },
+  "verification": {
+    "readiness": {
+      "ready": true,
+      "seconds_to_ready": 0.1,
+      "attempts": 1,
+      "first_response_ms": 141
+    },
+    "performance": {
+      "samples": 10,
+      "p50_ms": 72,
+      "p90_ms": 234,
+      "delivery_latency_ms": null
+    },
+    "checks": [
+      {
+        "id": "ready",
+        "description": "GET / answers 2xx within 1 min",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "https",
+        "description": "The app is served over HTTPS with a valid certificate",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 76
+      },
+      {
+        "id": "public_access",
+        "description": "The app is public: no redirect to another host such as a login page",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 173
+      },
+      {
+        "id": "ui",
+        "description": "GET / serves the chat UI as HTML",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 75
+      },
+      {
+        "id": "transport",
+        "description": "deployment.json declares a supported transport (websocket or sse)",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "connect",
+        "description": "Clients connect over sse",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 1676
+      },
+      {
+        "id": "delivery",
+        "description": "A message reaches another client in the same room within 5 s",
+        "required": true,
+        "status": "failed",
+        "detail": "bob did not receive alice's message within 5 s",
+        "duration_ms": 5157
+      },
+      {
+        "id": "echo",
+        "description": "The sender receives its own message too",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 0
+      },
+      {
+        "id": "room_isolation",
+        "description": "Messages never reach clients in other rooms",
+        "required": true,
+        "status": "failed",
+        "detail": "not run: depends on delivery",
+        "duration_ms": 0
+      },
+      {
+        "id": "fanout",
+        "description": "Five users posting at the same time all see every message within 10 s",
+        "required": true,
+        "status": "failed",
+        "detail": "messages not delivered (client: missing count): {'user0': 8, 'user1': 8, 'user2': 9, 'user3': 9, 'user4': 11}",
+        "duration_ms": 11994
+      },
+      {
+        "id": "history",
+        "description": "GET /api/rooms/<room>/messages returns recent messages",
+        "required": true,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 155
+      },
+      {
+        "id": "validation",
+        "description": "Messages over 1000 characters are rejected",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 59
+      },
+      {
+        "id": "browser_ui",
+        "description": "The chat UI loads in a browser without errors",
+        "required": false,
+        "status": "passed",
+        "detail": "",
+        "duration_ms": 977
+      }
+    ],
+    "browser": true,
+    "duration_s": 31.1
+  },
+  "screenshots": [
+    {
+      "name": "chat",
+      "caption": "The chat UI, opened on the room the verifier's clients chatted in",
+      "url": "https://adb-94zby-realtime-web.vercel.app/?room=bench-56c53773",
+      "file": "realtime-t1/chat.jpg"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "project",
+      "id": "prj_lTKGhVzPEk9AAiLeCdvuEFWPgAVW",
+      "name": "adb-94zby-realtime-web",
+      "plan": null,
+      "url": "https://adb-94zby-realtime-web.vercel.app",
+      "monthly_usd": 0.0,
+      "pricing": "no fixed fee; usage within the plan's included allowance",
+      "matched_by": "prefix",
+      "created_at": 1793063410091,
+      "details": {
+        "team_id": "team_U2tHOV4fpUx18nl9EpcRQ4hO",
+        "framework": "nextjs"
+      }
+    }
+  ],
+  "scratch_resources": [],
+  "possible_leaks": [],
+  "account": {
+    "team_plans": {
+      "team_U2tHOV4fpUx18nl9EpcRQ4hO": "hobby"
+    }
+  },
+  "inventory_errors": [],
+  "teardown": {
+    "skipped": null,
+    "kept": [],
+    "deleted": 1,
+    "failed": [],
+    "leftovers": []
+  },
+  "code": {
+    "files": 13,
+    "lines": {
+      "JavaScript": 452,
+      "Markdown": 43,
+      "JSON": 39,
+      "Shell": 18
+    },
+    "code_lines": 470,
+    "dependencies": {
+      "npm": 4,
+      "python": 0
+    },
+    "frameworks": [
+      "@upstash/redis",
+      "next",
+      "react"
+    ],
+    "deploy_config": [],
+    "git_repo": false,
+    "packages": {
+      "npm": [
+        "@upstash/redis",
+        "next",
+        "react",
+        "react-dom"
+      ],
+      "npm_dev": [],
+      "python": [],
+      "python_dev": []
+    },
+    "base_images": [],
+    "runtime_hints": {},
+    "builtins": [],
+    "manifests": [
+      "package.json"
+    ],
+    "dirs": [
+      "app",
+      "lib",
+      "scripts",
+      "test"
+    ]
+  },
+  "technologies": {
+    "Runtime": [
+      "Node.js"
+    ],
+    "Frameworks": [
+      "Next.js",
+      "React"
+    ],
+    "Libraries": [
+      "Upstash Redis SDK"
+    ],
+    "Hosting": [
+      "Vercel project (Next.js)",
+      "Vercel Functions"
+    ]
+  }
+}
